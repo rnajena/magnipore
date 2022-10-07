@@ -719,17 +719,18 @@ def main():
     sequencing_summary = None
 
     if path_to_basecalls is not None:
-
         sequencing_summary = os.path.join(path_to_basecalls, 'sequencing_summary.txt')
+        path_to_basecalls = os.path.join(path_to_basecalls, sample_label)
 
-        path_to_basecalls = os.path.join(path_to_basecalls, sample_label + '.fastq')
+        if not os.path.exists(path_to_basecalls + '.fastq'):
+            if not os.path.exists(path_to_basecalls + '.fq'):
+                LOGGER.error(f'{path_to_basecalls}.fastq or .fq NOT FOUND!')
+            else:
+                path_to_basecalls+='.fq'
+        else:
+            path_to_basecalls+='.fastq'
 
-        if not os.path.exists(path_to_basecalls):
-            
-            LOGGER.error(f'{path_to_basecalls} NOT FOUND!')
-            
         if not os.path.exists(sequencing_summary):
-
             LOGGER.error(f'{sequencing_summary} NOT FOUND!')
 
     else:

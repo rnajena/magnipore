@@ -382,7 +382,7 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
     LOGGER.printLog(f'Plotting Mean and Stdev for {sec_sample_label}')
     plotMeanStdDist(plotting_data, 'sec_mean', 'sec_std', plot_dir, sec_sample_label, suffix)
 
-    LOGGER.printLog(f'Writing marked alignment')
+    LOGGER.printLog(f'Writing stockholm with magnipore markers')
     fasta = []
     ids = []
     # remove duplicate sequences (happens when both samples have the same reference fasta)

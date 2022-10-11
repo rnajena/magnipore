@@ -383,15 +383,20 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
     plotMeanStdDist(plotting_data, 'sec_mean', 'sec_std', plot_dir, sec_sample_label, suffix)
 
     LOGGER.printLog(f'Writing marked alignment')
-    fasta = itertools.chain(
-        [SeqIO.parse(open(alignment_path), 'fasta')] +
-        [SeqIO.SeqRecord(
-            Seq.Seq(''.join(seq)),
-            id ='magnipore_marked_' + str((first_sample_label, sec_sample_label)[i]),
-            name ='magnipore_' + str((first_sample_label, sec_sample_label)[i]),
-            description='X=significant signal change, N=not significant') for i, seq in enumerate(alignment_sequences)
-            ]
-        )
+    fasta = []
+    ids = []
+    # remove duplicate sequences (happens when both samples have the same reference fasta)
+    for record in SeqIO.parse(open(alignment_path), 'fasta'):
+        if record.id not in ids:
+            fasta.append(record)
+            ids.append(record.id)
+        else:
+            LOGGER.warning(f'Found duplicate record id in {alignment_path}. If you provided the same reference to both samples this is normal. If not check your reference record ids!')
+    fasta += [SeqIO.SeqRecord(
+                Seq.Seq(''.join(seq)),
+                id ='magnipore_marked_' + str((first_sample_label, sec_sample_label)[i]),
+                name ='magnipore_' + str((first_sample_label, sec_sample_label)[i]),
+                description='X=significant signal change, N=not significant') for i, seq in enumerate(alignment_sequences)]
     stk = open(os.path.join(working_dir, first_sample_label + '_' + sec_sample_label + suffix + '_marked.stk'), 'w')
     SeqIO.write(fasta, stk, 'stockholm')
     

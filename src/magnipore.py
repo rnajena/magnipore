@@ -224,7 +224,7 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
     all.write(f'ref_1\tpos_1\tbase_1\tmotif_1\tsignal_mean_1\tsignal_std_1\tn_datapoints_1\tcontained_datapoints_1\tn_segments_1\tcontained_segments_1\tn_reads_1\t')
     all.write(f'ref_2\tpos_2\tbase_2\tmotif_2\tsignal_mean_2\tsignal_std_2\tn_datapoints_2\tcontained_datapoints_2\tn_segments_2\tcontained_segments_2\tn_reads_2\n')
 
-    num_indels, sign_pos, nans, alignmentGapCorrection = 0, 0, 0, 0
+    num_indels, sign_pos, nans = 0, 0, 0
     alignment_sequences = [list(re.sub(r"[^-]", ".", alignment_sequences[0])), list(re.sub(r"[^-]", ".", alignment_sequences[1]))]
 
     plotting_data = pd.DataFrame(columns=['mean_diff', 'first_std', 'sec_std', 'avg_std', 'mut_context', 'td_score', 'kl_divergence'])

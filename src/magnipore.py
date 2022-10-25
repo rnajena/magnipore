@@ -3,7 +3,6 @@
 # github: https://github.com/JannesSP
 # website: https://jannessp.github.io
 
-import itertools
 import seaborn as sns
 import os
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
@@ -17,9 +16,11 @@ from constants import ANSI
 from statistics import NormalDist
 from Logger import Logger
 import re
+from time import perf_counter_ns
 
 LOGGER : Logger = None
 FONTSIZE = 18
+TIMEIT = False
 
 def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
     new_cmap = colors.LinearSegmentedColormap.from_list(
@@ -29,19 +30,20 @@ def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
 
 def parse() -> Namespace:
 
-    parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter, description='Required tools in environment: see https://github.com/JannesSP/magnipore')
+    parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter, description='Required tools in environment: guppy, minimap2, nanopolish, h5py, samtools, scipy and mafft')
     
-    parser.add_argument("path_to_fast5_first_sample", type = str, help='FAST5 directory of first sample')
+    parser.add_argument("path_to_fast5_first_sample", type = str, help='FAST5 file of first sample')
     parser.add_argument("path_to_reference_first_sample", type = str, help='reference FASTA file of first sample')
     parser.add_argument("first_sample_label", type = str, help='Name of the sample or pipeline run')
     
-    parser.add_argument("path_to_fast5_sec_sample", type = str, help='FAST5 directory of second sample')
+    parser.add_argument("path_to_fast5_sec_sample", type = str, help='FAST5 file of second sample')
     parser.add_argument("path_to_reference_sec_sample", type = str, help='reference FASTA file of second sample')
     parser.add_argument("sec_sample_label", type = str, help='Name of the sample or pipeline run')
     
     parser.add_argument("working_dir", type = str, help='Path to write all output files')
-    parser.add_argument("guppy_bin", type = str, help='Guppy binary')
-    parser.add_argument("guppy_model", type = str, help='Guppy model used for basecalling')
+    
+    parser.add_argument("--guppy_bin", type = str, default = None, help='Guppy binary')
+    parser.add_argument("--guppy_model", type = str, default = None, help='Guppy model used for basecalling')
 
     parser.add_argument('--path_to_first_basecalls', type = str, default = None, help = 'FASTQ file to use: <first_sample_label>.fastq\nWill skip basecalling for first sample')
     parser.add_argument('--path_to_sec_basecalls', type = str, default = None, help = 'FASTQ file to use: <sec_sample_label>.fastq\nWill skip basecalling for second sample')
@@ -50,16 +52,17 @@ def parse() -> Namespace:
     parser.add_argument('-t', "--threads", type=int, default=1, help='Number of threads to use')
     parser.add_argument('-f5', '--fast5_out', action = 'store_true', help='Guppy generates FAST5 output (workspace folder) of Guppy')
     parser.add_argument('-fr', '--force_rebuild', action = 'store_true', help='Run commands regardless if files are already present')
-    parser.add_argument('-c', '--consensus_tool', default = 'skip', choices=['ococo', 'medaka', 'skip'], help = 'Choose which consensus caller to use to refine the reference.')
     parser.add_argument('--strict', action = 'store_true', default = False, help = 'Do not write positions with a mutational context into .magnipore files')
     parser.add_argument('-r2', '--range2', action = 'store_true', default = False, help = 'Use range 2 instead of range 3 for the mutational context check')
     parser.add_argument('-mx', '--minimap2x', default = 'splice', choices = ['map-ont', 'splice', 'ava-ont'], help = '-x parameter for minimap2')
     parser.add_argument('-mk', '--minimap2k', default = 14, help = '-k parameter for minimap2')
+    parser.add_argument('--time', default = False, action = 'store_true', help = 'Measure and print time used by submodules')
 
     return parser.parse_args()
 
 def mafft(ref_first_sample : str, ref_sec_sample : str, first_sample_label : str, sec_sample_label : str, working_dir : str, threads : int):
     
+    # write both references into one file
     alignment_path = os.path.join(working_dir, 'alignment')
     ref_both_samples = os.path.join(alignment_path, f'{first_sample_label}_{sec_sample_label}.fa')
     ref_alignment = os.path.join(alignment_path, f'{first_sample_label}_{sec_sample_label}.aln')
@@ -70,6 +73,7 @@ def mafft(ref_first_sample : str, ref_sec_sample : str, first_sample_label : str
     if not os.path.exists(alignment_path):
         os.makedirs(alignment_path)
     
+    # ensure newline between reference files
     command = f'(cat {ref_first_sample}; echo ""; cat {ref_sec_sample}) > {ref_both_samples}'
     
     LOGGER.printLog(f'Writing both references into one file {ref_both_samples}')
@@ -79,14 +83,24 @@ def mafft(ref_first_sample : str, ref_sec_sample : str, first_sample_label : str
     if ret != 0:
         LOGGER.error('Error in concatenating both reference files')
     
-    command = f'mafft --auto --thread {threads} {ref_both_samples} > {ref_alignment}'
-    
     LOGGER.printLog(f'Building alignment in {ref_alignment}')
     LOGGER.printLog(f'Mafft alignment command: {ANSI.RED}{command}{ANSI.END}')
-    ret = os.system(command)
     
+    command = f'mafft --auto --thread {threads} {ref_both_samples} > {ref_alignment}'
+
+    if TIMEIT:
+        start = perf_counter_ns()
+
+    ret = os.system(command)
+
+    if TIMEIT:
+        end = perf_counter_ns()
+
     if ret != 0:
         LOGGER.error('Error in building alignment with mafft')
+
+    if TIMEIT:
+        LOGGER.printLog(f'TIMED: mafft took {pd.to_timedelta(end-start)}, {end - start} nanoseconds')
     
     return ref_alignment
 
@@ -110,45 +124,57 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
     LOGGER.printLog(f'Found an alignment for sequences {list(sequences.keys())}')
     LOGGER.printLog(f'Lengths are {list(map(len, sequences.values()))}')
     
-    first2sec_refpos_mapping = {}
-    unaligned_positions = {seq : [] for seq in list(sequences.keys())}
+    # {(pos_of_first_sample, base) : (pos_of_second_sample, base)}
     
-    seq1_id, seq2_id = sequences.keys()
-    seq1_seq, seq2_seq = sequences.values()
-    i1 = i2 = 0
-    
-    for alip, (base1, base2) in enumerate(zip(seq1_seq, seq2_seq)):
+    try:
+        seq1_id, seq2_id = sequences.keys()
+        seq1_seq, seq2_seq = sequences.values()
+        i1 = i2 = 0
+        first2sec_refpos_mapping = {}
+        unaligned_positions = {seq : [] for seq in list(sequences.keys())}
         
-        if base1 == '-':
+        for alip, (base1, base2) in enumerate(zip(seq1_seq, seq2_seq)): # (seq1, base1), (seq2, base2) in zip(sequences.items()):
             
-            unaligned_positions[seq2_id].append((i2, base2.upper()))
-            w.write(f'insert_{second_label},{i1},{i2},{base1},{base2.upper()}\n')
-            i2 += 1
+            if base1 == '-':
+                
+                unaligned_positions[seq2_id].append((i2, base2.upper()))
+                w.write(f'insert_{second_label},{i1},{i2},{base1},{base2.upper()}\n')
+                i2 += 1
+                
+            elif base2 == '-':
+                
+                unaligned_positions[seq1_id].append((i1, base1.upper()))
+                w.write(f'insert_{first_label},{i1},{i2},{base1.upper()},{base2}\n')
+                i1 += 1
             
-        elif base2 == '-':
+            else:
             
-            unaligned_positions[seq1_id].append((i1, base1.upper()))
-            w.write(f'insert_{first_label},{i1},{i2},{base1.upper()},{base2}\n')
-            i1 += 1
-        
-        else:
-        
-            first2sec_refpos_mapping[i1] = (i2, alip)
-            if base1.lower() != base2.lower():
-                w.write(f'substitution,{i1},{i2},{base1.upper()},{base2.upper()}\n')
-            elif base1.lower() == base2.lower() == 'n':
-                w.write(f'N,{i1},{i2},{base1.upper()},{base2.upper()}\n')
-            i1 += 1
-            i2 += 1
-            
-    assert i1 == len(seq1_seq.replace('-', '')), 'Mapping iterator for sample 1 does not match sequence length'
-    assert i2 == len(seq2_seq.replace('-', '')), 'Mapping iterator for sample 2 does not match sequence length'
+                first2sec_refpos_mapping[i1] = (i2, alip)
+                if base1.lower() != base2.lower():
+                    w.write(f'substitution,{i1},{i2},{base1.upper()},{base2.upper()}\n')
+                elif base1.lower() == base2.lower() == 'n':
+                    w.write(f'N,{i1},{i2},{base1.upper()},{base2.upper()}\n')
+                i1 += 1
+                i2 += 1
+                
+        assert i1 == len(seq1_seq.replace('-', '')), 'Mapping iterator for sample 1 does not match sequence length'
+        assert i2 == len(seq2_seq.replace('-', '')), 'Mapping iterator for sample 2 does not match sequence length'
 
-    LOGGER.printLog(f'Found {len(first2sec_refpos_mapping)} aligned positions')
-    LOGGER.printLog(f'Found {len(unaligned_positions[seq1_id])} unaligned positions for sequence {seq1_id}')
-    LOGGER.printLog(f'Found {len(unaligned_positions[seq2_id])} unaligned positions for sequence {seq2_id}')
+        LOGGER.printLog(f'Found {len(first2sec_refpos_mapping)} aligned positions')
+        LOGGER.printLog(f'Found {len(unaligned_positions[seq1_id])} unaligned positions for sequence {seq1_id}')
+        LOGGER.printLog(f'Found {len(unaligned_positions[seq2_id])} unaligned positions for sequence {seq2_id}')
 
-    return first2sec_refpos_mapping, unaligned_positions, (seq1_id, seq2_id), (seq1_seq, seq2_seq)
+        return first2sec_refpos_mapping, unaligned_positions, (seq1_id, seq2_id), (seq1_seq, seq2_seq)
+
+    # case: same reference fasta for both samples
+    except:
+        seq_id = list(sequences.keys())[0]
+        seq = list(sequences.values())[0]
+
+        first2sec_refpos_mapping = {i:(i,i) for i in range(len(seq))}
+        unaligned_positions = {seq_id : []}
+
+        return first2sec_refpos_mapping, unaligned_positions, (seq_id, seq_id), (seq, seq)
 
 def readRedFile(red_file : str):
     '''
@@ -157,6 +183,7 @@ def readRedFile(red_file : str):
     
     LOGGER.printLog(f'Reading red file {red_file}')
     
+    # sequences are stored as {reference: {pos: {base: ('A'|'C'|'G'|'T'), mean: float, std: float}}}
     red_sequences = {}
 
     with open(red_file, 'r') as red:
@@ -167,6 +194,7 @@ def readRedFile(red_file : str):
                 
                 continue
 
+            # w.write('reference\tposition\tstrand\tbase\tsignal_mean\tsignal_std\tmotif\tdata_density\texpected_model_density\tn_datapoints\tcontained_datapoints\tn_segments\tcontained_segments\tn_reads\tnanomA\tnanomC\tnanomG\tnanomT\n')
             reference, position, strand, base, mean, std, motif, data_density, expected_model_density, n_datapoints, contained_datapoints, n_segments, contained_segments, n_reads, mA, mC, mG, mT = line.strip().split('\t')
             position = int(position)
 
@@ -221,12 +249,15 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
 
     all = open(all_file, 'w')
     all.write(f'strand\ttd_score\tkl_divergence\tbayesian_p\t')
-    all.write(f'ref_1\tpos_1\tbase_1\tmotif_1\tsignal_mean_1\tsignal_std_1\tn_datapoints_1\tcontained_datapoints_1\tn_segments_1\tcontained_segments_1\tn_reads_1\t')
-    all.write(f'ref_2\tpos_2\tbase_2\tmotif_2\tsignal_mean_2\tsignal_std_2\tn_datapoints_2\tcontained_datapoints_2\tn_segments_2\tcontained_segments_2\tn_reads_2\n')
+    all.write(f'ref_1\tpos_1\tbase_1\tmotif_1\tsignal_mean_1\tsignal_std_1\tn_datapoints_1\ttcontained_datapoints_1\tn_segments_1\tcontained_segments_1\tn_reads_1\t')
+    all.write(f'ref_2\tpos_2\tbase_2\tmotif_2\tsignal_mean_2\tsignal_std_2\tn_datapoints_2\ttcontained_datapoints_2\tn_segments_2\tcontained_segments_2\tn_reads_2\n')
 
-    num_indels, sign_pos, nans = 0, 0, 0
+    # red: sequences are stored as {reference: {pos: {base: ('A'|'C'|'G'|'T'), mean: float, std: float}}}
+    num_indels, sign_pos, nans, alignmentGapCorrection = 0, 0, 0, 0
+    # replace every nucleotide character with a dot
     alignment_sequences = [list(re.sub(r"[^-]", ".", alignment_sequences[0])), list(re.sub(r"[^-]", ".", alignment_sequences[1]))]
 
+    # TODO add some quality value
     plotting_data = pd.DataFrame(columns=['mean_diff', 'first_std', 'sec_std', 'avg_std', 'mut_context', 'td_score', 'kl_divergence'])
     plotting_data = plotting_data.astype(
         {
@@ -243,11 +274,13 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
     LOGGER.printLog(f'Start comparing sequences position wise ...')
     mappingLength = len(mapping)
 
+    # compare distributions of aligned positions
     for sample_idx, (pos_first_sample, (pos_sec_sample, alip)) in enumerate(mapping.items()):
         
         if (sample_idx + 1) % 1000 == 0:
             print(f'\t{sample_idx + 1}/{mappingLength}', end='\r')
 
+        # no information for comparison, rare case in start and end of reference/contig (nanopolish artefact, limit of 5-mer models)
         if pos_first_sample not in red_first_sample[seqs_ids[0]] or pos_sec_sample not in red_sec_sample[seqs_ids[1]]:
             
             nans += 1
@@ -258,6 +291,7 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
         
         for strand in ['+', '-']:
             
+            # check if both aligned positions have a distribution
             if not np.isnan(dist_first_sample[strand]['mean']) and not np.isnan(dist_sec_sample[strand]['mean']):
 
                 m0 = dist_first_sample[strand]['mean']
@@ -276,17 +310,23 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
                 first_motif = dist_first_sample[strand]['motif']
                 sec_motif = dist_sec_sample[strand]['motif']
 
+                # only look at context of range 2
                 if r2:
                     first_motif = first_motif[len(first_motif)//2 - 2 : len(first_motif)//2 + 3]
                     sec_motif = sec_motif[len(sec_motif)//2 - 2 : len(sec_motif)//2 + 3]
+    
                     mut_context = first_motif != sec_motif
 
+                # range of 3
                 else:
 
                     if len(first_motif) == len(sec_motif):
+
                         mut_context = first_motif != sec_motif
                     
+                    # motifs have different lengths, rare case in start and end of reference/contig
                     else:
+
                         mut_context = first_motif[len(first_motif)//2 - 2 : len(first_motif)//2 + 3] != sec_motif[len(sec_motif)//2 - 2 : len(sec_motif)//2 + 3]
 
                 new_entry = pd.DataFrame({
@@ -296,7 +336,7 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
                             'sec_std' : [s1],
                             'mean_diff' : [mDiff],
                             'avg_std' : [sAvg],
-                            'mut_context' : ['mutation in reference' if mut_context else 'no mutation in reference'],
+                            'mut_context' : ['mutation' if mut_context else 'matching reference'],
                             'significant' : ['significant' if mDiff > sAvg else 'not significant'],
                             'td_score' : [td],
                             'kl_divergence' : [kl_divergence]
@@ -310,14 +350,20 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
                 all.write(f'{seqs_ids[1]}\t{pos_sec_sample}\t{dist_sec_sample[strand]["base"]}\t{dist_sec_sample[strand]["motif"]}\t{m1}\t{s1}\t')
                 all.write(f'{dist_sec_sample[strand]["n_datapoints"]}\t{dist_sec_sample[strand]["contained_datapoints"]}\t{dist_sec_sample[strand]["n_segments"]}\t{dist_sec_sample[strand]["contained_segments"]}\t{dist_sec_sample[strand]["n_reads"]}\n')
 
+                # distance between both means is greater than the average std of both distributions
                 if mDiff > sAvg:
 
-                    if mut_context:                        
+                    # 7mer motif or if at border 5mer motif
+                    # both 7mers or both 5mers or one 7mer one 5mer
+                    if mut_context:
+                        
                         num_motif_diff += 1
 
+                        # skip substitutions
                         if strict:
                             continue
                     
+                    # X == interesting position
                     alignment_sequences[0][alip] = 'X'
                     alignment_sequences[1][alip] = 'X'
 
@@ -329,6 +375,7 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
                                     f'{seqs_ids[1]}\t{pos_sec_sample}\t{dist_sec_sample[strand]["base"]}\t{dist_sec_sample[strand]["motif"]}\t{m1}\t{s1}\t'\
                                     f'{dist_sec_sample[strand]["n_datapoints"]}\t{dist_sec_sample[strand]["contained_datapoints"]}\t{dist_sec_sample[strand]["n_segments"]}\t{dist_sec_sample[strand]["contained_segments"]}\t{dist_sec_sample[strand]["n_reads"]}\n')
 
+            # one of the aligned and compared position is not present in the .red file
             else:
                 nans += 1
 
@@ -364,23 +411,28 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
     if not os.path.exists(plot_dir):
         os.mkdir(plot_dir)
 
+    ### Mean Dist vs Std Avg plot
     LOGGER.printLog('Plotting Mean vs Stdev')
     plotMeanDiffStdAvg(plotting_data, plot_dir, first_sample_label, sec_sample_label, suffix)
 
-    LOGGER.printLog(f'Plotting Stdev {first_sample_label} vs Stdev {sec_sample_label}')
-    plotStdStdMean(plotting_data, plot_dir, first_sample_label, sec_sample_label, suffix)
+    ### std vs std plot with mean_diff colored scatter
+    # LOGGER.printLog(f'Plotting Stdev {first_sample_label} vs Stdev {sec_sample_label}')
+    # plotStdStdMean(plotting_data, plot_dir, first_sample_label, sec_sample_label, suffix)
 
-    LOGGER.printLog(f'Plotting mean {first_sample_label} vs mean {sec_sample_label}')
-    plotMeanMeanStd(plotting_data, plot_dir, first_sample_label, sec_sample_label, suffix)
+    ### mean vs mean plot with avg_std colored scatter
+    # LOGGER.printLog(f'Plotting mean {first_sample_label} vs mean {sec_sample_label}')
+    # plotMeanMeanStd(plotting_data, plot_dir, first_sample_label, sec_sample_label, suffix)
 
+    ### plot scores
     LOGGER.printLog(f'Plotting TD score and KL divergence')
     plotScores(plotting_data, plot_dir, first_sample_label, sec_sample_label, suffix)
 
-    LOGGER.printLog(f'Plotting Mean and Stdev for {first_sample_label}')
-    plotMeanStdDist(plotting_data, 'first_mean', 'first_std', plot_dir, first_sample_label, suffix)
+    ### plot mean stdev distributions
+    # LOGGER.printLog(f'Plotting Mean and Stdev for {first_sample_label}')
+    # plotMeanStdDist(plotting_data, 'first_mean', 'first_std', plot_dir, first_sample_label, suffix)
 
-    LOGGER.printLog(f'Plotting Mean and Stdev for {sec_sample_label}')
-    plotMeanStdDist(plotting_data, 'sec_mean', 'sec_std', plot_dir, sec_sample_label, suffix)
+    # LOGGER.printLog(f'Plotting Mean and Stdev for {sec_sample_label}')
+    # plotMeanStdDist(plotting_data, 'sec_mean', 'sec_std', plot_dir, sec_sample_label, suffix)
 
     LOGGER.printLog(f'Writing stockholm with magnipore markers')
     fasta = []
@@ -390,13 +442,11 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
         if record.id not in ids:
             fasta.append(record)
             ids.append(record.id)
-        else:
-            LOGGER.warning(f'Found duplicate record id in {alignment_path}. If you provided the same reference to both samples this is normal. If not check your reference record ids!')
     fasta += [SeqIO.SeqRecord(
                 Seq.Seq(''.join(seq)),
                 id ='magnipore_marked_' + str((first_sample_label, sec_sample_label)[i]),
                 name ='magnipore_' + str((first_sample_label, sec_sample_label)[i]),
-                description='X=significant signal change, N=not significant') for i, seq in enumerate(alignment_sequences)]
+                description='X=significant signal change, N=not significant') for i, seq in enumerate(alignment_sequences)]   
     stk = open(os.path.join(working_dir, first_sample_label + '_' + sec_sample_label + suffix + '_marked.stk'), 'w')
     SeqIO.write(fasta, stk, 'stockholm')
     
@@ -429,8 +479,9 @@ def plotMeanStdDist(dataframe : pd.DataFrame, mean_column : str, stdev_column : 
 def plotScores(dataframe : pd.DataFrame, working_dir : str, first_sample_label : str, sec_sample_label : str, suffix : str) -> None:
     
     plt.figure(figsize = (12,8), dpi=300)
-    plt.title('TD score distribution for all positions')
-    sns.histplot(data = dataframe, x = 'td_score', hue=dataframe[['mut_context', 'significant']].apply(tuple, axis=1), log_scale = True, multiple="stack")
+    plt.title('TD score for all positions')
+    sns.histplot(data = dataframe, x = 'td_score', hue=dataframe[['mut_context', 'significant']].apply(tuple, axis=1), log_scale = (True, True), multiple="stack")
+    plt.grid(True,  'both', 'both')
     plt.tight_layout()
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}{suffix}_td_score.png'))
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}{suffix}_td_score.pdf'))
@@ -438,7 +489,8 @@ def plotScores(dataframe : pd.DataFrame, working_dir : str, first_sample_label :
 
     plt.figure(figsize = (12,8), dpi=300)
     plt.title('Kullback-Leibler divergence for all positions')
-    sns.histplot(data = dataframe, x = 'kl_divergence', hue=dataframe[['mut_context', 'significant']].apply(tuple, axis=1), log_scale = True, multiple="stack")
+    sns.histplot(data = dataframe, x = 'kl_divergence', hue=dataframe[['mut_context', 'significant']].apply(tuple, axis=1), log_scale = (True, True), multiple="stack")
+    plt.grid(True,  'both', 'both')
     plt.tight_layout()
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}{suffix}_kl_div.png'))
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}{suffix}_kl_div.pdf'))
@@ -452,7 +504,7 @@ def plotStdStdMean(dataframe : pd.DataFrame, working_dir : str, first_sample_lab
     hue_norm = plt.Normalize(min(dataframe['mean_diff']), max(dataframe['mean_diff']))
     cmap = truncate_colormap(plt.get_cmap('Reds'), minval = 0.4)
     g.plot_joint(sns.scatterplot, hue = dataframe['mean_diff'], hue_norm = hue_norm, palette = cmap, legend = False, s = 12, alpha = 0.6)
-    g.fig.suptitle(f'{len(dataframe.index)} compared bases: stdev of {first_sample_label} and {sec_sample_label}\ncolored with mean difference')
+    g.fig.suptitle(f'{len(dataframe.index)} compared bases\nstdev of {first_sample_label} and {sec_sample_label}\ncolored with mean difference')
     g.ax_joint.grid(True, 'both', 'both', alpha = 0.4, linestyle = '-', linewidth = 0.5)
 
     plt.xlabel(f'{first_sample_label} stdev')
@@ -465,13 +517,10 @@ def plotStdStdMean(dataframe : pd.DataFrame, working_dir : str, first_sample_lab
     plt.colorbar(sm, label = 'mean diff', aspect = 50)
     g.fig.subplots_adjust(top=0.95)
     g.fig.tight_layout()
-
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}{suffix}_stds.png'))
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}{suffix}_stds.pdf'))
-
     g.ax_joint.set_xscale('log')
     g.ax_joint.set_yscale('log')
-
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}{suffix}_stds_logscale.png'))
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}{suffix}_stds_logscale.pdf'))
 
@@ -479,11 +528,12 @@ def plotStdStdMean(dataframe : pd.DataFrame, working_dir : str, first_sample_lab
     
 def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample_label : str, sec_sample_label : str, suffix : str) -> None:
     
+    ### Mean Dist vs Std Avg plot
     plt.figure(figsize = (12,12), dpi=300)
     plt.rcParams.update({'font.size': FONTSIZE})
     g = sns.JointGrid(x = 'mean_diff', y = 'avg_std', data = dataframe, hue = 'mut_context', marginal_ticks=True, palette=['orangered', 'blue'], hue_order=['no mutation in reference', 'mutation in reference'], height = 10)
     g.plot_joint(sns.scatterplot, s = 12, alpha = 0.6)
-    g.fig.suptitle(f'{len(dataframe.index)} compared bases: mean diff and avg stdev\n{first_sample_label} and {sec_sample_label}')
+    g.fig.suptitle(f'{len(dataframe.index)} compared bases\nmean diff and avg stdev\n{first_sample_label} and {sec_sample_label}')
     g.ax_joint.grid(True, 'both', 'both', alpha = 0.4, linestyle = '-', linewidth = 0.5)
 
     lims = np.array([
@@ -569,6 +619,7 @@ def td_score(mDiff, sAvg) -> float:
         Calculates the td-score mDiff/sAvg
     '''
     return mDiff/sAvg
+    # return np.abs(mDiff - sAvg) / np.sqrt(2)
 
 def kullback_leibler_normal(m0 : float, s0 : float, m1 : float, s1 : float) -> float:
 
@@ -596,13 +647,15 @@ def main():
     threads = args.threads
     fast5_out = args.fast5_out
     force_rebuild = args.force_rebuild
-    con_caller = args.consensus_tool
     strict = args.strict
     r2 = args.range2
     calculate_data_density = args.calculate_data_density
 
     mx = args.minimap2x
     mk = args.minimap2k
+
+    global TIMEIT 
+    TIMEIT = args.time
 
     pipeline = 'nanosherlock.py'
 
@@ -614,25 +667,17 @@ def main():
         os.makedirs(os.path.join(working_dir, 'log'))
     LOGGER = Logger(open(log_file, 'w'))
     
+    # first sample
     red_first_sample = os.path.join(working_dir, 'magnipore', first_sample_label, f'{first_sample_label}.red')
 
-    if con_caller == 'ococo':
-        consensus_first_sample_path = os.path.join(working_dir, con_caller, first_sample_label, first_sample_label + '_' + first_sample_label + '.fa')
-    elif con_caller == 'medaka':
-        consensus_first_sample_path = os.path.join(working_dir, con_caller, first_sample_label, first_sample_label + '.fasta')
-    elif con_caller == 'skip':
-        consensus_first_sample_path = path_to_reference_first_sample
-
-    if not os.path.exists(red_first_sample) or not os.path.exists(consensus_first_sample_path) or force_rebuild:
+    if not os.path.exists(red_first_sample) or not os.path.exists(path_to_reference_first_sample) or force_rebuild:
     
-        command_first_sample = f'python3 {os.path.join(basedir, pipeline)} {path_to_fast5_first_sample} {path_to_reference_first_sample} {working_dir} {guppy_bin} {guppy_model} {first_sample_label} -t {threads} -c {con_caller} -mx {mx} -mk {mk}'
+        command_first_sample = f'python3 {os.path.join(basedir, pipeline)} {path_to_fast5_first_sample} {path_to_reference_first_sample} {working_dir} {first_sample_label} -t {threads} -mx {mx} -mk {mk}'
 
         if fast5_out:
-            
             command_first_sample += ' --fast5_out'
 
         if force_rebuild:
-
             command_first_sample += ' --force_rebuild'
 
         if calculate_data_density:
@@ -640,38 +685,40 @@ def main():
 
         if path_to_first_basecalls is not None:
             command_first_sample += f' --path_to_basecalls {path_to_first_basecalls}'
-            
+        else:
+            assert guppy_bin is not None and guppy_model is not None, 'Need at least the guppy binary path and model or path to basecalls'
+            command_first_sample += f' --guppy_bin {guppy_bin} --guppy_model {guppy_model}'
+
         LOGGER.printLog(f'Pipeline command: {ANSI.RED}{command_first_sample}{ANSI.END}')
         
+        if TIMEIT:
+            command_first_sample = 'time ' + command_first_sample + ' --time'
+            start = perf_counter_ns()
+
         ret = os.system(command_first_sample)
-        
+
+        if TIMEIT:
+            end = perf_counter_ns()
+
         if ret != 0:
-            
             LOGGER.error(f'Error in {pipeline} for sample {first_sample_label}')
 
-    else:
+        if TIMEIT:
+            LOGGER.printLog(f'TIMED: Calculating distributions of sample {first_sample_label} took {pd.to_timedelta(end-start)}, {end-start} nanoseconds')
 
+    else:
         LOGGER.printLog(f'{first_sample_label} red file already exists:\n-\t{red_first_sample}')
         
+    # second sample
     red_sec_sample = os.path.join(working_dir, 'magnipore', sec_sample_label, f'{sec_sample_label}.red')
-
-    if con_caller == 'ococo':
-        consensus_sec_sample_path = os.path.join(working_dir, con_caller, sec_sample_label, sec_sample_label + '_' + sec_sample_label + '.fa')
-    elif con_caller == 'medaka':
-        consensus_sec_sample_path = os.path.join(working_dir, con_caller, sec_sample_label, sec_sample_label + '.fasta')
-    elif con_caller == 'skip':
-        consensus_sec_sample_path = path_to_reference_sec_sample
     
-    if not os.path.exists(red_sec_sample) or not os.path.exists(consensus_sec_sample_path) or force_rebuild:
-    
-        command_sec_sample = f'python3 {os.path.join(basedir, pipeline)} {path_to_fast5_sec_sample} {path_to_reference_sec_sample} {working_dir} {guppy_bin} {guppy_model} {sec_sample_label} -t {threads} -c {con_caller} -mx {mx} -mk {mk}'
+    if not os.path.exists(red_sec_sample) or not os.path.exists(path_to_reference_sec_sample) or force_rebuild:
+        command_sec_sample = f'python3 {os.path.join(basedir, pipeline)} {path_to_fast5_sec_sample} {path_to_reference_sec_sample} {working_dir} {sec_sample_label} -t {threads} -mx {mx} -mk {mk}'
 
         if fast5_out:
-            
             command_sec_sample += ' --fast5_out'
 
         if force_rebuild:
-
             command_sec_sample += ' --force_rebuild'
 
         if calculate_data_density:
@@ -679,23 +726,45 @@ def main():
 
         if path_to_sec_basecalls is not None:
            command_sec_sample += f' --path_to_basecalls {path_to_sec_basecalls}'
+        else:
+            assert guppy_bin is not None and guppy_model is not None, 'Need at least the guppy binary path and model or path to basecalls'
+            command_sec_sample += f' --guppy_bin {guppy_bin} --guppy_model {guppy_model}'
             
         LOGGER.printLog(f'Pipeline command: {ANSI.RED}{command_sec_sample}{ANSI.END}')
+
+        if TIMEIT:
+            command_sec_sample = 'time ' + command_sec_sample + ' --time'
+            start = perf_counter_ns()
+
         ret = os.system(command_sec_sample)
+
+        if TIMEIT:
+            end = perf_counter_ns()
         
         if ret != 0:
-            
             LOGGER.error(f'Error in {pipeline} for sample {sec_sample_label}')
     
-    else:
+        if TIMEIT:
+            LOGGER.printLog(f'TIMED: Calculating distributions of sample {sec_sample_label} took {pd.to_timedelta(end-start)}, {end-start} nanoseconds')
 
+    else:
         LOGGER.printLog(f'{sec_sample_label} red file already exists:\n-\t{red_sec_sample}')
 
-    alignment_path = mafft(consensus_first_sample_path, consensus_sec_sample_path, first_sample_label, sec_sample_label, working_dir, threads)
+    # mafft alignment
+    alignment_path = mafft(path_to_reference_first_sample, path_to_reference_sec_sample, first_sample_label, sec_sample_label, working_dir, threads)
     mapping, unaligned, seq_ids, aligned_sequences = getMapping(alignment_path, working_dir, first_sample_label, sec_sample_label)
-    red_first_sample = readRedFile(red_first_sample)
-    red_sec_sample = readRedFile(red_sec_sample)    
-    magnipore(mapping, unaligned, seq_ids, aligned_sequences, alignment_path, red_first_sample, red_sec_sample, first_sample_label, sec_sample_label, working_dir, strict, r2)
     
+    red_first_sample = readRedFile(red_first_sample)
+    red_sec_sample = readRedFile(red_sec_sample)
+    
+    if TIMEIT:
+        start = perf_counter_ns()
+
+    magnipore(mapping, unaligned, seq_ids, aligned_sequences, alignment_path, red_first_sample, red_sec_sample, first_sample_label, sec_sample_label, working_dir, strict, r2)
+
+    if TIMEIT:
+        end = perf_counter_ns()
+        LOGGER.printLog(f'TIMED: Evaluating distributions took {pd.to_timedelta(end-start)}, {end - start} nanoseconds')
+
 if __name__ == '__main__':
     main()

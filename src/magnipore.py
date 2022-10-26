@@ -30,7 +30,7 @@ def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
 
 def parse() -> Namespace:
 
-    parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter, description='Required tools in environment: guppy, minimap2, nanopolish, h5py, samtools, scipy and mafft')
+    parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter, description='Required tools in environment: guppy, minimap2, nanopolish, h5py, samtools, scipy and mafft\nsee github https://github.com/JannesSP/magnipore')
     
     parser.add_argument("path_to_fast5_first_sample", type = str, help='FAST5 file of first sample')
     parser.add_argument("path_to_reference_first_sample", type = str, help='reference FASTA file of first sample')
@@ -44,6 +44,7 @@ def parse() -> Namespace:
     
     parser.add_argument("--guppy_bin", type = str, default = None, help='Guppy binary')
     parser.add_argument("--guppy_model", type = str, default = None, help='Guppy model used for basecalling')
+    parser.add_argument('--guppy_device', type=str, default=None, help='Use the gpu to basecall with cuda:0')
 
     parser.add_argument('--path_to_first_basecalls', type = str, default = None, help = 'FASTQ file to use: <first_sample_label>.fastq\nWill skip basecalling for first sample')
     parser.add_argument('--path_to_sec_basecalls', type = str, default = None, help = 'FASTQ file to use: <sec_sample_label>.fastq\nWill skip basecalling for second sample')
@@ -643,6 +644,7 @@ def main():
     working_dir = args.working_dir
     guppy_bin = args.guppy_bin
     guppy_model = args.guppy_model
+    guppy_device = args.guppy_device
     
     threads = args.threads
     fast5_out = args.fast5_out
@@ -687,7 +689,7 @@ def main():
             command_first_sample += f' --path_to_basecalls {path_to_first_basecalls}'
         else:
             assert guppy_bin is not None and guppy_model is not None, 'Need at least the guppy binary path and model or path to basecalls'
-            command_first_sample += f' --guppy_bin {guppy_bin} --guppy_model {guppy_model}'
+            command_first_sample += f' --guppy_bin {guppy_bin} --guppy_model {guppy_model} --guppy_device {guppy_device}'
 
         LOGGER.printLog(f'Pipeline command: {ANSI.RED}{command_first_sample}{ANSI.END}')
         
@@ -728,7 +730,7 @@ def main():
            command_sec_sample += f' --path_to_basecalls {path_to_sec_basecalls}'
         else:
             assert guppy_bin is not None and guppy_model is not None, 'Need at least the guppy binary path and model or path to basecalls'
-            command_sec_sample += f' --guppy_bin {guppy_bin} --guppy_model {guppy_model}'
+            command_sec_sample += f' --guppy_bin {guppy_bin} --guppy_model {guppy_model} --guppy_device {guppy_device}'
             
         LOGGER.printLog(f'Pipeline command: {ANSI.RED}{command_sec_sample}{ANSI.END}')
 

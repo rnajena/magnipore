@@ -96,7 +96,7 @@ def parse() -> Namespace:
 
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsHelpFormatter,
-        description='Required tools in environment: see github' # TODO Link to github
+        description='Required tools in environment: guppy, minimap2, nanopolish, h5py, samtools, scipy and mafft\nsee github https://github.com/JannesSP/magnipore'
         ) 
     
     parser.add_argument('path_to_fast5', type = str, help='FAST5 file')
@@ -106,6 +106,7 @@ def parse() -> Namespace:
 
     parser.add_argument('--guppy_bin', type = str, default = None, help='Guppy binary')
     parser.add_argument('--guppy_model', type = str, default = None, help='Guppy model for basecalling')
+    parser.add_argument('--guppy_device', type=str, default=None, help='Use the gpu to basecall with cuda:0')
 
     parser.add_argument('--path_to_basecalls', default = None, type = str, help = 'Path to existing basecalls and sequencing summary file. Basecalls must be in one single file with the name <sample_label>.fastq')
     parser.add_argument('--calculate_data_density', action = 'store_true', default = False, help = 'Will calculate data density after building the models. Will increase runtime!')
@@ -119,7 +120,7 @@ def parse() -> Namespace:
 
     return parser.parse_args()
 
-def guppy_basecalling(guppy_bin : str, guppy_model : str,  path_to_fast5 : str, working_dir : str, sample_label : str, fast5_out : bool, force_rebuild : bool, sequencing_summary : str) -> str:
+def guppy_basecalling(guppy_bin : str, guppy_model : str,  guppy_device : str, path_to_fast5 : str, working_dir : str, sample_label : str, fast5_out : bool, force_rebuild : bool, sequencing_summary : str) -> str:
 
     basecalls_path = os.path.join(working_dir, 'basecalls', sample_label)
     basecalls = os.path.join(basecalls_path, sample_label + ".fastq")
@@ -141,11 +142,14 @@ def guppy_basecalling(guppy_bin : str, guppy_model : str,  path_to_fast5 : str, 
         os.makedirs(basecalls_path)
     
     LOGGER.printLog(f'Run guppy basecalling on {path_to_fast5}')
-    command = f'{guppy_bin} -i {path_to_fast5} -s {basecalls_path} --disable_pings --device cuda:0 --disable_qscore_filtering --calib_detect -c {guppy_model}'
+    command = f'{guppy_bin} -i {path_to_fast5} -s {basecalls_path} --disable_pings --disable_qscore_filtering --calib_detect -c {guppy_model}'
 
     if fast5_out:
         command += ' --fast5_out'
-        
+    
+    if guppy_device is not None:
+        command += f' --device {guppy_device}'
+
     LOGGER.printLog(f'guppy command: {ANSI.RED}{command}{ANSI.END}')
     
     if TIMEIT:
@@ -696,6 +700,7 @@ def main():
     path_to_reference = args.path_to_reference
     guppy_bin = args.guppy_bin
     guppy_model = args.guppy_model
+    guppy_device = args.guppy_device
     sample_label = args.sample_label
     fast5_out = args.fast5_out
     threads = args.threads
@@ -743,7 +748,7 @@ def main():
 
     else:
 
-        path_to_basecalls, sequencing_summary, force_rebuild = guppy_basecalling(guppy_bin, guppy_model, path_to_fast5, working_dir, sample_label, fast5_out, force_rebuild, sequencing_summary)
+        path_to_basecalls, sequencing_summary, force_rebuild = guppy_basecalling(guppy_bin, guppy_model, guppy_device, path_to_fast5, working_dir, sample_label, fast5_out, force_rebuild, sequencing_summary)
 
     # new alignment/mapping for nanopolish with the corrected reference
     alignment_bam, force_rebuild = minimap(path_to_reference, path_to_basecalls, working_dir, sample_label, threads, force_rebuild, mx, mk)

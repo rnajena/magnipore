@@ -22,11 +22,11 @@ If you want to basecall your ONT data you also need a Guppy version.
 
 Required tools in environment: guppy, minimap2, ococo, medaka, nanopolish, h5py, samtools, scipy and mafft
 
-Simplest use case:
+#### Simplest use case:
 
-    magnipore.py path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir guppy_bin guppy_model
+    magnipore.py path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir --guppy_bin PATH --guppy_model PATH
 
-positional arguments:
+#### positional arguments:
 - path_to_fast5_first_sample : FAST5 directory of first sample
 - path_to_reference_first_sample : reference FASTA file of first sample
 - first_sample_label : Name of the sample or pipeline run
@@ -34,8 +34,16 @@ positional arguments:
 - path_to_reference_sec_sample : reference FASTA file of second sample
 - sec_sample_label : Name of the sample or pipeline run
 - working_dir : Path to write all output files
-- guppy_bin : Guppy binary
-- guppy_model : Guppy model used for basecalling
+
+#### required arguments:
+use either the basecalling arguments or provide basecalls
+- basecalling arguments:
+    - guppy_bin : Path to guppy binary
+    - guppy_model : Path to guppy model used for basecalling
+    - (optional) guppy_device : Device used for basecalling (cpu or gpu cuda:0)
+- provided basecalls (FASTQ)
+    - path_to_first_basecalls : Path
+    - path_to_sec_basecalls : Path
 
 For optional arguments see magnipore.py --help. Includes small number of mapping parameters and the option to skip basecalling.
 

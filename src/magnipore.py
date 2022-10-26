@@ -532,7 +532,7 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     ### Mean Dist vs Std Avg plot
     plt.figure(figsize = (12,12), dpi=300)
     plt.rcParams.update({'font.size': FONTSIZE})
-    g = sns.JointGrid(x = 'mean_diff', y = 'avg_std', data = dataframe, hue = 'mut_context', marginal_ticks=True, palette=['orangered', 'blue'], hue_order=['no mutation in reference', 'mutation in reference'], height = 10)
+    g = sns.JointGrid(x = 'mean_diff', y = 'avg_std', data = dataframe, hue = 'mut_context', marginal_ticks=True, palette=['orangered', 'blue'], hue_order=['mutation', 'matching reference'], height = 10)
     g.plot_joint(sns.scatterplot, s = 12, alpha = 0.6)
     g.fig.suptitle(f'{len(dataframe.index)} compared bases\nmean diff and avg stdev\n{first_sample_label} and {sec_sample_label}')
     g.ax_joint.grid(True, 'both', 'both', alpha = 0.4, linestyle = '-', linewidth = 0.5)

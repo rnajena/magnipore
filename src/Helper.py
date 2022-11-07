@@ -12,6 +12,62 @@ class ANSI:
     UP = '\033[1A'
     CLEAR = '\033[K'
     
+def complement(seq):
+    ret = ''
+    for b in seq:
+        ret += COMPLEMENT.get(b, 'N')
+    return ret
+
+BASEENCODER = {
+    'A':0,
+    'C':1,
+    'G':2,
+    'T':3,
+    'N':4,
+    'Y':5,
+    'R':6,
+    'S':7,
+    'W':8,
+    'M':9, 
+    'K':10}
+
+BASEDECODER = {
+    0:'A',
+    1:'C',
+    2:'G',
+    3:'T',
+    4:'N',
+    5:'Y',
+    6:'R',
+    7:'S',
+    8:'W',
+    9:'M', 
+    10:'K'}
+
+STRANDENCODER = {
+    '+':0,
+    '-':1
+}
+
+STRANDDECODER = {
+    0:'+',
+    1:'-'
+}
+
+DATAENCODER = {
+    'base':0,
+    'omv':1,
+    'motif':2,
+    'mean':3,
+    'std':4,
+    'data_density':5,
+    'contained_datapoints':6,
+    'contained_segments':7,
+    'n_datapoints':8,
+    'n_segments':9,
+    'n_reads':10,
+}
+
 COMPLEMENT = {
     'A':'T',
     'C':'G',

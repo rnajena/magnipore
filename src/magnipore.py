@@ -12,7 +12,7 @@ from Bio import SeqIO, Seq
 from matplotlib import pyplot as plt
 from scipy.stats import ks_2samp
 import pandas as pd
-from constants import ANSI
+from Helper import ANSI
 from statistics import NormalDist
 from Logger import Logger
 import re
@@ -21,6 +21,7 @@ from time import perf_counter_ns
 LOGGER : Logger = None
 FONTSIZE = 18
 TIMEIT = False
+SUBSCRIPT = 'nanosherlock.py'
 
 def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
     new_cmap = colors.LinearSegmentedColormap.from_list(
@@ -44,7 +45,7 @@ def parse() -> Namespace:
     
     parser.add_argument("--guppy_bin", type = str, default = None, help='Guppy binary')
     parser.add_argument("--guppy_model", type = str, default = None, help='Guppy model used for basecalling')
-    parser.add_argument('--guppy_device', type=str, default=None, help='Use the gpu to basecall with cuda:0')
+    parser.add_argument('--guppy_device', type=str, default='cuda:0', help='Use the GPU to basecall "cuda:0" to use the GPU with ID 0')
 
     parser.add_argument('--path_to_first_basecalls', type = str, default = None, help = 'FASTQ file to use: <first_sample_label>.fastq\nWill skip basecalling for first sample')
     parser.add_argument('--path_to_sec_basecalls', type = str, default = None, help = 'FASTQ file to use: <sec_sample_label>.fastq\nWill skip basecalling for second sample')
@@ -57,7 +58,7 @@ def parse() -> Namespace:
     parser.add_argument('-r2', '--range2', action = 'store_true', default = False, help = 'Use range 2 instead of range 3 for the mutational context check')
     parser.add_argument('-mx', '--minimap2x', default = 'splice', choices = ['map-ont', 'splice', 'ava-ont'], help = '-x parameter for minimap2')
     parser.add_argument('-mk', '--minimap2k', default = 14, help = '-k parameter for minimap2')
-    parser.add_argument('--time', default = False, action = 'store_true', help = 'Measure and print time used by submodules')
+    parser.add_argument('--timeit', default = False, action = 'store_true', help = 'Measure and print time used by submodules')
 
     return parser.parse_args()
 
@@ -532,8 +533,8 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     ### Mean Dist vs Std Avg plot
     plt.figure(figsize = (12,12), dpi=300)
     plt.rcParams.update({'font.size': FONTSIZE})
-    g = sns.JointGrid(x = 'mean_diff', y = 'avg_std', data = dataframe, hue = 'mut_context', marginal_ticks=True, palette=['orangered', 'blue'], hue_order=['mutation', 'matching reference'], height = 10)
-    g.plot_joint(sns.scatterplot, s = 12, alpha = 0.6)
+    g = sns.JointGrid(x = 'mean_diff', y = 'avg_std', data = dataframe, hue = 'mut_context', marginal_ticks=True, palette=['orange', 'blue'], hue_order=['mutation', 'matching reference'], height = 10)
+    g.plot_joint(sns.scatterplot, s = 12, alpha = 0.6, markers = ['.', '^'])
     g.fig.suptitle(f'{len(dataframe.index)} compared bases\nmean diff and avg stdev\n{first_sample_label} and {sec_sample_label}')
     g.ax_joint.grid(True, 'both', 'both', alpha = 0.4, linestyle = '-', linewidth = 0.5)
 
@@ -657,9 +658,7 @@ def main():
     mk = args.minimap2k
 
     global TIMEIT 
-    TIMEIT = args.time
-
-    pipeline = 'nanosherlock.py'
+    TIMEIT = args.timeit
 
     basedir = os.path.dirname(__file__)
 
@@ -674,7 +673,7 @@ def main():
 
     if not os.path.exists(red_first_sample) or not os.path.exists(path_to_reference_first_sample) or force_rebuild:
     
-        command_first_sample = f'python3 {os.path.join(basedir, pipeline)} {path_to_fast5_first_sample} {path_to_reference_first_sample} {working_dir} {first_sample_label} -t {threads} -mx {mx} -mk {mk}'
+        command_first_sample = f'python3 {os.path.join(basedir, SUBSCRIPT)} {path_to_fast5_first_sample} {path_to_reference_first_sample} {working_dir} {first_sample_label} -t {threads} -mx {mx} -mk {mk}'
 
         if fast5_out:
             command_first_sample += ' --fast5_out'
@@ -690,20 +689,19 @@ def main():
         else:
             assert guppy_bin is not None and guppy_model is not None, 'Need at least the guppy binary path and model or path to basecalls'
             command_first_sample += f' --guppy_bin {guppy_bin} --guppy_model {guppy_model} --guppy_device {guppy_device}'
-
-        LOGGER.printLog(f'Pipeline command: {ANSI.RED}{command_first_sample}{ANSI.END}')
         
         if TIMEIT:
-            command_first_sample = 'time ' + command_first_sample + ' --time'
+            command_first_sample = command_first_sample + ' --timeit'
             start = perf_counter_ns()
 
+        LOGGER.printLog(f'Pipeline command: {ANSI.RED}{command_first_sample}{ANSI.END}')
         ret = os.system(command_first_sample)
 
         if TIMEIT:
             end = perf_counter_ns()
 
         if ret != 0:
-            LOGGER.error(f'Error in {pipeline} for sample {first_sample_label}')
+            LOGGER.error(f'Error in {SUBSCRIPT} for sample {first_sample_label}')
 
         if TIMEIT:
             LOGGER.printLog(f'TIMED: Calculating distributions of sample {first_sample_label} took {pd.to_timedelta(end-start)}, {end-start} nanoseconds')
@@ -715,7 +713,7 @@ def main():
     red_sec_sample = os.path.join(working_dir, 'magnipore', sec_sample_label, f'{sec_sample_label}.red')
     
     if not os.path.exists(red_sec_sample) or not os.path.exists(path_to_reference_sec_sample) or force_rebuild:
-        command_sec_sample = f'python3 {os.path.join(basedir, pipeline)} {path_to_fast5_sec_sample} {path_to_reference_sec_sample} {working_dir} {sec_sample_label} -t {threads} -mx {mx} -mk {mk}'
+        command_sec_sample = f'python3 {os.path.join(basedir, SUBSCRIPT)} {path_to_fast5_sec_sample} {path_to_reference_sec_sample} {working_dir} {sec_sample_label} -t {threads} -mx {mx} -mk {mk}'
 
         if fast5_out:
             command_sec_sample += ' --fast5_out'
@@ -731,20 +729,19 @@ def main():
         else:
             assert guppy_bin is not None and guppy_model is not None, 'Need at least the guppy binary path and model or path to basecalls'
             command_sec_sample += f' --guppy_bin {guppy_bin} --guppy_model {guppy_model} --guppy_device {guppy_device}'
-            
-        LOGGER.printLog(f'Pipeline command: {ANSI.RED}{command_sec_sample}{ANSI.END}')
 
         if TIMEIT:
-            command_sec_sample = 'time ' + command_sec_sample + ' --time'
+            command_sec_sample = command_sec_sample + ' --timeit'
             start = perf_counter_ns()
 
+        LOGGER.printLog(f'Pipeline command: {ANSI.RED}{command_sec_sample}{ANSI.END}')
         ret = os.system(command_sec_sample)
 
         if TIMEIT:
             end = perf_counter_ns()
         
         if ret != 0:
-            LOGGER.error(f'Error in {pipeline} for sample {sec_sample_label}')
+            LOGGER.error(f'Error in {SUBSCRIPT} for sample {sec_sample_label}')
     
         if TIMEIT:
             LOGGER.printLog(f'TIMED: Calculating distributions of sample {sec_sample_label} took {pd.to_timedelta(end-start)}, {end-start} nanoseconds')

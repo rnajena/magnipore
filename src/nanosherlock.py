@@ -12,7 +12,7 @@ import h5py
 import numpy as np
 from scipy import stats
 from Bio import SeqIO
-from Helper import ANSI, IUPAC, COMPLEMENT
+from Helper import ANSI, DATAENCODER, STRANDDECODER, complement
 import pandas as pd
 import seaborn as sns
 from matplotlib.pyplot import figure

@@ -339,7 +339,7 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
                             'mean_diff' : [mDiff],
                             'avg_std' : [sAvg],
                             'mut_context' : ['mutation' if mut_context else 'matching reference'],
-                            'significant' : ['significant' if mDiff > sAvg else 'not significant'],
+                            'significant' : ['significant' if mDiff > sAvg else 'insignificant'],
                             'td_score' : [td],
                             'kl_divergence' : [kl_divergence]
                     })
@@ -480,9 +480,11 @@ def plotMeanStdDist(dataframe : pd.DataFrame, mean_column : str, stdev_column : 
 
 def plotScores(dataframe : pd.DataFrame, working_dir : str, first_sample_label : str, sec_sample_label : str, suffix : str) -> None:
     
+    dataframe[', '.join(['Context', 'Significance'])] =  pd.Series(dataframe.reindex(['mut_context', 'significant'], axis='columns').astype('str').values.tolist()).str.join(', ')
+
     plt.figure(figsize = (12,8), dpi=300)
-    plt.title('TD score for all positions')
-    sns.histplot(data = dataframe, x = 'td_score', hue=dataframe[['mut_context', 'significant']].apply(tuple, axis=1), log_scale = (True, True), multiple="stack")
+    plt.title(f'TD score for all positions\n{first_sample_label} vs. {sec_sample_label}')
+    sns.histplot(data = dataframe, x = 'td_score', hue=dataframe['Context, Significance'], log_scale = (True, True), multiple="stack")
     plt.grid(True,  'both', 'both')
     plt.tight_layout()
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}{suffix}_td_score.png'))
@@ -490,8 +492,8 @@ def plotScores(dataframe : pd.DataFrame, working_dir : str, first_sample_label :
     plt.close()
 
     plt.figure(figsize = (12,8), dpi=300)
-    plt.title('Kullback-Leibler divergence for all positions')
-    sns.histplot(data = dataframe, x = 'kl_divergence', hue=dataframe[['mut_context', 'significant']].apply(tuple, axis=1), log_scale = (True, True), multiple="stack")
+    plt.title(f'Kullback-Leibler divergence for all positions\n{first_sample_label} vs. {sec_sample_label}')
+    sns.histplot(data = dataframe, x = 'kl_divergence', hue=dataframe['Context, Significance'], log_scale = (True, True), multiple="stack")
     plt.grid(True,  'both', 'both')
     plt.tight_layout()
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}{suffix}_kl_div.png'))

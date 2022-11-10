@@ -110,6 +110,7 @@ def parse() -> Namespace:
     parser.add_argument('-mx', '--minimap2x', default = 'splice', choices = ['map-ont', 'splice', 'ava-ont'], help = '-x parameter for minimap2')
     parser.add_argument('-mk', '--minimap2k', default = 14, type = int, help = '-k parameter for minimap2')
     parser.add_argument('--timeit', default = False, action = 'store_true', help = 'Measure and print time used by submodules')
+    parser.add_argument('--max_lines', default=None, type=int, help='Only process first given number of lines from nanopolish eventalign')
 
     return parser.parse_args()
 
@@ -353,7 +354,7 @@ def getZNormSignal(fast5_read : h5py.Group, mode : str = 'median') -> np.ndarray
     elif mode == 'mean':
         return (read_pA - read_pA.mean()) / read_pA.std()
 
-def aggregate_events(nanopolish_result_csv : str, nanopolish_summary_csv: str, path_to_fast5 : str, path_to_reference : str, working_dir : str, sample_label : str, force_rebuild : bool, sequencing_summary : str, calculate_data_density : bool) -> str:
+def aggregate_events(nanopolish_result_csv : str, nanopolish_summary_csv: str, path_to_fast5 : str, path_to_reference : str, working_dir : str, sample_label : str, force_rebuild : bool, sequencing_summary : str, calculate_data_density : bool, max_lines : int) -> str:
     
     if not os.path.exists(os.path.join(working_dir, 'magnipore', sample_label)):
         os.makedirs(os.path.join(working_dir, 'magnipore', sample_label))
@@ -379,7 +380,7 @@ def aggregate_events(nanopolish_result_csv : str, nanopolish_summary_csv: str, p
     if TIMEIT:
         start = perf_counter_ns()
 
-    buildModels(sequences, nano2readid, readid2fast5, nanopolish_result_csv, calculate_data_density)
+    buildModels(sequences, nano2readid, readid2fast5, nanopolish_result_csv, calculate_data_density, max_lines)
 
     if TIMEIT:
         end = perf_counter_ns()
@@ -409,20 +410,20 @@ def createSeqDict(path_to_reference : str) -> dict:
             sequences[seq.id][pos, 0, DATAENCODER['base']] = base
             sequences[seq.id][pos, 0, DATAENCODER['omv']] = omv.LocShift(30)
 
-            sequences[seq.id][pos, 1, DATAENCODER['base']] = complement(base),
+            sequences[seq.id][pos, 1, DATAENCODER['base']] = complement(base)
             sequences[seq.id][pos, 1, DATAENCODER['omv']] = omv.LocShift(30)
 
             if pos >= 3:
-                sequences[seq.id][pos, 0, DATAENCODER['motif']] = seq.seq[pos-3:pos+3]
-                sequences[seq.id][pos, 1, DATAENCODER['motif']] = complement(seq.seq[pos-3:pos+3])[::-1]
+                sequences[seq.id][pos, 0, DATAENCODER['motif']] = seq.seq[pos-3:pos+4]
+                sequences[seq.id][pos, 1, DATAENCODER['motif']] = complement(seq.seq[pos-3:pos+4])[::-1]
             elif pos >= 2:
-                sequences[seq.id][pos, 0, DATAENCODER['motif']] = seq.seq[pos-2:pos+2]
-                sequences[seq.id][pos, 1, DATAENCODER['motif']] = complement(seq.seq[pos-2:pos+2])[::-1]
+                sequences[seq.id][pos, 0, DATAENCODER['motif']] = seq.seq[pos-2:pos+3]
+                sequences[seq.id][pos, 1, DATAENCODER['motif']] = complement(seq.seq[pos-2:pos+3])[::-1]
 
 
     return sequences
 
-def buildModels(sequences : dict, nano2readid : dict, readid2fast5 : dict, nanopolish_result_csv : str, calculate_data_density : bool):
+def buildModels(sequences : dict, nano2readid : dict, readid2fast5 : dict, nanopolish_result_csv : str, calculate_data_density : bool, max_lines : int):
 
     for loop in ['building models', 'checking data']:
         LOGGER.printLog(f'Starting {loop}')
@@ -439,10 +440,12 @@ def buildModels(sequences : dict, nano2readid : dict, readid2fast5 : dict, nanop
             for lidx, line in enumerate(nano_result):
 
                 if (lidx + 1) % 100000 == 0:
-                    print(f'Line {lidx + 1}, {loop}, memory usage: {sizeof_fmt(PROCESS.memory_info().rss)}\t\t', end = '\r')
+                    print(f'Line {lidx + 1}{f"/{max_lines}" if max_lines is not None else ""}, {loop}, memory usage: {sizeof_fmt(PROCESS.memory_info().rss)}\t\t', end = '\r')
+                    if max_lines is not None and lidx >= max_lines:
+                        break
 
                 read_line(line, event) # read data from nanopolish and store into event dictionary
-                if event['model_kmer'] == 'NNNNN':
+                if event['model_kmer'] == 'NNNNN': # maybe haplotypes end up here as NNNNN? -> actually mutations in the reads, nanopolish has no clue what to do?
                         continue
                 
                 # prepare signal data for new read
@@ -453,7 +456,7 @@ def buildModels(sequences : dict, nano2readid : dict, readid2fast5 : dict, nanop
                         strand = 0
                     else:
                         strand = 1
-                        
+
                     # only open new fast5 file, if necessary
                     if readid2fast5[readid] != opened_fast5:
                         if opened_fast5: # true if opened_fast5 != ''
@@ -518,11 +521,12 @@ def buildModels(sequences : dict, nano2readid : dict, readid2fast5 : dict, nanop
 def writeOutput(red_file : str, sequences : dict, working_dir : str, sample_label : str, calculate_data_density : bool):
 
     nans = 0
-    plotting_data = pd.DataFrame(columns=['contig', 'position', 'density difference', 'n_datapoints', 'n_segments', 'n_reads'])
+    plotting_data = pd.DataFrame(columns=['contig', 'position', 'strand', 'density difference', 'n_datapoints', 'n_segments', 'n_reads'])
     plotting_data = plotting_data.astype(
         {
             'contig' : 'str',
             'position' : 'int',
+            'strand' : 'str',
             'density difference': 'float',
             'n_datapoints' : 'int',
             'n_segments' : 'int',
@@ -539,24 +543,24 @@ def writeOutput(red_file : str, sequences : dict, working_dir : str, sample_labe
 
                     data = sequences[sequence][position, strand]
 
-                    if data[DATAENCODER['n_reads']]: # True if n_reads >= 0
+                    if data[DATAENCODER['std']]: # True if std != 0
                         expected_model_density = 1 / (2 * np.sqrt(np.pi) * data[DATAENCODER['std']])
-                    else:
-                        nans += 1
-                        expected_model_density = np.nan
-
-                    w.write(f'{sequence}\t{position}\t{STRANDDECODER[strand]}\t{data[DATAENCODER["base"]]}\t{data[DATAENCODER["mean"]]}\t{data[DATAENCODER["std"]]}\t{data[DATAENCODER["motif"]]}\t{data[DATAENCODER["data_density"]]}\t{expected_model_density}\t{data[DATAENCODER["n_datapoints"]]}\t{data[DATAENCODER["contained_datapoints"]]}\t{data[DATAENCODER["n_segments"]]}\t{data[DATAENCODER["contained_segments"]]}\t{data[DATAENCODER["n_reads"]]}\n')
-
-                    new_entry = pd.DataFrame({
+                        new_entry = pd.DataFrame({
                             'contig': [sequence],
                             'position': [position],
-                            'density difference': [expected_model_density - data[DATAENCODER["data_density"]] if not np.isnan(expected_model_density) else np.nan],
+                            'strand': [STRANDDECODER[strand]],
+                            'density difference': [expected_model_density - data[DATAENCODER["data_density"]] if calculate_data_density else expected_model_density],
                             'n_datapoints' : [data[DATAENCODER["n_datapoints"]]],
                             'n_segments' : [data[DATAENCODER["n_segments"]]],
                             'n_reads' : [data[DATAENCODER["n_reads"]]]
 
-                    })
-                    plotting_data = pd.concat([plotting_data, new_entry], ignore_index=True)
+                        })
+                        plotting_data = pd.concat([plotting_data, new_entry], ignore_index=True)
+                    else:
+                        nans += 1
+                        expected_model_density = np.nan
+
+                    w.write(f'{sequence}\t{position}\t{STRANDDECODER[strand]}\t{data[DATAENCODER["base"]]}\t{data[DATAENCODER["mean"]]}\t{data[DATAENCODER["std"]]}\t{data[DATAENCODER["motif"]]}\t{data[DATAENCODER["data_density"]]}\t{expected_model_density}\t{data[DATAENCODER["n_datapoints"]]}\t{data[DATAENCODER["contained_datapoints"]]}\t{data[DATAENCODER["n_segments"]]}\t{data[DATAENCODER["contained_segments"]]}\t{data[DATAENCODER["n_reads"]]}\n')             
 
     LOGGER.printLog(f'Positions without information: {nans}')
 
@@ -570,39 +574,42 @@ def plotStatistics(dataFrame : pd.DataFrame, working_dir : str, sample_label : s
         os.mkdir(working_dir)
 
     figure(figsize = (12,8), dpi=2000)
-    g = sns.barplot(data = dataFrame, x = 'position', y = 'n_reads', hue = 'contig', linewidth = 0)
+    g = sns.lineplot(data = dataFrame, x = 'position', y = 'n_reads', hue = 'contig', linewidth = 0)
     g.set_xlim((0, max(dataFrame['position'])))
     g.set_xticks(range(0, max(dataFrame['position']), max(dataFrame['position'])//10))
     plt.title(f'Read coverage of segmented signals for sample {sample_label}')
     plt.setp(g.get_legend().get_texts(), fontsize='6') # for legend text
     plt.setp(g.get_legend().get_title(), fontsize='6') # for legend title
     g.set_yscale("log")
+    plt.grid(True, 'both', 'both', alpha=0.6, color='grey')
     plt.tight_layout()
     plt.savefig(os.path.join(working_dir, f'{sample_label}_readCoverage.png'))
     plt.savefig(os.path.join(working_dir, f'{sample_label}_readCoverage.pdf'))
     plt.close()
 
     figure(figsize = (12,8), dpi=2000)
-    g = sns.barplot(data = dataFrame, x = 'position', y = 'n_segments', hue = 'contig', linewidth = 0)
+    g = sns.lineplot(data = dataFrame, x = 'position', y = 'n_segments', hue = 'contig', linewidth = 0)
     g.set_xlim((0, max(dataFrame['position'])))
     g.set_xticks(range(0, max(dataFrame['position']), max(dataFrame['position'])//10))
     plt.title(f'Segment coverage of segmented signals for sample {sample_label}')
     plt.setp(g.get_legend().get_texts(), fontsize='6') # for legend text
     plt.setp(g.get_legend().get_title(), fontsize='6') # for legend title
     g.set_yscale("log")
+    plt.grid(True, 'both', 'both', alpha=0.6, color='grey')
     plt.tight_layout()
     plt.savefig(os.path.join(working_dir, f'{sample_label}_segmentCoverage.png'))
     plt.savefig(os.path.join(working_dir, f'{sample_label}_segmentCoverage.pdf'))
     plt.close()
 
     figure(figsize = (12,8), dpi=2000)
-    g = sns.barplot(data = dataFrame, x = 'position', y = 'n_datapoints', hue = 'contig', linewidth = 0)
+    g = sns.lineplot(data = dataFrame, x = 'position', y = 'n_datapoints', hue = 'contig', linewidth = 0)
     g.set_xlim((0, max(dataFrame['position'])))
     g.set_xticks(range(0, max(dataFrame['position']), max(dataFrame['position'])//10))
     plt.title(f'Signal coverage of segmented signals for sample {sample_label}')
     plt.setp(g.get_legend().get_texts(), fontsize='6') # for legend text
     plt.setp(g.get_legend().get_title(), fontsize='6') # for legend title
     g.set_yscale("log")
+    plt.grid(True, 'both', 'both', alpha=0.6, color='grey')
     plt.tight_layout()
     plt.savefig(os.path.join(working_dir, f'{sample_label}_signalCoverage.png'))
     plt.savefig(os.path.join(working_dir, f'{sample_label}_signalCoverage.pdf'))
@@ -635,6 +642,7 @@ def main():
     path_to_basecalls = args.path_to_basecalls
     mx = args.minimap2x
     mk = args.minimap2k
+    max_lines = args.max_lines
     # medaka_model = args.medaka_model
     calculate_data_density = args.calculate_data_density
 
@@ -682,7 +690,7 @@ def main():
     
     nanopolish_summary_csv, nanopolish_result_csv, force_rebuild = nanopolish(path_to_fast5, sequencing_summary, path_to_basecalls, path_to_reference, alignment_bam, working_dir, sample_label, threads, force_rebuild)
     
-    red_file, force_rebuild = aggregate_events(nanopolish_result_csv, nanopolish_summary_csv, path_to_fast5, path_to_reference, working_dir, sample_label, force_rebuild, sequencing_summary, calculate_data_density)
+    red_file, force_rebuild = aggregate_events(nanopolish_result_csv, nanopolish_summary_csv, path_to_fast5, path_to_reference, working_dir, sample_label, force_rebuild, sequencing_summary, calculate_data_density, max_lines)
 
     LOGGER.printLog(f'Done with {sample_label}')
     

@@ -197,7 +197,7 @@ def readRedFile(red_file : str):
                 continue
 
             # w.write('reference\tposition\tstrand\tbase\tsignal_mean\tsignal_std\tmotif\tdata_density\texpected_model_density\tn_datapoints\tcontained_datapoints\tn_segments\tcontained_segments\tn_reads\tnanomA\tnanomC\tnanomG\tnanomT\n')
-            reference, position, strand, base, mean, std, motif, data_density, expected_model_density, n_datapoints, contained_datapoints, n_segments, contained_segments, n_reads, mA, mC, mG, mT = line.strip().split('\t')
+            reference, position, strand, base, mean, std, motif, data_density, expected_model_density, n_datapoints, contained_datapoints, n_segments, contained_segments, n_reads = line.strip().split('\t') # , mA, mC, mG, mT
             position = int(position)
 
             if reference not in red_sequences:

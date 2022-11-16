@@ -222,10 +222,10 @@ def readRedFile(red_file : str):
             red_sequences[reference][position][strand]['contained_segments'] = int(contained_segments)
             red_sequences[reference][position][strand]['n_segments'] = int(n_segments)
             red_sequences[reference][position][strand]['n_reads'] = int(n_reads)
-            red_sequences[reference][position][strand]['mA'] = int(mA)
-            red_sequences[reference][position][strand]['mC'] = int(mC)
-            red_sequences[reference][position][strand]['mG'] = int(mG)
-            red_sequences[reference][position][strand]['mT'] = int(mT)
+            # red_sequences[reference][position][strand]['mA'] = int(mA)
+            # red_sequences[reference][position][strand]['mC'] = int(mC)
+            # red_sequences[reference][position][strand]['mG'] = int(mG)
+            # red_sequences[reference][position][strand]['mT'] = int(mT)
 
     return red_sequences
 

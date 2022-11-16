@@ -293,8 +293,8 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
         
         for strand in ['+', '-']:
             
-            # check if both aligned positions have a distribution
-            if not np.isnan(dist_first_sample[strand]['mean']) and not np.isnan(dist_sec_sample[strand]['mean']):
+            # check if both aligned positions have a distributions -> stdev for both are non-0
+            if dist_first_sample[strand]['std'] and dist_sec_sample[strand]['std']:
 
                 m0 = dist_first_sample[strand]['mean']
                 s0 = dist_first_sample[strand]['std']
@@ -626,7 +626,8 @@ def td_score(mDiff, sAvg) -> float:
     # return np.abs(mDiff - sAvg) / np.sqrt(2)
 
 def kullback_leibler_normal(m0 : float, s0 : float, m1 : float, s1 : float) -> float:
-
+    if not s1 or not s0: # if s0 or s1 are 0 cannot calculate kl divergence
+        return np.nan
     return (np.square(s0/s1) + np.square(m1-m0)/np.square(s1) - 1 + np.log(np.square(s1)/np.square(s0))) / 2
 
 def main():

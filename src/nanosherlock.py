@@ -574,7 +574,7 @@ def plotStatistics(dataFrame : pd.DataFrame, working_dir : str, sample_label : s
         os.mkdir(working_dir)
 
     figure(figsize = (12,8), dpi=2000)
-    g = sns.lineplot(data = dataFrame, x = 'position', y = 'n_reads', hue = 'contig', linewidth = 0)
+    g = sns.barplot(data = dataFrame, x = 'position', y = 'n_reads', hue = 'contig', linewidth = 0)
     g.set_xlim((0, max(dataFrame['position'])))
     g.set_xticks(range(0, max(dataFrame['position']), max(dataFrame['position'])//10))
     plt.title(f'Read coverage of segmented signals for sample {sample_label}')
@@ -588,7 +588,7 @@ def plotStatistics(dataFrame : pd.DataFrame, working_dir : str, sample_label : s
     plt.close()
 
     figure(figsize = (12,8), dpi=2000)
-    g = sns.lineplot(data = dataFrame, x = 'position', y = 'n_segments', hue = 'contig', linewidth = 0)
+    g = sns.barplot(data = dataFrame, x = 'position', y = 'n_segments', hue = 'contig', linewidth = 0)
     g.set_xlim((0, max(dataFrame['position'])))
     g.set_xticks(range(0, max(dataFrame['position']), max(dataFrame['position'])//10))
     plt.title(f'Segment coverage of segmented signals for sample {sample_label}')
@@ -602,7 +602,7 @@ def plotStatistics(dataFrame : pd.DataFrame, working_dir : str, sample_label : s
     plt.close()
 
     figure(figsize = (12,8), dpi=2000)
-    g = sns.lineplot(data = dataFrame, x = 'position', y = 'n_datapoints', hue = 'contig', linewidth = 0)
+    g = sns.barplot(data = dataFrame, x = 'position', y = 'n_datapoints', hue = 'contig', linewidth = 0)
     g.set_xlim((0, max(dataFrame['position'])))
     g.set_xticks(range(0, max(dataFrame['position']), max(dataFrame['position'])//10))
     plt.title(f'Signal coverage of segmented signals for sample {sample_label}')

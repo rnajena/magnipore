@@ -573,8 +573,11 @@ def plotStatistics(dataFrame : pd.DataFrame, working_dir : str, sample_label : s
     if not os.path.exists(working_dir):
         os.mkdir(working_dir)
 
+    dataFrame.replace({'Strand':STRANDDECODER})
+    dataFrame['Contig, Strand'] =  pd.Series(dataFrame.reindex(['contig', 'strand'], axis='columns').astype('str').values.tolist()).str.join(', ')
+
     figure(figsize = (12,8), dpi=2000)
-    g = sns.lineplot(data = dataFrame, x = 'position', y = 'n_reads', hue = 'contig')
+    g = sns.lineplot(data = dataFrame, x = 'position', y = 'n_reads', hue = 'Contig, Strand')
     g.set_xlim((0, max(dataFrame['position'])))
     g.set_xticks(range(0, max(dataFrame['position']), max(dataFrame['position'])//10))
     plt.title(f'Read coverage of segmented signals for sample {sample_label}')
@@ -588,7 +591,7 @@ def plotStatistics(dataFrame : pd.DataFrame, working_dir : str, sample_label : s
     plt.close()
 
     figure(figsize = (12,8), dpi=2000)
-    g = sns.lineplot(data = dataFrame, x = 'position', y = 'n_segments', hue = 'contig')
+    g = sns.lineplot(data = dataFrame, x = 'position', y = 'n_segments', hue = 'Contig, Strand')
     g.set_xlim((0, max(dataFrame['position'])))
     g.set_xticks(range(0, max(dataFrame['position']), max(dataFrame['position'])//10))
     plt.title(f'Segment coverage of segmented signals for sample {sample_label}')
@@ -602,7 +605,7 @@ def plotStatistics(dataFrame : pd.DataFrame, working_dir : str, sample_label : s
     plt.close()
 
     figure(figsize = (12,8), dpi=2000)
-    g = sns.lineplot(data = dataFrame, x = 'position', y = 'n_datapoints', hue = 'contig')
+    g = sns.lineplot(data = dataFrame, x = 'position', y = 'n_datapoints', hue = 'Contig, Strand')
     g.set_xlim((0, max(dataFrame['position'])))
     g.set_xticks(range(0, max(dataFrame['position']), max(dataFrame['position'])//10))
     plt.title(f'Signal coverage of segmented signals for sample {sample_label}')
@@ -616,7 +619,7 @@ def plotStatistics(dataFrame : pd.DataFrame, working_dir : str, sample_label : s
     plt.close()
 
     figure(figsize = (12,8), dpi=2000)
-    g = sns.histplot(data = dataFrame, x = 'density difference', kde = True, hue = 'contig', stat = 'density')
+    g = sns.histplot(data = dataFrame, x = 'density difference', kde = True, hue = 'Contig, Strand', stat = 'density')
     plt.title('Distribution of model density vs data density difference of all position.' if calculate_data_density else 'Model density per position.')
     plt.setp(g.get_legend().get_texts(), fontsize='6') # for legend text
     plt.setp(g.get_legend().get_title(), fontsize='6') # for legend title

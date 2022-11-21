@@ -536,13 +536,13 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     plt.figure(figsize = (12,12), dpi=300)
     plt.rcParams.update({'font.size': FONTSIZE})
     g = sns.JointGrid(x = 'mean_diff', y = 'avg_std', data = dataframe, hue = 'mut_context', marginal_ticks=True, palette=['orange', 'blue'], hue_order=['mutation', 'matching reference'], height = 10)
-    g.plot_joint(sns.scatterplot, s = 12, alpha = 0.6, markers = ['.', '^'])
+    g.plot_joint(sns.scatterplot, s = 12, alpha = 0.6) #, markers = ['.', '^'])
     g.fig.suptitle(f'{len(dataframe.index)} compared bases\nmean diff and avg stdev\n{first_sample_label} and {sec_sample_label}')
     g.ax_joint.grid(True, 'both', 'both', alpha = 0.4, linestyle = '-', linewidth = 0.5)
 
     lims = np.array([
-        [min(dataframe['mean_diff']) - 0.1, max(dataframe['mean_diff']) + 0.1],
-        [min(dataframe['avg_std']) - 0.1, max(dataframe['avg_std']) + 0.1]
+        [0, max(dataframe['mean_diff']) + 0.1],
+        [0, max(dataframe['avg_std']) + 0.1]
     ])
 
     y1 = np.arange(min(lims[:, 0]), max(lims[:, 1]) + 0.01, 0.01)

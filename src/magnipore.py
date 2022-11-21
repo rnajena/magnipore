@@ -541,14 +541,14 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     g.ax_joint.grid(True, 'both', 'both', alpha = 0.4, linestyle = '-', linewidth = 0.5)
 
     lims = np.array([
-        [-.1, max(dataframe['mean_diff']) + 0.1],
-        [-.1, max(dataframe['avg_std']) + 0.1]
+        [-.02, max(dataframe['mean_diff']) + 0.1],
+        [-.02, max(dataframe['avg_std']) + 0.1]
     ])
 
     y1 = np.arange(min(lims[:, 0]), max(lims[:, 1]) + 0.01, 0.01)
     y2 = np.repeat(max(lims[:, 1]), len(y1))
 
-    plt.fill_between(y1, 0, y1, color = 'green', alpha = 0.08, label = 'mean diff > std avg')
+    plt.fill_between(y1, lims[1,0], y1, color = 'green', alpha = 0.08, label = 'mean diff > std avg')
     plt.fill_between(y1, y1, y2, color = 'red', alpha = 0.08, label = 'mean diff < std avg')
 
     plt.xlim(tuple(lims[0]))

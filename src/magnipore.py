@@ -534,11 +534,19 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     
     ### Mean Dist vs Std Avg plot
     plt.figure(figsize = (12,12), dpi=300)
-    plt.rcParams.update({'font.size': FONTSIZE})
-    g = sns.JointGrid(x = 'mean_diff', y = 'avg_std', data = dataframe, hue = 'mut_context', marginal_ticks=True, palette=['orange', 'blue'], hue_order=['mutation', 'matching reference'], height = 10)
-    g.plot_joint(sns.scatterplot, s = 12, alpha = 0.6) #, markers = ['.', '^'])
-    g.fig.suptitle(f'{len(dataframe.index)} compared bases\nmean diff and avg stdev\n{first_sample_label} and {sec_sample_label}')
-    g.ax_joint.grid(True, 'both', 'both', alpha = 0.4, linestyle = '-', linewidth = 0.5)
+    plt.rcParams.update({
+        'font.size': FONTSIZE,
+        "text.usetex": True,
+        "font.family": "sans-serif",
+        "font.sans-serif": "Helvetica",
+        })
+    label1 = first_sample_label.replace("_", " ")
+    label2 = sec_sample_label.replace("_", " ")
+
+    g = sns.JointGrid(x = 'mean_diff', y = 'avg_std', data = dataframe, hue = 'mut_context', marginal_ticks=True, palette=['blue', 'orange'], hue_order=['mutation', 'matching reference'], height = 10)
+    g.plot_joint(sns.scatterplot, s = 12) #, markers = ['.', '^']
+    g.fig.suptitle(f'{len(dataframe.index)} compared bases\nmean difference against average standard deviation\n{label1} and {label2}')
+    g.ax_joint.grid(True, 'both', 'both', alpha = 0.4, linestyle = '--', linewidth = 0.5)
 
     lims = np.array([
         [-.02, max(dataframe['mean_diff']) + 0.1],
@@ -548,15 +556,25 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     y1 = np.arange(min(lims[:, 0]), max(lims[:, 1]) + 0.01, 0.01)
     y2 = np.repeat(max(lims[:, 1]), len(y1))
 
-    plt.fill_between(y1, lims[1,0], y1, color = 'green', alpha = 0.08, label = 'mean diff > std avg')
-    plt.fill_between(y1, y1, y2, color = 'red', alpha = 0.08, label = 'mean diff < std avg')
+    g.ax_joint.fill_between(y1, lims[1,0], y1, color = 'green', alpha = 0.08, label = 'significant signals, TD(.,.)$\ge1$')
+    g.ax_joint.fill_between(y1, y1, y2, color = 'red', alpha = 0.08, label = 'insignificant signals, TD(.,.)$<1$')
 
-    plt.xlim(tuple(lims[0]))
-    plt.ylim(tuple(lims[1]))
+    g.ax_joint.set_xlim(tuple(lims[0]))
+    g.ax_joint.set_ylim(tuple(lims[1]))
 
-    plt.xlabel('mean diff')
-    plt.ylabel('stdev avg')
-    plt.legend(fontsize = 'small', framealpha = 0.3)
+    # \u03BC is mu
+    # \u03C3 is sigma
+    # alternativ \mbox{} \footnotesize
+
+    xlabel = '$\mu_{\mbox{\small ' + label1 + '}} - \mu_{\mbox{\small ' + label2 + '}}$ mean difference'
+    ylabel = '$\\frac{\sigma_{\mbox{\small ' + label1 + '}}\mbox{ }+\mbox{ }\sigma_{\mbox{\small ' + label2 + '}}}{2}$ average standard deviation'
+
+    # print(xlabel)
+    # print(ylabel)
+
+    g.ax_joint.set_xlabel(xlabel)
+    g.ax_joint.set_ylabel(ylabel)
+    g.ax_joint.legend(fontsize = 'small', framealpha = 0.3)
 
     g.plot_marginals(sns.histplot, binwidth = 0.005, kde = True, linewidth = 0)
     g.ax_marg_x.grid(True, 'both', 'both', alpha = 0.4, linestyle = '-', linewidth = 0.5)
@@ -567,7 +585,7 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}{suffix}_meanDiffStdAvgDist.png'))
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}{suffix}_meanDiffStdAvgDist.pdf'))
 
-    plt.ylim(bottom = min(dataframe['avg_std']))
+    g.ax_joint.set_ylim(bottom = min(dataframe['avg_std']))
     g.ax_joint.set_yscale('log')
 
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}{suffix}_meanDiffStdAvgDist_logscale.png'))

@@ -12,7 +12,7 @@ from Bio import SeqIO, Seq
 from matplotlib import pyplot as plt
 from scipy.stats import ks_2samp
 import pandas as pd
-from Helper import ANSI
+from Helper import ANSI, MAGNIPORE_COLUMNS
 from statistics import NormalDist
 from Logger import Logger
 import re
@@ -199,8 +199,8 @@ def readRedFile(red_file : str):
                 
                 continue
 
-            # w.write('reference\tposition\tstrand\tbase\tsignal_mean\tsignal_std\tmotif\tdata_density\texpected_model_density\tn_datapoints\tcontained_datapoints\tn_segments\tcontained_segments\tn_reads\tnanomA\tnanomC\tnanomG\tnanomT\n')
-            reference, position, strand, base, mean, std, motif, data_density, expected_model_density, n_datapoints, contained_datapoints, n_segments, contained_segments, n_reads = line.strip().split('\t') # , mA, mC, mG, mT
+            # w.write('reference\tposition\tstrand\tbase\tsignal_mean\tsignal_std\tmotif\tdata_density\texpected_model_density\tn_datapoints\tcontained_datapoints\tn_segments\tcontained_segments\tn_reads\n')
+            reference, position, strand, base, mean, std, motif, data_density, expected_model_density, n_datapoints, contained_datapoints, n_segments, contained_segments, n_reads = line.strip().split('\t')
             position = int(position)
 
             if reference not in red_sequences:
@@ -225,10 +225,6 @@ def readRedFile(red_file : str):
             red_sequences[reference][position][strand]['contained_segments'] = int(contained_segments)
             red_sequences[reference][position][strand]['n_segments'] = int(n_segments)
             red_sequences[reference][position][strand]['n_reads'] = int(n_reads)
-            # red_sequences[reference][position][strand]['mA'] = int(mA)
-            # red_sequences[reference][position][strand]['mC'] = int(mC)
-            # red_sequences[reference][position][strand]['mG'] = int(mG)
-            # red_sequences[reference][position][strand]['mT'] = int(mT)
 
     return red_sequences
 
@@ -248,14 +244,9 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
     indels.write(f'type\tstrand\tref\tpos\tbase\n')
     
     magnipore = open(magnipore_file, 'w')
-    magnipore.write(f'strand\ttd_score\tkl_divergence\tbayesian_p\t')
-    magnipore.write(f'ref_1\tpos_1\tbase_1\tmotif_1\tsignal_mean_1\tsignal_std_1\tn_datapoints_1\tcontained_datapoints_1\tn_segments_1\tcontained_segments_1\tn_reads_1\t')
-    magnipore.write(f'ref_2\tpos_2\tbase_2\tmotif_2\tsignal_mean_2\tsignal_std_2\tn_datapoints_2\tcontained_datapoints_2\tn_segments_2\tcontained_segments_2\tn_reads_2\n')
-
+    magnipore.write('\t'.join(MAGNIPORE_COLUMNS) + '\n')
     all = open(all_file, 'w')
-    all.write(f'strand\ttd_score\tkl_divergence\tbayesian_p\t')
-    all.write(f'ref_1\tpos_1\tbase_1\tmotif_1\tsignal_mean_1\tsignal_std_1\tn_datapoints_1\tcontained_datapoints_1\tn_segments_1\tcontained_segments_1\tn_reads_1\t')
-    all.write(f'ref_2\tpos_2\tbase_2\tmotif_2\tsignal_mean_2\tsignal_std_2\tn_datapoints_2\tcontained_datapoints_2\tn_segments_2\tcontained_segments_2\tn_reads_2\n')
+    all.write('\t'.join(MAGNIPORE_COLUMNS) + '\n')
 
     # red: sequences are stored as {reference: {pos: {base: ('A'|'C'|'G'|'T'), mean: float, std: float}}}
     num_indels, sign_pos, nans, alignmentGapCorrection = 0, 0, 0, 0
@@ -349,11 +340,7 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
         
                 plotting_data = pd.concat([plotting_data, new_entry], ignore_index=True)
 
-                all.write(f'{strand}\t{td}\t{kl_divergence}\t{firstDist.overlap(secDist)}\t')
-                all.write(f'{seqs_ids[0]}\t{pos_first_sample}\t{dist_first_sample[strand]["base"]}\t{dist_first_sample[strand]["motif"]}\t{m0}\t{s0}\t')
-                all.write(f'{dist_first_sample[strand]["n_datapoints"]}\t{dist_first_sample[strand]["contained_datapoints"]}\t{dist_first_sample[strand]["n_segments"]}\t{dist_first_sample[strand]["contained_segments"]}\t{dist_first_sample[strand]["n_reads"]}\t')
-                all.write(f'{seqs_ids[1]}\t{pos_sec_sample}\t{dist_sec_sample[strand]["base"]}\t{dist_sec_sample[strand]["motif"]}\t{m1}\t{s1}\t')
-                all.write(f'{dist_sec_sample[strand]["n_datapoints"]}\t{dist_sec_sample[strand]["contained_datapoints"]}\t{dist_sec_sample[strand]["n_segments"]}\t{dist_sec_sample[strand]["contained_segments"]}\t{dist_sec_sample[strand]["n_reads"]}\n')
+                all.write(f'{strand}\t{td}\t{kl_divergence}\t{firstDist.overlap(secDist)}\t{"mut" if mut_context else "mod"}\t{seqs_ids[0]}\t{pos_first_sample}\t{dist_first_sample[strand]["base"]}\t{dist_first_sample[strand]["motif"]}\t{m0}\t{s0}\t{dist_first_sample[strand]["n_datapoints"]}\t{dist_first_sample[strand]["contained_datapoints"]}\t{dist_first_sample[strand]["n_segments"]}\t{dist_first_sample[strand]["contained_segments"]}\t{dist_first_sample[strand]["n_reads"]}\t{seqs_ids[1]}\t{pos_sec_sample}\t{dist_sec_sample[strand]["base"]}\t{dist_sec_sample[strand]["motif"]}\t{m1}\t{s1}\t{dist_sec_sample[strand]["n_datapoints"]}\t{dist_sec_sample[strand]["contained_datapoints"]}\t{dist_sec_sample[strand]["n_segments"]}\t{dist_sec_sample[strand]["contained_segments"]}\t{dist_sec_sample[strand]["n_reads"]}\n')
 
                 # distance between both means is greater than the average std of both distributions
                 if mDiff > sAvg:
@@ -374,11 +361,7 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
 
                     sign_pos += 1
                     
-                    magnipore.write(f'{strand}\t{td}\t{kl_divergence}\t{firstDist.overlap(secDist)}\t'\
-                                    f'{seqs_ids[0]}\t{pos_first_sample}\t{dist_first_sample[strand]["base"]}\t{dist_first_sample[strand]["motif"]}\t{m0}\t{s0}\t'\
-                                    f'{dist_first_sample[strand]["n_datapoints"]}\t{dist_first_sample[strand]["contained_datapoints"]}\t{dist_first_sample[strand]["n_segments"]}\t{dist_first_sample[strand]["contained_segments"]}\t{dist_first_sample[strand]["n_reads"]}\t'\
-                                    f'{seqs_ids[1]}\t{pos_sec_sample}\t{dist_sec_sample[strand]["base"]}\t{dist_sec_sample[strand]["motif"]}\t{m1}\t{s1}\t'\
-                                    f'{dist_sec_sample[strand]["n_datapoints"]}\t{dist_sec_sample[strand]["contained_datapoints"]}\t{dist_sec_sample[strand]["n_segments"]}\t{dist_sec_sample[strand]["contained_segments"]}\t{dist_sec_sample[strand]["n_reads"]}\n')
+                    magnipore.write(f'{strand}\t{td}\t{kl_divergence}\t{firstDist.overlap(secDist)}\t{"mut" if mut_context else "mod"}\t{seqs_ids[0]}\t{pos_first_sample}\t{dist_first_sample[strand]["base"]}\t{dist_first_sample[strand]["motif"]}\t{m0}\t{s0}\t{dist_first_sample[strand]["n_datapoints"]}\t{dist_first_sample[strand]["contained_datapoints"]}\t{dist_first_sample[strand]["n_segments"]}\t{dist_first_sample[strand]["contained_segments"]}\t{dist_first_sample[strand]["n_reads"]}\t{seqs_ids[1]}\t{pos_sec_sample}\t{dist_sec_sample[strand]["base"]}\t{dist_sec_sample[strand]["motif"]}\t{m1}\t{s1}\t{dist_sec_sample[strand]["n_datapoints"]}\t{dist_sec_sample[strand]["contained_datapoints"]}\t{dist_sec_sample[strand]["n_segments"]}\t{dist_sec_sample[strand]["contained_segments"]}\t{dist_sec_sample[strand]["n_reads"]}\n')
 
             # one of the aligned and compared position is not present in the .red file
             else:

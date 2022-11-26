@@ -29,14 +29,12 @@ With basecalling
 magnipore.py path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir --guppy_bin PATH --guppy_model PATH
 ```
 
+#### Help:
+```
 usage: magnipore.py [-h] [--guppy_bin GUPPY_BIN] [--guppy_model GUPPY_MODEL] [--guppy_device GUPPY_DEVICE] [--path_to_first_basecalls PATH_TO_FIRST_BASECALLS]
                     [--path_to_sec_basecalls PATH_TO_SEC_BASECALLS] [--calculate_data_density] [-t THREADS] [-f5] [-fr] [--strict] [-r2] [-mx {map-ont,splice,ava-ont}] [-mk MINIMAP2K] [--timeit]
                     path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir
 
-Required tools in environment: guppy, minimap2, nanopolish, h5py, samtools, scipy and mafft see github https://github.com/JannesSP/magnipore
-
-Help:
-```
 positional arguments:
   path_to_fast5_first_sample
                         FAST5 file of first sample

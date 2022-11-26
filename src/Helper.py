@@ -106,3 +106,33 @@ OPPOSITION = {
     'W':'GC',
     'M':'GT', 
     'K':'AC'}
+
+MAGNIPORE_COLUMNS = [
+    'strand',                   #1
+    'td_score',                 #2
+    'kl_divergence',            #3
+    'bayesian_p',               #4
+    'signal_type',              #5
+    'ref_1',                    #6
+    'pos_1',                    #7
+    'base_1',                   #8
+    'motif_1',                  #9
+    'signal_mean_1',            #10
+    'signal_std_1',             #11
+    'n_datapoints_1',           #12
+    'contained_datapoints_1',   #13
+    'n_segments_1',             #14
+    'contained_segments_1',     #15
+    'n_reads_1',                #16
+    'ref_2',                    #17
+    'pos_2',                    #18
+    'base_2',                   #19
+    'motif_2',                  #20
+    'signal_mean_2',            #21
+    'signal_std_2',             #22
+    'n_datapoints_2',           #23
+    'contained_datapoints_2',   #24
+    'n_segments_2',             #25
+    'contained_segments_2',     #26
+    'n_reads_2',                #27
+    ]

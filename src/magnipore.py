@@ -31,7 +31,10 @@ def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
 
 def parse() -> Namespace:
 
-    parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter, description='Required tools in environment: guppy, minimap2, nanopolish, h5py, samtools, scipy and mafft\nsee github https://github.com/JannesSP/magnipore')
+    parser = ArgumentParser(
+        formatter_class=ArgumentDefaultsHelpFormatter,
+        # description='Required tools in environment: guppy, minimap2, nanopolish, h5py, samtools, scipy and mafft\nsee github https://github.com/JannesSP/magnipore'
+        )
     
     parser.add_argument("path_to_fast5_first_sample", type = str, help='FAST5 file of first sample')
     parser.add_argument("path_to_reference_first_sample", type = str, help='reference FASTA file of first sample')

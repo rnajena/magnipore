@@ -1,4 +1,4 @@
-name: sarscov_kiel
+name: magnipore
 channels:
   - conda-forge
   - bioconda

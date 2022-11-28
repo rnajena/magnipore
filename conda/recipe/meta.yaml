@@ -6,7 +6,7 @@ package:
   version: "{{ version }}"
 
 source:
-  git_rev: 1.0.0
+  git_rev: "1.0.0"
   git_url: https://github.com/JannesSP/{{ name|lower }}.git
 
 advice.detachedHead: false
@@ -40,4 +40,4 @@ about:
   license: GNU General Public License v3.0
   license_family: GPL
   license_file: LICENSE 
-  summary: 'Compares two ONT sequences samples for differential signals cause by mutations and modifications'
+  summary: "Compares two ONT sequences samples for differential signals cause by mutations and modifications"

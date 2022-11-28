@@ -40,4 +40,4 @@ about:
   license: GNU General Public License v3.0
   license_family: GPL
   license_file: LICENSE 
-  summary: 'Compares two ONT sequences samples for differential signals'
+  summary: 'Compares two ONT sequences samples for differential signals cause by mutations and modifications'

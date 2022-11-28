@@ -6,7 +6,7 @@ package:
   version: "{{ version }}"
 
 source:
-  git_rev: "1.0.0"
+  git_rev: v1.0.0
   git_url: https://github.com/JannesSP/{{ name|lower }}.git
 
 advice.detachedHead: false

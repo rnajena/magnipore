@@ -18,6 +18,7 @@ from statistics import NormalDist
 from Logger import Logger
 import re
 from time import perf_counter_ns
+from __init__ import __version__
 
 LOGGER : Logger = None
 FONTSIZE = 18
@@ -63,6 +64,8 @@ def parse() -> Namespace:
     parser.add_argument('-mx', '--minimap2x', default = 'splice', choices = ['map-ont', 'splice', 'ava-ont'], help = '-x parameter for minimap2')
     parser.add_argument('-mk', '--minimap2k', default = 14, help = '-k parameter for minimap2')
     parser.add_argument('--timeit', default = False, action = 'store_true', help = 'Measure and print time used by submodules')
+
+    parser.add_argument('-v', '--version', action='version', version=__version__)
 
     return parser.parse_args()
 

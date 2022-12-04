@@ -22,6 +22,7 @@ from Logger import Logger
 from time import perf_counter_ns
 import os
 import psutil
+from __init__ import __version__
 
 PROCESS = psutil.Process(os.getpid())
 LOGGER : Logger = None
@@ -112,6 +113,8 @@ def parse() -> Namespace:
     parser.add_argument('-mk', '--minimap2k', default = 14, type = int, help = '-k parameter for minimap2')
     parser.add_argument('--timeit', default = False, action = 'store_true', help = 'Measure and print time used by submodules')
     parser.add_argument('--max_lines', default=None, type=int, help='Only process first given number of lines from nanopolish eventalign')
+
+    parser.add_argument('-v', '--version', action='version', version=__version__)
 
     return parser.parse_args()
 

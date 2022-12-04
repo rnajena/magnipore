@@ -92,7 +92,8 @@ def parse() -> Namespace:
 
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsHelpFormatter,
-        description='Required tools in environment: guppy, minimap2, nanopolish, h5py, samtools, scipy and mafft\nsee github https://github.com/JannesSP/magnipore'
+        # description='Required tools can be installed using conda and : guppy, minimap2, nanopolish, h5py, samtools, scipy, mafft, numpy\nsee github https://github.com/JannesSP/magnipore'
+        prog='Nanosherlock',
         ) 
     
     parser.add_argument('path_to_fast5', type = str, help='FAST5 file')
@@ -114,7 +115,7 @@ def parse() -> Namespace:
     parser.add_argument('--timeit', default = False, action = 'store_true', help = 'Measure and print time used by submodules')
     parser.add_argument('--max_lines', default=None, type=int, help='Only process first given number of lines from nanopolish eventalign')
 
-    parser.add_argument('-v', '--version', action='version', version=__version__)
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s' + f' {__version__}')
 
     return parser.parse_args()
 

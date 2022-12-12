@@ -5,7 +5,6 @@
 # website: https://jannessp.github.io
 
 import datetime
-import OnlineMeanVar as omv
 import os
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 from pathlib import Path
@@ -13,16 +12,18 @@ import h5py
 import numpy as np
 from scipy import stats
 from Bio import SeqIO
-from Helper import ANSI, DATAENCODER, STRANDDECODER, complement
 import pandas as pd
 import seaborn as sns
 from matplotlib.pyplot import figure
 from matplotlib import pyplot as plt
-from Logger import Logger
 from time import perf_counter_ns
 import os
 import psutil
+
 from __init__ import __version__
+from Logger import Logger
+from Helper import ANSI, DATAENCODER, STRANDDECODER, complement
+import OnlineMeanVar as omv
 
 PROCESS = psutil.Process(os.getpid())
 LOGGER : Logger = None

@@ -21,10 +21,10 @@ from time import perf_counter_ns
 import os
 import psutil
 
-from src.__init__ import __version__
-from src.Logger import Logger
-from src.Helper import ANSI, DATAENCODER, STRANDDECODER, complement
-import src.OnlineMeanVar as omv
+from magnipore.__init__ import __version__
+from magnipore.Logger import Logger
+from magnipore.Helper import ANSI, DATAENCODER, STRANDDECODER, complement
+import magnipore.OnlineMeanVar as omv
 
 PROCESS = psutil.Process(os.getpid())
 LOGGER : Logger = None

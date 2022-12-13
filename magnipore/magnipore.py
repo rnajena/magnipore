@@ -17,9 +17,9 @@ from statistics import NormalDist
 import re
 from time import perf_counter_ns
 
-from src.__init__ import __version__
-from src.Helper import ANSI, MAGNIPORE_COLUMNS
-from src.Logger import Logger
+from magnipore.__init__ import __version__
+from magnipore.Helper import ANSI, MAGNIPORE_COLUMNS
+from magnipore.Logger import Logger
 
 LOGGER : Logger = None
 FONTSIZE = 18

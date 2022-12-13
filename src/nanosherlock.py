@@ -16,6 +16,7 @@ import pandas as pd
 import seaborn as sns
 from matplotlib.pyplot import figure
 from matplotlib import pyplot as plt
+from matplotlib import rcParams
 from time import perf_counter_ns
 import os
 import psutil
@@ -575,6 +576,7 @@ def writeOutput(red_file : str, sequences : dict, working_dir : str, sample_labe
 def plotStatistics(dataFrame : pd.DataFrame, working_dir : str, sample_label : str, calculate_data_density : bool) -> None:
     LOGGER.printLog('Plotting data ...')
     working_dir = os.path.join(working_dir, 'magnipore', sample_label, 'plots')
+    rcParams['agg.path.chunksize'] = 10000
     
     if not os.path.exists(working_dir):
         os.mkdir(working_dir)

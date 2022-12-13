@@ -21,10 +21,10 @@ from time import perf_counter_ns
 import os
 import psutil
 
-from __init__ import __version__
-from Logger import Logger
-from Helper import ANSI, DATAENCODER, STRANDDECODER, complement
-import OnlineMeanVar as omv
+from src.__init__ import __version__
+from src.Logger import Logger
+from src.Helper import ANSI, DATAENCODER, STRANDDECODER, complement
+import src.OnlineMeanVar as omv
 
 PROCESS = psutil.Process(os.getpid())
 LOGGER : Logger = None

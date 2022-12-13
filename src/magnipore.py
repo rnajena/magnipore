@@ -16,10 +16,10 @@ import pandas as pd
 from statistics import NormalDist
 import re
 from time import perf_counter_ns
-from __init__ import __version__
 
-from Helper import ANSI, MAGNIPORE_COLUMNS
-from Logger import Logger
+from src.__init__ import __version__
+from src.Helper import ANSI, MAGNIPORE_COLUMNS
+from src.Logger import Logger
 
 LOGGER : Logger = None
 FONTSIZE = 18

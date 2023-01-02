@@ -542,8 +542,8 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     y1 = np.arange(min(lims[:, 0]), max(lims[:, 1]) + 0.01, 0.01)
     y2 = np.repeat(max(lims[:, 1]), len(y1))
 
-    g.ax_joint.fill_between(y1, lims[1,0], y1, color = 'green', alpha = 0.08, label = 'significant signals, TD(.,.)$\ge1$')
-    g.ax_joint.fill_between(y1, y1, y2, color = 'red', alpha = 0.08, label = 'insignificant signals, TD(.,.)$<1$')
+    g.ax_joint.fill_between(y1, lims[1,0], y1, color = 'green', alpha = 0.08, label = 'significant signals, TD(.,.)>=1')
+    g.ax_joint.fill_between(y1, y1, y2, color = 'red', alpha = 0.08, label = 'insignificant signals, TD(.,.)<1')
 
     g.ax_joint.set_xlim(tuple(lims[0]))
     g.ax_joint.set_ylim(tuple(lims[1]))

@@ -526,6 +526,9 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     
     ### Mean Dist vs Std Avg plot
     plt.figure(figsize = (12,12), dpi=300)
+    plt.rcParams.update({
+        'font.size': FONTSIZE,
+        })
     label1 = first_sample_label.replace("_", " ")
     label2 = sec_sample_label.replace("_", " ")
 

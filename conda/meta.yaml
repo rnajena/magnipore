@@ -1,12 +1,12 @@
 {% set name = "Magnipore" %}
-{% set version = "1.0.0" %}
+{% set version = "1.0.1" %}
 
 package:
   name: {{ name|lower }}
   version: {{ version }}
 
 source:
-  git_rev: v1.0.0
+  git_rev: v1.0.1
   git_url: https://github.com/JannesSP/{{ name|lower }}.git
 
 advice.detachedHead: false

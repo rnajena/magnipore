@@ -6,6 +6,7 @@ package:
   version: {{ version }}
 
 source:
+  # path: ../
   git_rev: v1.0.1
   git_url: https://github.com/JannesSP/{{ name|lower }}.git
 
@@ -13,6 +14,7 @@ advice.detachedHead: false
 
 build:
   number: 0
+  noarch: python
   script: python setup.py install --single-version-externally-managed --record=record.txt
 
 requirements:
@@ -20,6 +22,21 @@ requirements:
     - python>=3.9
     - numpy>=1.23
     - setuptools
+  # host:
+  #   - python>=3.9
+  #   - h5py>=3.7
+  #   - biopython>=1.80
+  #   - mafft>=7.508
+  #   - matplotlib>=3.6.2
+  #   - numpy>=1.23
+  #   - scipy>=1.9
+  #   - nanopolish>=0.14
+  #   - minimap2>=2.24
+  #   - pandas>=1.5
+  #   - seaborn>=0.12
+  #   - psutil>=5.9
+  #   - hdf5plugin>=3.3.1
+  #   - ont_vbz_hdf_plugin>=1.0.1
   run:
     - python>=3.9
     - h5py>=3.7

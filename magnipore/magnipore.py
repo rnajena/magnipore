@@ -529,8 +529,8 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     plt.rcParams.update({
         'font.size': FONTSIZE,
         "text.usetex": True,
-        "font.family": "sans-serif",
-        "font.sans-serif": "Helvetica",
+        # "font.family": "sans-serif",
+        # "font.sans-serif": "Helvetica",
         })
     label1 = first_sample_label.replace("_", " ")
     label2 = sec_sample_label.replace("_", " ")

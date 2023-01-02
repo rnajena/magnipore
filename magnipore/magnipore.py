@@ -526,12 +526,6 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     
     ### Mean Dist vs Std Avg plot
     plt.figure(figsize = (12,12), dpi=300)
-    plt.rcParams.update({
-        'font.size': FONTSIZE,
-        "text.usetex": True,
-        # "font.family": "sans-serif",
-        # "font.sans-serif": "Helvetica",
-        })
     label1 = first_sample_label.replace("_", " ")
     label2 = sec_sample_label.replace("_", " ")
 
@@ -558,11 +552,17 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     # \u03C3 is sigma
     # alternativ \mbox{} \footnotesize
 
-    xlabel = '$\mu_{\mbox{\small ' + label1 + '}} - \mu_{\mbox{\small ' + label2 + '}}$ mean difference'
-    ylabel = '$\\frac{\sigma_{\mbox{\small ' + label1 + '}}\mbox{ }+\mbox{ }\sigma_{\mbox{\small ' + label2 + '}}}{2}$ average standard deviation'
+    # plt.rcParams.update({
+    #     'font.size': FONTSIZE,
+    #     'text.usetex': True,
+    #     'font.family': 'sans-serif',
+    #     'font.sans-serif': 'Helvetica',
+    #     })
+    # xlabel = '$\mu_{\mbox{\small ' + label1 + '}} - \mu_{\mbox{\small ' + label2 + '}}$ mean difference'
+    # ylabel = '$\\frac{\sigma_{\mbox{\small ' + label1 + '}}\mbox{ }+\mbox{ }\sigma_{\mbox{\small ' + label2 + '}}}{2}$ average standard deviation'
 
-    # print(xlabel)
-    # print(ylabel)
+    xlabel = 'mean difference'
+    ylabel = 'average standard deviation'
 
     g.ax_joint.set_xlabel(xlabel)
     g.ax_joint.set_ylabel(ylabel)

@@ -163,7 +163,7 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
                 first2sec_refpos_mapping[i1] = (i2, alip)
                 if base1.lower() != base2.lower():
                     w.write(f'substitution,{i1},{i2},{base1.upper()},{base2.upper()}\n')
-                elif base1.lower() == base2.lower() == 'n':
+                elif base1.lower() == 'n' or base2.lower() == 'n':
                     w.write(f'N,{i1},{i2},{base1.upper()},{base2.upper()}\n')
                 i1 += 1
                 i2 += 1

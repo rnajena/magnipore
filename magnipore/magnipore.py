@@ -95,9 +95,8 @@ def mafft(ref_first_sample : str, ref_sec_sample : str, first_sample_label : str
         LOGGER.error('Error in concatenating both reference files')
     
     LOGGER.printLog(f'Building alignment in {ref_alignment}')
-    LOGGER.printLog(f'Mafft alignment command: {ANSI.RED}{command}{ANSI.END}')
-    
     command = f'mafft --auto --thread {threads} {ref_both_samples} > {ref_alignment}'
+    LOGGER.printLog(f'Mafft alignment command: {ANSI.RED}{command}{ANSI.END}')
 
     if TIMEIT:
         start = perf_counter_ns()

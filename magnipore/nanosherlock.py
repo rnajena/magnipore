@@ -440,7 +440,7 @@ def buildModels(sequences : dict, nano2readid : dict, readid2fast5 : dict, nanop
             nano_result.readline()
             opened_readid = ''
             opened_fast5 = ''
-            last_position = -1
+            last_position = None
             event = {}
             strand = 0
 
@@ -459,6 +459,11 @@ def buildModels(sequences : dict, nano2readid : dict, readid2fast5 : dict, nanop
                 readid = nano2readid[event['read_index']]
                 if readid != opened_readid:
 
+                    # new read -> count last position of last read if not first read
+                    if last_position is not None:
+                        sequences[event['contig']][last_position, strand, DATAENCODER['n_reads']] += 1
+                        last_position = None
+
                     if event['ref_kmer'] == event['model_kmer']:
                         strand = 0
                     else:
@@ -471,7 +476,6 @@ def buildModels(sequences : dict, nano2readid : dict, readid2fast5 : dict, nanop
 
                         fast5 = h5py.File(readid2fast5[readid], 'r')
                         opened_fast5 = readid2fast5[readid]
-                        last_position = -1
                         
                     fast5_read = fast5['read_' + readid]
                     # get normalised read signal
@@ -489,9 +493,10 @@ def buildModels(sequences : dict, nano2readid : dict, readid2fast5 : dict, nanop
                     red[DATAENCODER['n_datapoints']] += len(segment)
                     red[DATAENCODER['n_segments']] += 1
 
-                    # see a new position: add 1 to n_reads counter
+                    # see a new position within a previously opened read: add 1 to n_reads counter
                     if event['position'] != last_position:
-                        sequences[event['contig']][last_position, strand, DATAENCODER['n_reads']] += 1
+                        if last_position is not None:
+                            sequences[event['contig']][last_position, strand, DATAENCODER['n_reads']] += 1
                         last_position = event['position']
 
                 elif loop =='checking data':

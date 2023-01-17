@@ -420,10 +420,10 @@ def createSeqDict(path_to_reference : str) -> dict:
             sequences[seq.id][pos, 1, DATAENCODER['base']] = complement(base)
             sequences[seq.id][pos, 1, DATAENCODER['omv']] = omv.LocShift(30)
 
-            if pos >= 3:
+            if 3 <= pos <= sequences[seq.id].shape[0] - 4:
                 sequences[seq.id][pos, 0, DATAENCODER['motif']] = seq.seq[pos-3:pos+4]
                 sequences[seq.id][pos, 1, DATAENCODER['motif']] = complement(seq.seq[pos-3:pos+4])[::-1]
-            elif pos >= 2:
+            elif 2 <= pos <= sequences[seq.id].shape[0] - 3:
                 sequences[seq.id][pos, 0, DATAENCODER['motif']] = seq.seq[pos-2:pos+3]
                 sequences[seq.id][pos, 1, DATAENCODER['motif']] = complement(seq.seq[pos-2:pos+3])[::-1]
 

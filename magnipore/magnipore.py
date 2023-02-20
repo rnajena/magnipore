@@ -428,20 +428,19 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
     # plotMeanStdDist(plotting_data, 'sec_mean', 'sec_std', plot_dir, sec_sample_label, suffix)
 
     LOGGER.printLog(f'Writing stockholm with magnipore markers')
-    fasta = []
+    records = []
     ids = []
     # remove duplicate sequences (happens when both samples have the same reference fasta)
     for record in SeqIO.parse(open(alignment_path), 'fasta'):
         if record.id not in ids:
-            fasta.append(record)
+            records.append(record)
             ids.append(record.id)
-    fasta += [SeqIO.SeqRecord(
+    records.extend([SeqIO.SeqRecord(
                 Seq.Seq(''.join(seq)),
                 id ='magnipore_marked_' + str((first_sample_label, sec_sample_label)[i]),
                 name ='magnipore_' + str((first_sample_label, sec_sample_label)[i]),
-                description='X=significant signal change, N=not significant') for i, seq in enumerate(alignment_sequences)]   
-    stk = open(os.path.join(working_dir, first_sample_label + '_' + sec_sample_label + suffix + '_marked.stk'), 'w')
-    SeqIO.write(fasta, stk, 'stockholm')
+                description='X=significant signal change, .=not significant') for i, seq in enumerate(alignment_sequences)])   
+    SeqIO.write(records, os.path.join(working_dir, first_sample_label + '_' + sec_sample_label + suffix + '_marked.stk'), 'stockholm')
     
     LOGGER.printLog('Done with magnipore')
 

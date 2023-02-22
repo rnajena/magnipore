@@ -1,6 +1,6 @@
 # Magnipore
 
-![Conda package](https://anaconda.org/jannessp/magnipore/badges/version.svg)
+[![Conda package](https://anaconda.org/jannessp/magnipore/badges/version.svg)](https://anaconda.org/jannessp/magnipore)
 
 If you find a bug please add it to the issues on github with a detailed desciption. :)
 

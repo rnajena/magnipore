@@ -1,5 +1,7 @@
 # Magnipore
 
+![Conda package](https://anaconda.org/jannessp/magnipore/badges/version.svg)
+
 If you find a bug please add it to the issues on github with a detailed desciption. :)
 
 ## Description

@@ -15,6 +15,7 @@ from scipy.stats import ks_2samp
 import pandas as pd
 from statistics import NormalDist
 import re
+import matplotlib.lines as mlines
 from time import perf_counter_ns
 
 from magnipore.__init__ import __version__
@@ -124,7 +125,7 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
 
     outfile = os.path.join(outpath, 'alignment', f'{first_label}_{second_label}_refdiffs.csv')
     w = open(outfile, 'w')
-    w.write(f'type,{first_label},{second_label},base1,base2\n')
+    w.write(f'type,{first_label},{second_label},base_{first_label},base_{second_label}\n')
 
     for seq in fasta:
 
@@ -135,7 +136,7 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
     LOGGER.printLog(f'Lengths are {list(map(len, sequences.values()))}')
     
     # {(pos_of_first_sample, base) : (pos_of_second_sample, base)}
-    
+    # different reference files for both samples
     try:
         seq1_id, seq2_id = sequences.keys()
         seq1_seq, seq2_seq = sequences.values()
@@ -256,7 +257,7 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
     # red: sequences are stored as {reference: {pos: {base: ('A'|'C'|'G'|'T'), mean: float, std: float}}}
     num_indels, sign_pos, nans, alignmentGapCorrection = 0, 0, 0, 0
     # replace every nucleotide character with a dot
-    alignment_sequences = [list(re.sub(r"[^-]", ".", alignment_sequences[0])), list(re.sub(r"[^-]", ".", alignment_sequences[1]))]
+    magnipore_strings = [list(re.sub(r"[^-]", ".", alignment_sequences[0])), list(re.sub(r"[^-]", ".", alignment_sequences[1]))]
 
     # TODO add some quality value
     plotting_data = pd.DataFrame(columns=['mean_diff', 'first_std', 'sec_std', 'avg_std', 'mut_context', 'td_score', 'kl_divergence'])
@@ -361,8 +362,8 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
                             continue
                     
                     # X == interesting position
-                    alignment_sequences[0][alip] = 'X'
-                    alignment_sequences[1][alip] = 'X'
+                    magnipore_strings[0][alip] = 'X'
+                    magnipore_strings[1][alip] = 'X'
 
                     sign_pos += 1
                     
@@ -407,7 +408,7 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
     ### Mean Dist vs Std Avg plot
     LOGGER.printLog('Plotting Mean vs Stdev')
     plotMeanDiffStdAvg(plotting_data, plot_dir, first_sample_label, sec_sample_label, suffix)
-
+    
     ### std vs std plot with mean_diff colored scatter
     # LOGGER.printLog(f'Plotting Stdev {first_sample_label} vs Stdev {sec_sample_label}')
     # plotStdStdMean(plotting_data, plot_dir, first_sample_label, sec_sample_label, suffix)
@@ -436,10 +437,11 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
             records.append(record)
             ids.append(record.id)
     records.extend([SeqIO.SeqRecord(
-                Seq.Seq(''.join(seq)),
+                Seq.Seq((''.join(seq)).upper()),
                 id ='magnipore_marked_' + str((first_sample_label, sec_sample_label)[i]),
                 name ='magnipore_' + str((first_sample_label, sec_sample_label)[i]),
-                description='X=significant signal change, .=not significant') for i, seq in enumerate(alignment_sequences)])   
+                description='X=significant signal change, .=not significant') for i, seq in enumerate(magnipore_strings)])
+    # print(records)
     SeqIO.write(records, os.path.join(working_dir, first_sample_label + '_' + sec_sample_label + suffix + '_marked.stk'), 'stockholm')
     
     LOGGER.printLog('Done with magnipore')
@@ -470,12 +472,17 @@ def plotMeanStdDist(dataframe : pd.DataFrame, mean_column : str, stdev_column : 
 
 def plotScores(dataframe : pd.DataFrame, working_dir : str, first_sample_label : str, sec_sample_label : str, suffix : str) -> None:
     
-    dataframe[', '.join(['Context', 'Significance'])] =  pd.Series(dataframe.reindex(['mut_context', 'significant'], axis='columns').astype('str').values.tolist()).str.join(', ')
+    colors = {
+        'matching reference, insignificant':'wheat',
+        'matching reference, significant':'darkorange',
+        'mutation, insignificant':'skyblue',
+        'mutation, significant':'darkblue'}
+    dataframe['Context, Significance'] =  pd.Series(dataframe.reindex(['mut_context', 'significant'], axis='columns').astype('str').values.tolist()).str.join(', ')
 
     plt.figure(figsize = (12,8), dpi=300)
     plt.title(f'TD score for all positions\n{first_sample_label} vs. {sec_sample_label}')
-    sns.histplot(data = dataframe, x = 'td_score', hue=dataframe['Context, Significance'], log_scale = (True, True), multiple="stack")
-    plt.grid(True,  'both', 'both')
+    sns.histplot(data=dataframe, x='td_score', hue=dataframe['Context, Significance'], log_scale=(True, True), multiple="stack", palette=colors)
+    plt.grid(True,  'both', 'both', alpha=0.6, linestyle='--')
     plt.tight_layout()
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}{suffix}_td_score.png'))
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}{suffix}_td_score.pdf'))
@@ -483,8 +490,8 @@ def plotScores(dataframe : pd.DataFrame, working_dir : str, first_sample_label :
 
     plt.figure(figsize = (12,8), dpi=300)
     plt.title(f'Kullback-Leibler divergence for all positions\n{first_sample_label} vs. {sec_sample_label}')
-    sns.histplot(data = dataframe, x = 'kl_divergence', hue=dataframe['Context, Significance'], log_scale = (True, True), multiple="stack")
-    plt.grid(True,  'both', 'both')
+    sns.histplot(data=dataframe, x='kl_divergence', hue=dataframe['Context, Significance'], log_scale=(True, True), multiple="stack", palette=colors)
+    plt.grid(True,  'both', 'both', alpha=0.6, linestyle='--')
     plt.tight_layout()
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}{suffix}_kl_div.png'))
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}{suffix}_kl_div.pdf'))
@@ -522,6 +529,9 @@ def plotStdStdMean(dataframe : pd.DataFrame, working_dir : str, first_sample_lab
     
 def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample_label : str, sec_sample_label : str, suffix : str) -> None:
     
+    marker = lambda mut_context: 'D' if mut_context == 'mutation' else 'o'
+    color = lambda mut_context: 'blue' if mut_context == 'mutation' else '#d95f02' 
+
     ### Mean Dist vs Std Avg plot
     plt.figure(figsize = (12,12), dpi=300)
     plt.rcParams.update({
@@ -530,9 +540,13 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     label1 = first_sample_label.replace("_", " ")
     label2 = sec_sample_label.replace("_", " ")
 
-    g = sns.JointGrid(x = 'mean_diff', y = 'avg_std', data = dataframe, hue = 'mut_context', marginal_ticks=True, palette=['blue', 'orange'], hue_order=['mutation', 'matching reference'], height = 10)
-    g.plot_joint(sns.scatterplot, s = 12) #, markers = ['.', '^']
-    g.fig.suptitle(f'{len(dataframe.index)} compared bases\nmean difference against average standard deviation\n{label1} and {label2}')
+    g = sns.JointGrid(x = 'mean_diff', y = 'avg_std', data = dataframe, hue = 'mut_context', marginal_ticks=True, palette=['blue', '#d95f02'], hue_order=['mutation', 'matching reference'], height = 10)
+    g.plot_joint(func=sns.scatterplot, s = 8)
+    g.ax_joint.cla()
+    for _, row in dataframe.iterrows():
+        g.ax_joint.plot(row['mean_diff'], row['avg_std'], color = color(row['mut_context']), marker = marker(row['mut_context']), markersize=3, alpha = 0.6)
+    
+    g.fig.suptitle(f'{len(dataframe.index)} compared bases mean difference against\naverage standard deviation\n{label1} and {label2}', y=0.98)
     g.ax_joint.grid(True, 'both', 'both', alpha = 0.4, linestyle = '--', linewidth = 0.5)
 
     lims = np.array([
@@ -543,31 +557,24 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     y1 = np.arange(min(lims[:, 0]), max(lims[:, 1]) + 0.01, 0.01)
     y2 = np.repeat(max(lims[:, 1]), len(y1))
 
-    g.ax_joint.fill_between(y1, lims[1,0], y1, color = 'green', alpha = 0.08, label = 'significant signals, TD(.,.)>=1')
-    g.ax_joint.fill_between(y1, y1, y2, color = 'red', alpha = 0.08, label = 'insignificant signals, TD(.,.)<1')
+    g.ax_joint.fill_between(y1, lims[1,0], y1, color = '#1b9e77', alpha = 0.15, label = 'significant, TD>=1')
+    g.ax_joint.fill_between(y1, y1, y2, color = '#7570b3', alpha = 0.15, label = 'insignificant, TD<1')
 
     g.ax_joint.set_xlim(tuple(lims[0]))
     g.ax_joint.set_ylim(tuple(lims[1]))
 
-    # \u03BC is mu
-    # \u03C3 is sigma
-    # alternativ \mbox{} \footnotesize
-
-    # plt.rcParams.update({
-    #     'font.size': FONTSIZE,
-    #     'text.usetex': True,
-    #     'font.family': 'sans-serif',
-    #     'font.sans-serif': 'Helvetica',
-    #     })
-    # xlabel = '$\mu_{\mbox{\small ' + label1 + '}} - \mu_{\mbox{\small ' + label2 + '}}$ mean difference'
-    # ylabel = '$\\frac{\sigma_{\mbox{\small ' + label1 + '}}\mbox{ }+\mbox{ }\sigma_{\mbox{\small ' + label2 + '}}}{2}$ average standard deviation'
-
-    xlabel = 'mean difference'
-    ylabel = 'average standard deviation'
+    xlabel = 'Mean Difference'
+    ylabel = 'Average Standard Deviation'
 
     g.ax_joint.set_xlabel(xlabel)
     g.ax_joint.set_ylabel(ylabel)
-    g.ax_joint.legend(fontsize = 'small', framealpha = 0.3)
+    # handles, labels = g.ax_joint.get_legend_handles_labels()
+    legend_mut = mlines.Line2D([], [], color='blue', marker='D', linestyle='None', markersize=10, label='mutation')
+    legend_mod = mlines.Line2D([], [], color='#d95f02', marker='o', linestyle='None', markersize=10, label='matching reference')
+    sign = mlines.Line2D([], [], color='#1b9e77', marker='s', linestyle='None', markersize=10, label='significant, TD>=1')
+    insign = mlines.Line2D([], [], color='#7570b3', marker='s', linestyle='None', markersize=10, label='insignificant, TD<1')
+    handles = [legend_mut, legend_mod, sign, insign]
+    g.ax_joint.legend(handles = handles, fontsize = 'small', framealpha = 0.3)
 
     g.plot_marginals(sns.histplot, binwidth = 0.005, kde = True, linewidth = 0)
     g.ax_marg_x.grid(True, 'both', 'both', alpha = 0.4, linestyle = '-', linewidth = 0.5)

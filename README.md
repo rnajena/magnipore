@@ -1,41 +1,90 @@
-# Magnipore
+# ![](figures/magnipore_logo.png)
 
 [![Conda package](https://anaconda.org/jannessp/magnipore/badges/version.svg)](https://anaconda.org/jannessp/magnipore)
+[![Conda package](https://anaconda.org/jannessp/magnipore/badges/latest_release_date.svg)](https://anaconda.org/jannessp/magnipore)
 
-If you find a bug please add it to the issues on github with a detailed desciption. :)
+- If you find a bug, please add it to the issues on GitHub with a detailed description.
+
+---
 
 ## Description
 
-Magnipore is used to compare two ONT samples with each other on a signal level to find differential signals between these samples on single base resolution.
-These differences occur majorly due to molecular base changes hinting to mutations or modifications.
-Magnipore classifies these differences and provides the user with a positionwise comparison together with quality values like a bayesian p-value.
+Magnipore is a tool written in python3 to analyze and pair-wise compare sequencing samples from Oxford Nanopore Technologies (ONT) sequencing.
+
+Magnipore compares two ONT samples on a signal level to find differential signals between them in single base resolution.
+Such differences are caused by mutations or modifications.
+Magnipore classifies these differences and provides the user with a position-wise comparison.
+
+---
+
+## Dependencies
+
+Magnipore depends on/requires other tools to preprocess and analyze the data.
+
+- python>=3.9
+- h5py>=3.7
+- biopython>=1.80
+- mafft>=7.508
+- matplotlib>=3.6.2
+- numpy>=1.23
+- scipy>=1.9
+- nanopolish>=0.14
+- minimap2>=2.24
+- pandas>=1.5
+- seaborn>=0.12
+- psutil>=5.9
+- hdf5plugin>=3.3.1
+- ont_vbz_hdf_plugin>=1.0.1
+
+---
+
+## Workflow
+
+### Input
+
+For each sample in the comparison, Magnipore takes:
+- (FASTA) a reference sequence file and
+- (FAST5) the raw sequencing data from ONT and
+- (optinal FASTQ) optionally basecalls, if you do not have the guppy binary or do not want to basecall the raw ONT data (again).
+
+### Output
+
+- Magnipore file (TSV)
+  - all compared positions
+  - classified into mutation and potential modification
+  - with the TD score
+  - with the Kullback-Leibler divergence
+  - with a bayesian p-Value
+- reference sequence alignment file
+- stockholm file (significant positions are marked)
+- multiple plots about the data of the samples like
+
+---
+
+## Conda
+[![Conda package](https://anaconda.org/jannessp/magnipore/badges/version.svg)](https://anaconda.org/jannessp/magnipore)
+[![Conda package](https://anaconda.org/jannessp/magnipore/badges/latest_release_date.svg)](https://anaconda.org/jannessp/magnipore)
+
+You can create a conda environment using the [conda_env.yml](conda/conda_env.yml).
+If you want to basecall your ONT data you also need a Guppy version from [Oxford Nanopore Technologies](https://community.nanoporetech.com).
 
 ## Usage
 
-### Conda
-
->Magnipore conda coming soon
-
-For now create a conda environment using the [conda_env.yml](conda/conda_env.yml).
-If you want to basecall your ONT data you also need a Guppy version from [Oxford Nanopore Technologies](https://community.nanoporetech.com).
-
-#### Simplest use case:
+If you are not using the conda package replace "magnipore" by "python3 magnipore.py".
 
 Without basecalling:
 ```
-magnipore.py path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir --path_to_first_basecalls PATH_TO_FIRST_BASECALLS --path_to_sec_basecalls PATH_TO_SEC_BASECALLS
+magnipore path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir --path_to_first_basecalls PATH_TO_FIRST_BASECALLS --path_to_sec_basecalls PATH_TO_SEC_BASECALLS
 ```
 
 With basecalling
 ```
-magnipore.py path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir --guppy_bin PATH --guppy_model PATH
+magnipore path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir --guppy_bin PATH --guppy_model PATH
 ```
 
 #### Help:
 ```
-usage: magnipore.py [-h] [--guppy_bin GUPPY_BIN] [--guppy_model GUPPY_MODEL] [--guppy_device GUPPY_DEVICE] [--path_to_first_basecalls PATH_TO_FIRST_BASECALLS]
-                    [--path_to_sec_basecalls PATH_TO_SEC_BASECALLS] [--calculate_data_density] [-t THREADS] [-f5] [-fr] [--strict] [-r2] [-mx {map-ont,splice,ava-ont}] [-mk MINIMAP2K] [--timeit]
-                    path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir
+usage: Magnipore [-h] [--guppy_bin GUPPY_BIN] [--guppy_model GUPPY_MODEL] [--guppy_device GUPPY_DEVICE] [--path_to_first_basecalls PATH_TO_FIRST_BASECALLS] [--path_to_sec_basecalls PATH_TO_SEC_BASECALLS] [--calculate_data_density] [-t THREADS] [-f5] [-fr] [--strict] [-r2] [-mx {map-ont,splice,ava-ont}] [-mk MINIMAP2K] [--timeit] [-v] path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir
 
 positional arguments:
   path_to_fast5_first_sample
@@ -50,7 +99,7 @@ positional arguments:
   sec_sample_label      Name of the sample or pipeline run
   working_dir           Path to write all output files
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --guppy_bin GUPPY_BIN
                         Guppy binary (default: None)
@@ -74,6 +123,8 @@ optional arguments:
                         -x parameter for minimap2 (default: splice)
   -mk MINIMAP2K, --minimap2k MINIMAP2K
                         -k parameter for minimap2 (default: 14)
+  --timeit              Measure and print time used by submodules (default: False)
+  -v, --version         show program's version number and exit
 ```
 <!-- #### positional arguments:
 - path_to_fast5_first_sample : FAST5 directory of first sample
@@ -96,9 +147,9 @@ use either the basecalling arguments or provide basecalls
 
 For optional arguments see magnipore.py --help. Includes small number of mapping parameters and the option to skip basecalling. -->
 
-## Output
+## .magnipore Overview
 
-The .magnipore file is a tsv containing the following columns.
+The .magnipore file is a TSV containing the following columns.
 
 - strand : on which strand the comparison took place
 - td_score : threshold distance score for the signal comparison

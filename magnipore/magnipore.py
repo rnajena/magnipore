@@ -25,7 +25,7 @@ from magnipore.Logger import Logger
 LOGGER : Logger = None
 FONTSIZE = 18
 TIMEIT = False
-SUBSCRIPT = 'nanosherlock.py'
+SUBSCRIPT = 'nanosherlock'
 
 def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
     new_cmap = colors.LinearSegmentedColormap.from_list(
@@ -694,7 +694,7 @@ def main():
 
     if not os.path.exists(red_first_sample) or not os.path.exists(path_to_reference_first_sample) or force_rebuild:
     
-        command_first_sample = f'python3 {os.path.join(basedir, SUBSCRIPT)} {path_to_fast5_first_sample} {path_to_reference_first_sample} {working_dir} {first_sample_label} -t {threads} -mx {mx} -mk {mk}'
+        command_first_sample = f'{SUBSCRIPT} {path_to_fast5_first_sample} {path_to_reference_first_sample} {working_dir} {first_sample_label} -t {threads} -mx {mx} -mk {mk}'
 
         if fast5_out:
             command_first_sample += ' --fast5_out'
@@ -734,7 +734,7 @@ def main():
     red_sec_sample = os.path.join(working_dir, 'magnipore', sec_sample_label, f'{sec_sample_label}.red')
     
     if not os.path.exists(red_sec_sample) or not os.path.exists(path_to_reference_sec_sample) or force_rebuild:
-        command_sec_sample = f'python3 {os.path.join(basedir, SUBSCRIPT)} {path_to_fast5_sec_sample} {path_to_reference_sec_sample} {working_dir} {sec_sample_label} -t {threads} -mx {mx} -mk {mk}'
+        command_sec_sample = f'{SUBSCRIPT} {path_to_fast5_sec_sample} {path_to_reference_sec_sample} {working_dir} {sec_sample_label} -t {threads} -mx {mx} -mk {mk}'
 
         if fast5_out:
             command_sec_sample += ' --fast5_out'

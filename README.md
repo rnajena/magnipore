@@ -1,7 +1,9 @@
 # ![](figures/magnipore_logo.png)
 
-[![Conda package](https://anaconda.org/jannessp/magnipore/badges/version.svg)](https://anaconda.org/jannessp/magnipore)
+Conda: [![Conda package](https://anaconda.org/jannessp/magnipore/badges/version.svg)](https://anaconda.org/jannessp/magnipore)
 [![Conda package](https://anaconda.org/jannessp/magnipore/badges/latest_release_date.svg)](https://anaconda.org/jannessp/magnipore)
+
+Zenodo: [![DOI](https://zenodo.org/badge/545997776.svg)](https://zenodo.org/badge/latestdoi/545997776)
 
 - If you find a bug, please add it to the issues on GitHub with a detailed description.
 

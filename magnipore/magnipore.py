@@ -111,7 +111,7 @@ def mafft(ref_first_sample : str, ref_sec_sample : str, first_sample_label : str
         LOGGER.error(f'Error in building alignment with mafft with error code {ret}')
 
     if TIMEIT:
-        LOGGER.printLog(f'TIMED: mafft took {pd.to_timedelta(end-start)}, {end - start} nanoseconds')
+        LOGGER.printLog(f'{ANSI.YELLOW}TIMED: mafft took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
     
     return ref_alignment
 
@@ -721,7 +721,7 @@ def main():
             LOGGER.error(f'Error in {SUBSCRIPT} for sample {first_sample_label} with error code {ret}')
 
         if TIMEIT:
-            LOGGER.printLog(f'TIMED: Calculating distributions of sample {first_sample_label} took {pd.to_timedelta(end-start)}, {end-start} nanoseconds')
+            LOGGER.printLog(f'{ANSI.YELLOW}TIMED: Calculating distributions of sample {first_sample_label} took {pd.to_timedelta(end-start)}, {end-start} nanoseconds{ANSI.END}')
 
     else:
         LOGGER.printLog(f'{first_sample_label} RED file already exists:\n-\t{red_first_sample}')
@@ -761,7 +761,7 @@ def main():
             LOGGER.error(f'Error in {SUBSCRIPT} for sample {sec_sample_label} with error code {ret}')
     
         if TIMEIT:
-            LOGGER.printLog(f'TIMED: Calculating distributions of sample {sec_sample_label} took {pd.to_timedelta(end-start)}, {end-start} nanoseconds')
+            LOGGER.printLog(f'{ANSI.YELLOW}TIMED: Calculating distributions of sample {sec_sample_label} took {pd.to_timedelta(end-start)}, {end-start} nanoseconds{ANSI.END}')
 
     else:
         LOGGER.printLog(f'{sec_sample_label} RED file already exists:\n-\t{red_sec_sample}')
@@ -780,7 +780,7 @@ def main():
 
     if TIMEIT:
         end = perf_counter_ns()
-        LOGGER.printLog(f'TIMED: Evaluating distributions took {pd.to_timedelta(end-start)}, {end - start} nanoseconds')
+        LOGGER.printLog(f'{ANSI.YELLOW}TIMED: Evaluating distributions took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
 
 if __name__ == '__main__':
     main()

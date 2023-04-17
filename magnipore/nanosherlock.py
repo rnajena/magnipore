@@ -167,7 +167,7 @@ def guppy_basecalling(guppy_bin : str, guppy_model : str,  guppy_device : str, p
         LOGGER.error(f'Error in guppy basecalling with error code {ret}')
         
     if TIMEIT:
-        LOGGER.printLog(f'TIMED: Guppy basecalling took {pd.to_timedelta(end-start)}, {end - start} nanoseconds')
+        LOGGER.printLog(f'{ANSI.YELLOW}TIMED: Guppy basecalling took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
 
     # concatenate all fastq files into one fastq file
     os.system(f'cat {os.path.join(basecalls_path, "*.fastq")} > {os.path.join(basecalls_path, "*.tmpfastq")}')
@@ -216,7 +216,7 @@ def minimap(path_to_reference : str, path_to_basecalls : str, working_dir : str,
         LOGGER.error(f'Error in minimap2 run with error code {ret}')
     
     if TIMEIT:
-        LOGGER.printLog(f'TIMED: minimap2 took {pd.to_timedelta(end-start)}, {end - start} nanoseconds')
+        LOGGER.printLog(f'{ANSI.YELLOW}TIMED: minimap2 took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
 
     return bam_path, force_rebuild
 
@@ -256,7 +256,7 @@ def nanopolish(path_to_fast5 : str, path_to_sequencing_summary : str, path_to_ba
             LOGGER.error(f'Error in samtools indexing for nanopolish with error code {ret}')
         
         if TIMEIT:
-            LOGGER.printLog(f'TIMED: samtools indexing took {pd.to_timedelta(end-start)}, {end - start} nanoseconds')
+            LOGGER.printLog(f'{ANSI.YELLOW}TIMED: samtools indexing took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
 
     else:
         LOGGER.printLog(f"Using existing {os.path.exists(alignment_bam + '.bai')}")
@@ -279,7 +279,7 @@ def nanopolish(path_to_fast5 : str, path_to_sequencing_summary : str, path_to_ba
             LOGGER.error(f'Error in nanopolish indexing with error code {ret}')
 
         if TIMEIT:
-            LOGGER.printLog(f'TIMED: nanopolish indexing took {pd.to_timedelta(end-start)}, {end - start} nanoseconds')
+            LOGGER.printLog(f'{ANSI.YELLOW}TIMED: nanopolish indexing took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
 
     else:
         LOGGER.printLog(f"Using existing {os.path.exists(path_to_basecalls + '.index')}")
@@ -301,7 +301,7 @@ def nanopolish(path_to_fast5 : str, path_to_sequencing_summary : str, path_to_ba
         LOGGER.error(f'Error in nanopolish eventalign with error code {ret}')
     
     if TIMEIT:
-        LOGGER.printLog(f'TIMED: nanopolish eventalign took {pd.to_timedelta(end-start)}, {end - start} nanoseconds')
+        LOGGER.printLog(f'{ANSI.YELLOW}TIMED: nanopolish eventalign took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
 
     return summary_csv, result_csv, force_rebuild
 
@@ -394,7 +394,7 @@ def aggregate_events(nanopolish_result_csv : str, nanopolish_summary_csv: str, p
         end = perf_counter_ns()
 
     if TIMEIT:
-        LOGGER.printLog(f'TIMED: Building distribution models took {pd.to_timedelta(end-start)}, {end - start} nanoseconds')
+        LOGGER.printLog(f'{ANSI.YELLOW}TIMED: Building distribution models took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
 
     LOGGER.printLog('Writing output files')
     writeOutput(red_file, sequences, working_dir, sample_label, calculate_data_density)

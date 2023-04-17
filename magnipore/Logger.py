@@ -7,6 +7,7 @@
 import datetime
 import sys
 from io import TextIOWrapper
+from magnipore.Helper import ANSI
 
 class Logger():
     '''
@@ -33,7 +34,7 @@ class Logger():
         @param string: String to write to stderr and logfile.
         @param error_type: used error_type, default 1.
         '''
-        sys.stderr.write(f'ERROR: {string}\n')
+        sys.stderr.write(f'{ANSI.RED}ERROR: {string}{ANSI.END}\n')
         self.writeLog(f'ERROR: {string}\n')
         sys.exit(error_type)
 
@@ -43,7 +44,7 @@ class Logger():
         
         @param string: String to write to stderr and logfile.
         '''
-        sys.stderr.write(f'WARNING: {string}\n')
+        sys.stderr.write(f'{ANSI.RED}WARNING: {string}{ANSI.END}\n')
         self.writeLog(f'WARNING: {string}\n')
 
     def printLog(self, string, newline_before=False, newline_after=True):

@@ -79,15 +79,17 @@ def readNanoSum(nanoSum_path : str):
     Return a dictionary containing the read index from nanopolish as keys and the read id as values.
     '''
     read_index2ID = {}
-    LOGGER.printLog(f'Start loading ids from {nanoSum_path} ...')
+    # LOGGER.printLog(f'Start loading ids from {nanoSum_path} ...')
     with open(nanoSum_path, 'r') as summary:
         next(summary) # skip header
 
-        for line in summary:
+        for lidx, line in enumerate(summary):
+            if (lidx + 1) % 1000 == 0:
+                LOGGER.printLog(f'Loading id {lidx + 1}\r', newline_after=False)
             r_index, r_ID = line.strip().split()[:2]
             read_index2ID[int(r_index)] = r_ID
 
-    LOGGER.printLog(f'Done: found {len(read_index2ID)} readids')
+    LOGGER.printLog(f'Found {len(read_index2ID)} readids')
     return read_index2ID
 
 def parse() -> Namespace:
@@ -139,10 +141,10 @@ def guppy_basecalling(guppy_bin : str, guppy_model : str,  guppy_device : str, p
         force_rebuild = True
 
     if not os.path.exists(basecalls_path):
-        LOGGER.printLog(f'Creating sub-directory {basecalls_path}')
+        # LOGGER.printLog(f'Creating sub-directory {basecalls_path}')
         os.makedirs(basecalls_path)
     
-    LOGGER.printLog(f'Run guppy basecalling on {path_to_fast5}')
+    # LOGGER.printLog(f'Run guppy basecalling on {path_to_fast5}')
     command = f'{guppy_bin} -i {path_to_fast5} -s {basecalls_path} --disable_pings --disable_qscore_filtering --calib_detect -c {guppy_model}'
 
     if fast5_out:
@@ -151,7 +153,7 @@ def guppy_basecalling(guppy_bin : str, guppy_model : str,  guppy_device : str, p
     if guppy_device is not None:
         command += f' --device {guppy_device}'
 
-    LOGGER.printLog(f'guppy command: {ANSI.RED}{command}{ANSI.END}')
+    LOGGER.printLog(f'guppy command: {ANSI.GREEN}{command}{ANSI.END}')
     
     if TIMEIT:
         start = perf_counter_ns()
@@ -162,7 +164,7 @@ def guppy_basecalling(guppy_bin : str, guppy_model : str,  guppy_device : str, p
         end = perf_counter_ns()
 
     if ret != 0:
-        LOGGER.error('Error in guppy basecalling!')
+        LOGGER.error(f'Error in guppy basecalling with error code {ret}')
         
     if TIMEIT:
         LOGGER.printLog(f'TIMED: Guppy basecalling took {pd.to_timedelta(end-start)}, {end - start} nanoseconds')
@@ -175,7 +177,7 @@ def guppy_basecalling(guppy_bin : str, guppy_model : str,  guppy_device : str, p
     # move basecalled fast5s to a seperate directory
     if fast5_out:
         basecalled_fast5_path = os.path.join(working_dir, "basecalled_fast5", sample_label)
-        LOGGER.printLog(f'Move basecalled fast5 files to {basecalled_fast5_path}')
+        # LOGGER.printLog(f'Move basecalled fast5 files to {basecalled_fast5_path}')
         os.makedirs(basecalled_fast5_path)
         os.system(f'mv {os.path.join(basecalls_path, "workspace")} {basecalled_fast5_path}')
         
@@ -194,13 +196,13 @@ def minimap(path_to_reference : str, path_to_basecalls : str, working_dir : str,
         force_rebuild = True
     
     if not os.path.exists(minimap_path):
-        LOGGER.printLog(f'Creating sub-directory {minimap_path}')
+        # LOGGER.printLog(f'Creating sub-directory {minimap_path}')
         os.makedirs(minimap_path)
         
-    LOGGER.printLog(f'Run minimiap2 on basecalls: {path_to_basecalls} and reference: {path_to_reference}')
+    # LOGGER.printLog(f'Run minimiap2 on basecalls: {path_to_basecalls} and reference: {path_to_reference}')
     # splice because of sarscov genome/transciptome functionality
     command = f'minimap2 -a -x {mx} -k{mk} -t {threads} {path_to_reference} {path_to_basecalls} | samtools view -hbF4 | samtools sort > {bam_path}'
-    LOGGER.printLog(f'minimap2 command: {ANSI.RED}{command}{ANSI.END}')
+    LOGGER.printLog(f'minimap2 command: {ANSI.GREEN}{command}{ANSI.END}')
     
     if TIMEIT:
         start = perf_counter_ns()
@@ -211,7 +213,7 @@ def minimap(path_to_reference : str, path_to_basecalls : str, working_dir : str,
         end = perf_counter_ns()
 
     if ret != 0:
-        LOGGER.error('Error in minimap2 run!')
+        LOGGER.error(f'Error in minimap2 run with error code {ret}')
     
     if TIMEIT:
         LOGGER.printLog(f'TIMED: minimap2 took {pd.to_timedelta(end-start)}, {end - start} nanoseconds')
@@ -232,15 +234,15 @@ def nanopolish(path_to_fast5 : str, path_to_sequencing_summary : str, path_to_ba
         force_rebuild = True
 
     if not os.path.exists(nanopolish_path):
-        LOGGER.printLog(f'Creating sub-directory {nanopolish_path}')
+        # LOGGER.printLog(f'Creating sub-directory {nanopolish_path}')
         os.makedirs(nanopolish_path)
 
     if not os.path.exists(alignment_bam + '.bai') or force_rebuild:
 
         # samtools indexing
-        LOGGER.printLog(f'Indexing {alignment_bam} with samtools')
+        # LOGGER.printLog(f'Indexing {alignment_bam} with samtools')
         command = f'samtools index {alignment_bam}'
-        LOGGER.printLog(f'samtools index command: {ANSI.RED}{command}{ANSI.END}')
+        LOGGER.printLog(f'samtools index command: {ANSI.GREEN}{command}{ANSI.END}')
     
         if TIMEIT:
             start = perf_counter_ns()
@@ -251,7 +253,7 @@ def nanopolish(path_to_fast5 : str, path_to_sequencing_summary : str, path_to_ba
             end = perf_counter_ns()
 
         if ret != 0:
-            LOGGER.error('Error in samtools indexing for nanopolish!')
+            LOGGER.error(f'Error in samtools indexing for nanopolish with error code {ret}')
         
         if TIMEIT:
             LOGGER.printLog(f'TIMED: samtools indexing took {pd.to_timedelta(end-start)}, {end - start} nanoseconds')
@@ -261,9 +263,9 @@ def nanopolish(path_to_fast5 : str, path_to_sequencing_summary : str, path_to_ba
 
     if not os.path.exists(path_to_basecalls + '.index') or force_rebuild:
 
-        LOGGER.printLog(f'Run nanopolish indexing')
+        # LOGGER.printLog(f'Run nanopolish indexing')
         command = f'nanopolish index -d {path_to_fast5} -s {path_to_sequencing_summary} {path_to_basecalls}'
-        LOGGER.printLog(f'nanopolish indexing command: {ANSI.RED}{command}{ANSI.END}')
+        LOGGER.printLog(f'nanopolish indexing command: {ANSI.GREEN}{command}{ANSI.END}')
 
         if TIMEIT:
             start = perf_counter_ns()
@@ -274,7 +276,7 @@ def nanopolish(path_to_fast5 : str, path_to_sequencing_summary : str, path_to_ba
             end = perf_counter_ns()
         
         if ret != 0:
-            LOGGER.error('Error in nanopolish indexing!')
+            LOGGER.error(f'Error in nanopolish indexing with error code {ret}')
 
         if TIMEIT:
             LOGGER.printLog(f'TIMED: nanopolish indexing took {pd.to_timedelta(end-start)}, {end - start} nanoseconds')
@@ -283,9 +285,9 @@ def nanopolish(path_to_fast5 : str, path_to_sequencing_summary : str, path_to_ba
         LOGGER.printLog(f"Using existing {os.path.exists(path_to_basecalls + '.index')}")
 
     
-    LOGGER.printLog(f'Run nanopolish eventalign')
+    # LOGGER.printLog(f'Run nanopolish eventalign')
     command = f'nanopolish eventalign --reads {path_to_basecalls} --bam {alignment_bam} --genome {path_to_reference} --summary={summary_csv} --scale-events --signal-index -t {threads} > {result_csv}'
-    LOGGER.printLog(f'Nanopolish eventalign command: {ANSI.RED}{command}{ANSI.END}')
+    LOGGER.printLog(f'Nanopolish eventalign command: {ANSI.GREEN}{command}{ANSI.END}')
     
     if TIMEIT:
         start = perf_counter_ns()
@@ -296,7 +298,7 @@ def nanopolish(path_to_fast5 : str, path_to_sequencing_summary : str, path_to_ba
         end = perf_counter_ns()
 
     if ret != 0:
-        LOGGER.error('Error in nanopolish eventalign!')
+        LOGGER.error(f'Error in nanopolish eventalign with error code {ret}')
     
     if TIMEIT:
         LOGGER.printLog(f'TIMED: nanopolish eventalign took {pd.to_timedelta(end-start)}, {end - start} nanoseconds')
@@ -381,8 +383,7 @@ def aggregate_events(nanopolish_result_csv : str, nanopolish_summary_csv: str, p
     nano2readid = readNanoSum(nanopolish_summary_csv)
     sequences = createSeqDict(path_to_reference)
     
-    LOGGER.printLog(f'Found sequences: {list(sequences.keys())}')
-    LOGGER.printLog(f'Start getting event signal distributions per reference position and write red file for {sample_label}')
+    LOGGER.printLog(f'Found sequences: {list(sequences.keys())}. Start getting event signal distributions per reference position and write red file for {sample_label}')
 
     if TIMEIT:
         start = perf_counter_ns()
@@ -433,7 +434,7 @@ def createSeqDict(path_to_reference : str) -> dict:
 def buildModels(sequences : dict, nano2readid : dict, readid2fast5 : dict, nanopolish_result_csv : str, calculate_data_density : bool, max_lines : int):
 
     for loop in ['building models', 'checking data']:
-        LOGGER.printLog(f'Starting {loop}')
+        # LOGGER.printLog(f'Starting {loop}')
 
         with open(nanopolish_result_csv, 'r') as nano_result:
             # skip header
@@ -574,7 +575,7 @@ def writeOutput(red_file : str, sequences : dict, working_dir : str, sample_labe
 
                     w.write(f'{sequence}\t{position}\t{STRANDDECODER[strand]}\t{data[DATAENCODER["base"]]}\t{data[DATAENCODER["mean"]]}\t{data[DATAENCODER["std"]]}\t{data[DATAENCODER["motif"]]}\t{data[DATAENCODER["data_density"]]}\t{expected_model_density}\t{data[DATAENCODER["n_datapoints"]]}\t{data[DATAENCODER["contained_datapoints"]]}\t{data[DATAENCODER["n_segments"]]}\t{data[DATAENCODER["contained_segments"]]}\t{data[DATAENCODER["n_reads"]]}\n')             
 
-    LOGGER.printLog(f'Positions without information: {nans}')
+    # LOGGER.printLog(f'Positions without information: {nans}')
 
     plotStatistics(plotting_data, working_dir, sample_label, calculate_data_density)
 
@@ -605,7 +606,7 @@ def plotStatistics(dataFrame : pd.DataFrame, working_dir : str, sample_label : s
         plt.close()
     except:
         plt.close()
-        LOGGER.printLog('Plotting read coverage failed')
+        LOGGER.warning('Plotting read coverage failed')
 
     try:
         figure(figsize = (12,8), dpi=2000)
@@ -623,7 +624,7 @@ def plotStatistics(dataFrame : pd.DataFrame, working_dir : str, sample_label : s
         plt.close()
     except:
         plt.close()
-        LOGGER.printLog('Plotting segment coverage failed')
+        LOGGER.warning('Plotting segment coverage failed')
 
     try:
         figure(figsize = (12,8), dpi=2000)
@@ -641,7 +642,7 @@ def plotStatistics(dataFrame : pd.DataFrame, working_dir : str, sample_label : s
         plt.close()
     except:
         plt.close()
-        LOGGER.printLog('Plotting signal coverage failed')
+        LOGGER.warning('Plotting signal coverage failed')
 
     try:
         figure(figsize = (12,8), dpi=2000)
@@ -655,9 +656,9 @@ def plotStatistics(dataFrame : pd.DataFrame, working_dir : str, sample_label : s
         plt.close()
     except:
         plt.close()
-        LOGGER.printLog('Plotting density failed')
+        LOGGER.warning('Plotting density failed')
 
-def main():
+def main() -> None:
     
     args = parse()
     
@@ -691,10 +692,9 @@ def main():
 
     if not os.path.exists(working_dir):
         os.mkdir(working_dir)
-        LOGGER.printLog(f'Creating working directory {working_dir}')
+        # LOGGER.printLog(f'Creating working directory {working_dir}')
             
-    LOGGER.printLog(f'Starting magnipore pipeline')
-    LOGGER.printLog(f'Writing log to {log_file}')
+    LOGGER.printLog(f'Starting magnipore pipeline. Writing log to {log_file}')
 
     sequencing_summary = None
 
@@ -724,11 +724,9 @@ def main():
     
     red_file, force_rebuild = aggregate_events(nanopolish_result_csv, nanopolish_summary_csv, path_to_fast5, path_to_reference, working_dir, sample_label, force_rebuild, sequencing_summary, calculate_data_density, max_lines)
 
-    LOGGER.printLog(f'Done with {sample_label}')
-    
-    LOGGER.printLog(f'Aggregated reference event distributions are stored in {red_file}')
+    LOGGER.printLog(f'Aggregated reference event distributions for {sample_label} are stored in {red_file}')
 
-    return red_file
+    # return red_file
 
 if __name__ == '__main__':
     main()

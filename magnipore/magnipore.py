@@ -88,16 +88,16 @@ def mafft(ref_first_sample : str, ref_sec_sample : str, first_sample_label : str
     # ensure newline between reference files
     command = f'(cat {ref_first_sample}; echo ""; cat {ref_sec_sample}) > {ref_both_samples}'
     
-    LOGGER.printLog(f'Writing both references into one file {ref_both_samples}')
-    LOGGER.printLog(f'cat command: {ANSI.RED}{command}{ANSI.END}')
+    # LOGGER.printLog(f'Writing both references into one file {ref_both_samples}')
+    LOGGER.printLog(f'cat command: {ANSI.GREEN}{command}{ANSI.END}')
     ret = os.system(command)
     
     if ret != 0:
-        LOGGER.error('Error in concatenating both reference files')
+        LOGGER.error(f'Error in concatenating both reference files with error code {ret}')
     
-    LOGGER.printLog(f'Building alignment in {ref_alignment}')
+    # LOGGER.printLog(f'Building alignment in {ref_alignment}')
     command = f'mafft --auto --thread {threads} {ref_both_samples} > {ref_alignment}'
-    LOGGER.printLog(f'Mafft alignment command: {ANSI.RED}{command}{ANSI.END}')
+    LOGGER.printLog(f'mafft command: {ANSI.GREEN}{command}{ANSI.END}')
 
     if TIMEIT:
         start = perf_counter_ns()
@@ -108,7 +108,7 @@ def mafft(ref_first_sample : str, ref_sec_sample : str, first_sample_label : str
         end = perf_counter_ns()
 
     if ret != 0:
-        LOGGER.error('Error in building alignment with mafft')
+        LOGGER.error(f'Error in building alignment with mafft with error code {ret}')
 
     if TIMEIT:
         LOGGER.printLog(f'TIMED: mafft took {pd.to_timedelta(end-start)}, {end - start} nanoseconds')
@@ -131,9 +131,8 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
 
         sequences[seq.id] = str(seq.seq)
         
-    LOGGER.printLog(f'Found {len(sequences)} sequences in the alignment.')
     LOGGER.printLog(f'Found an alignment for sequences {list(sequences.keys())}')
-    LOGGER.printLog(f'Lengths are {list(map(len, sequences.values()))}')
+    # LOGGER.printLog(f'Lengths are {list(map(len, sequences.values()))}')
     
     # {(pos_of_first_sample, base) : (pos_of_second_sample, base)}
     # different reference files for both samples
@@ -171,9 +170,7 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
         assert i1 == len(seq1_seq.replace('-', '')), 'Mapping iterator for sample 1 does not match sequence length'
         assert i2 == len(seq2_seq.replace('-', '')), 'Mapping iterator for sample 2 does not match sequence length'
 
-        LOGGER.printLog(f'Found {len(first2sec_refpos_mapping)} aligned positions')
-        LOGGER.printLog(f'Found {len(unaligned_positions[seq1_id])} unaligned positions for sequence {seq1_id}')
-        LOGGER.printLog(f'Found {len(unaligned_positions[seq2_id])} unaligned positions for sequence {seq2_id}')
+        LOGGER.printLog(f'Found {len(first2sec_refpos_mapping)} aligned positions, {len(unaligned_positions[seq1_id])} unaligned positions for sequence {seq1_id}, {len(unaligned_positions[seq2_id])} unaligned positions for sequence {seq2_id}')
 
         return first2sec_refpos_mapping, unaligned_positions, (seq1_id, seq2_id), (seq1_seq, seq2_seq)
 
@@ -189,10 +186,10 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
 
 def readRedFile(red_file : str):
     '''
-    Reads the red file, stores data in a dictionary
+    Reads the RED file, stores data in a dictionary
     '''
     
-    LOGGER.printLog(f'Reading red file {red_file}')
+    LOGGER.printLog(f'Reading RED file {red_file}')
     
     # sequences are stored as {reference: {pos: {base: ('A'|'C'|'G'|'T'), mean: float, std: float}}}
     red_sequences = {}
@@ -389,7 +386,7 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
                 f'Number of significant positions with reference differences: {num_motif_diff}\n'\
                 f'Number of nans {nans}, at least one aligned position without information (no signals)\nCan be high if one strand has no information!\n')
 
-    LOGGER.printLog('Start writing files ...')
+    LOGGER.printLog('Writing indels file')
 
     for seq in unaligned:
         
@@ -399,7 +396,6 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
             num_indels += 1
             
     indels.close()
-    LOGGER.printLog('Done with indels')
     
     plot_dir = os.path.join(working_dir, 'plots')
     if not os.path.exists(plot_dir):
@@ -715,20 +711,20 @@ def main():
             command_first_sample = command_first_sample + ' --timeit'
             start = perf_counter_ns()
 
-        LOGGER.printLog(f'Pipeline command: {ANSI.RED}{command_first_sample}{ANSI.END}')
+        LOGGER.printLog(f'Pipeline command: {ANSI.GREEN}{command_first_sample}{ANSI.END}')
         ret = os.system(command_first_sample)
 
         if TIMEIT:
             end = perf_counter_ns()
 
         if ret != 0:
-            LOGGER.error(f'Error in {SUBSCRIPT} for sample {first_sample_label}')
+            LOGGER.error(f'Error in {SUBSCRIPT} for sample {first_sample_label} with error code {ret}')
 
         if TIMEIT:
             LOGGER.printLog(f'TIMED: Calculating distributions of sample {first_sample_label} took {pd.to_timedelta(end-start)}, {end-start} nanoseconds')
 
     else:
-        LOGGER.printLog(f'{first_sample_label} red file already exists:\n-\t{red_first_sample}')
+        LOGGER.printLog(f'{first_sample_label} RED file already exists:\n-\t{red_first_sample}')
         
     # second sample
     red_sec_sample = os.path.join(working_dir, 'magnipore', sec_sample_label, f'{sec_sample_label}.red')
@@ -755,20 +751,20 @@ def main():
             command_sec_sample = command_sec_sample + ' --timeit'
             start = perf_counter_ns()
 
-        LOGGER.printLog(f'Pipeline command: {ANSI.RED}{command_sec_sample}{ANSI.END}')
+        LOGGER.printLog(f'Pipeline command: {ANSI.GREEN}{command_sec_sample}{ANSI.END}')
         ret = os.system(command_sec_sample)
 
         if TIMEIT:
             end = perf_counter_ns()
         
         if ret != 0:
-            LOGGER.error(f'Error in {SUBSCRIPT} for sample {sec_sample_label}')
+            LOGGER.error(f'Error in {SUBSCRIPT} for sample {sec_sample_label} with error code {ret}')
     
         if TIMEIT:
             LOGGER.printLog(f'TIMED: Calculating distributions of sample {sec_sample_label} took {pd.to_timedelta(end-start)}, {end-start} nanoseconds')
 
     else:
-        LOGGER.printLog(f'{sec_sample_label} red file already exists:\n-\t{red_sec_sample}')
+        LOGGER.printLog(f'{sec_sample_label} RED file already exists:\n-\t{red_sec_sample}')
 
     # mafft alignment
     alignment_path = mafft(path_to_reference_first_sample, path_to_reference_sec_sample, first_sample_label, sec_sample_label, working_dir, threads)

@@ -6,21 +6,19 @@ package:
   version: {{ version }}
 
 source:
-  # path: ../
-  git_rev: v{{ version }}
-  git_url: https://github.com/JannesSP/{{ name|lower }}.git
-
-advice.detachedHead: false
+  path: ../
+  # git_rev: v{{ version }}
+  # git_url: https://github.com/JannesSP/{{ name|lower }}.git
+  # git_depth: 1 # (Defaults to -1/not shallow)
 
 build:
-  number: 0
-  noarch: python
+  number: 1
   script: python setup.py install --single-version-externally-managed --record=record.txt
 
 requirements:
   build:
-    - python>=3.9
-    - numpy>=1.23
+    - python
+    - numpy
     - setuptools
   run:
     - python>=3.9
@@ -37,6 +35,11 @@ requirements:
     - psutil>=5.9
     - hdf5plugin>=3.3.1
     - ont_vbz_hdf_plugin>=1.0.1
+
+# build:
+#   entry_points:
+#     - magnipore=magnipore.magnipore:main,
+#     - nanosherlock=magnipore.nanosherlock:main
 
 test:
   imports:

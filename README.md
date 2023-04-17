@@ -7,8 +7,7 @@ Zenodo: [![DOI](https://zenodo.org/badge/545997776.svg)](https://zenodo.org/badg
 
 - If you find a bug, please add it to the issues on GitHub with a detailed description.
 
-## Installation
-
+## Installation via Conda
 To install Magnipore we recommend to use Conda:
 Magnipore depends on nanopolish eventalign which is designed for **linux-64 and osx-64**.
 
@@ -17,10 +16,13 @@ conda create -n magnipore -c jannessp magnipore
 conda activate magnipore
 ```
 
-You can create a conda environment using the [conda_env.yml](conda/conda_env.yml).
+Alternatively you can create a conda environment using the [conda_env.yml](conda/conda_env.yml) and mamba.
 ```
-conda env create -f conda/conda_env.yml
+mamba env create -f conda/conda_env.yml
+conda activate magnipore
+git clone https://github.com/JannesSP/magnipore.git
 ```
+
 If you want to basecall your ONT data you also need a Guppy version from [Oxford Nanopore Technologies](https://community.nanoporetech.com).
 
 ---

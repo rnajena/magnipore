@@ -7,6 +7,22 @@ Zenodo: [![DOI](https://zenodo.org/badge/545997776.svg)](https://zenodo.org/badg
 
 - If you find a bug, please add it to the issues on GitHub with a detailed description.
 
+## Installation
+
+To install Magnipore we recommend to use Conda:
+Magnipore depends on nanopolish eventalign which is designed for **linux-64 and osx-64**.
+
+```
+conda create -n magnipore -c jannessp magnipore
+conda activate magnipore
+```
+
+You can create a conda environment using the [conda_env.yml](conda/conda_env.yml).
+```
+conda env create -f conda/conda_env.yml
+```
+If you want to basecall your ONT data you also need a Guppy version from [Oxford Nanopore Technologies](https://community.nanoporetech.com).
+
 ---
 
 ## Description
@@ -62,20 +78,6 @@ For each sample in the comparison, Magnipore takes:
 - multiple plots about the data of the samples like
 
 ---
-
-## Conda
-[![Conda package](https://anaconda.org/jannessp/magnipore/badges/version.svg)](https://anaconda.org/jannessp/magnipore)
-[![Conda package](https://anaconda.org/jannessp/magnipore/badges/latest_release_date.svg)](https://anaconda.org/jannessp/magnipore)
-
-Magnipore depends on nanopolish eventalign which is designed for **linux-64 and osx-64**.
-
-```
-conda create -n magnipore -c jannessp magnipore
-conda activate magnipore
-```
-
-You can create a conda environment using the [conda_env.yml](conda/conda_env.yml).
-If you want to basecall your ONT data you also need a Guppy version from [Oxford Nanopore Technologies](https://community.nanoporetech.com).
 
 ## Usage
 

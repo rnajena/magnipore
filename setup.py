@@ -1,40 +1,44 @@
-from setuptools import setup, find_packages
+from setuptools import setup
+import versioneer
 
 requirements = [
-      'python',
-      'h5py',
-      'biopython',
-      'mafft',
-      'matplotlib',
-      'numpy',
-      'scipy',
-      'nanopolish',
-      'minimap2',
-      'pandas',
-      'seaborn',
-      'psutil',
-      'hdf5plugin',
-      'ont_vbz_hdf_plugin'
+      'h5py>=3.7',
+      'biopython>=1.80',
+      'mafft>=7.508',
+      'matplotlib>=3.6',
+      'numpy>=1.23',
+      'scipy>=1.9',
+      'nanopolish>=0.14',
+      'minimap2>=2.24',
+      'pandas>=1.5',
+      'seaborn>=0.12',
+      'psutil>=5.9',
+      'hdf5>=1.12',
+      'hdf5plugin>=3.3',
+      'ont_vbz_hdf_plugin>=1.0'
       ]
 
-setup(name='Magnipore',
-      version='1.0.5',
-      description='Compares two ONT sequences samples for differential signals cause by mutations and modifications',
-      author='Jannes Spangenberg',
-      author_email='jannes.spangenberg@uni-jena.de',
-      url='https://github.com/JannesSP/magnipore',
-      license='GNU General Public License v3.0',
-      packages=find_packages(),
-      py_modules=['magnipore'],
-      package_data={
-        'magnipore':['README.md','LICENSE'],
-      },
-      entry_points={
-            'console_scripts':[
-                  'magnipore=magnipore.magnipore:main',
-                  'nanosherlock=magnipore.nanosherlock:main',
-            ]
-      },
-      install_requires=requirements,
-      keywords=['Magnipore', 'magnipore', 'nanosherlock', 'ONT', 'Oxford Nanopore Technologies', 'MinION', 'Direct RNA Sequencing'],
-     )
+setup(
+    name='magnipore',
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
+    description="Compares two ONT sequences samples for differential signals cause by mutations and modifications.",
+    license="GNUv3",
+    author="Jannes Spangenberg",
+    author_email='jannes.spangenberg@uni-jena.de',
+    url='https://github.com/JannesSP/magnipore',
+    packages=['magnipore'],
+    entry_points={
+        'console_scripts':[
+            'magnipore=magnipore.magnipore:main',
+            'nanosherlock=magnipore.nanosherlock:main',
+        ]
+    },
+    install_requires=requirements,
+    keywords=['Magnipore', 'magnipore', 'nanosherlock', 'ONT', 'Oxford Nanopore Technologies', 'MinION', 'Direct RNA Sequencing'],
+    classifiers=[
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+    ]
+)

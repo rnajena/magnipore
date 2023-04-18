@@ -183,3 +183,38 @@ The .magnipore file is a TSV containing the following columns.
 
 same for second sample:
 - ref_2, pos_2, base_2, motif_2, signal_mean_2, signal_std_2, n_datapoints_2, contained_datapoints_2, n_segments_2, contained_segments_2, n_reads_2
+
+## Error Codes Explanation
+
+- 11: Concatenating both reference files failed
+- 12: Building mafft alignment failed
+- 13: Running nanosherlock for the first sample failed
+- 14: Running nanosherlock for the second sample failed
+
+- 121: Guppy basecalling failed in first sample
+- 122: minimap2 mapping failed in first sample
+- 123: Samtools indexing failed in first sample
+- 124: Nanopolish indexing failed in first sample
+- 125: Nanopolish eventalign failed in first sample
+- 126: Could not find provided fastq files for first sample
+- 127: Could not find provided sequencing summary file for first sample
+
+- 221: Guppy basecalling failed in second sample
+- 222: minimap2 mapping failed in second sample
+- 223: Samtools indexing failed in second sample
+- 224: Nanopolish indexing failed in second sample
+- 225: Nanopolish eventalign failed in second sample
+- 226: Could not find provided fastq files for second sample
+- 227: Could not find provided sequencing summary file for second sample
+
+### If Subscript Nanosherlock is Executed Separately
+
+The -e parameter of nanosherlock specifies the leading number of the error code. Default is 0.
+
+- 021: Guppy basecalling failed in sample
+- 022: minimap2 mapping failed in sample
+- 023: Samtools indexing failed in sample
+- 024: Nanopolish indexing failed in sample
+- 025: Nanopolish eventalign failed in sample
+- 026: Could not find provided fastq files for sample
+- 027: Could not find provided sequencing summary file for sample

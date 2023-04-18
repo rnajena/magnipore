@@ -29,6 +29,7 @@ import magnipore.OnlineMeanVar as omv
 PROCESS = psutil.Process(os.getpid())
 LOGGER : Logger = None
 TIMEIT = False
+ERROR_PREFIX : str = '0'
 
 def sizeof_fmt(num, suffix="B"):
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
@@ -104,7 +105,7 @@ def parse() -> Namespace:
     parser.add_argument('path_to_reference', type = str, help='reference FASTA file')
     parser.add_argument('working_dir', type = str, help='Path to write all output files')
     parser.add_argument('sample_label', type = str, help='Name of the sample or pipeline run')
-
+    
     parser.add_argument('--guppy_bin', type = str, default = None, help='Guppy binary')
     parser.add_argument('--guppy_model', type = str, default = None, help='Guppy model for basecalling')
     parser.add_argument('--guppy_device', type=str, default=None, help='Use the gpu to basecall with cuda:0')
@@ -119,6 +120,7 @@ def parse() -> Namespace:
     parser.add_argument('--timeit', default = False, action = 'store_true', help = 'Measure and print time used by submodules')
     parser.add_argument('--max_lines', default=None, type=int, help='Only process first given number of lines from nanopolish eventalign')
 
+    parser.add_argument('-e', '--error_prefix', type=str, default=None)
     parser.add_argument('-v', '--version', action='version', version='%(prog)s' + f' {__version__}')
 
     return parser.parse_args()
@@ -164,7 +166,7 @@ def guppy_basecalling(guppy_bin : str, guppy_model : str,  guppy_device : str, p
         end = perf_counter_ns()
 
     if ret != 0:
-        LOGGER.error(f'Error in guppy basecalling with error code {ret}')
+        LOGGER.error(f'Error in guppy basecalling with error code {ret}', error_type=ERROR_PREFIX+'21')
         
     if TIMEIT:
         LOGGER.printLog(f'{ANSI.YELLOW}TIMED: Guppy basecalling took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
@@ -213,7 +215,7 @@ def minimap(path_to_reference : str, path_to_basecalls : str, working_dir : str,
         end = perf_counter_ns()
 
     if ret != 0:
-        LOGGER.error(f'Error in minimap2 run with error code {ret}')
+        LOGGER.error(f'Error in minimap2 run with error code {ret}', error_type=ERROR_PREFIX+'22')
     
     if TIMEIT:
         LOGGER.printLog(f'{ANSI.YELLOW}TIMED: minimap2 took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
@@ -253,7 +255,7 @@ def nanopolish(path_to_fast5 : str, path_to_sequencing_summary : str, path_to_ba
             end = perf_counter_ns()
 
         if ret != 0:
-            LOGGER.error(f'Error in samtools indexing for nanopolish with error code {ret}')
+            LOGGER.error(f'Error in samtools indexing for nanopolish with error code {ret}', error_type=ERROR_PREFIX+'23')
         
         if TIMEIT:
             LOGGER.printLog(f'{ANSI.YELLOW}TIMED: samtools indexing took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
@@ -276,7 +278,7 @@ def nanopolish(path_to_fast5 : str, path_to_sequencing_summary : str, path_to_ba
             end = perf_counter_ns()
         
         if ret != 0:
-            LOGGER.error(f'Error in nanopolish indexing with error code {ret}')
+            LOGGER.error(f'Error in nanopolish indexing with error code {ret}', error_type=ERROR_PREFIX+'24')
 
         if TIMEIT:
             LOGGER.printLog(f'{ANSI.YELLOW}TIMED: nanopolish indexing took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
@@ -298,7 +300,7 @@ def nanopolish(path_to_fast5 : str, path_to_sequencing_summary : str, path_to_ba
         end = perf_counter_ns()
 
     if ret != 0:
-        LOGGER.error(f'Error in nanopolish eventalign with error code {ret}')
+        LOGGER.error(f'Error in nanopolish eventalign with error code {ret}', error_type=ERROR_PREFIX+'25')
     
     if TIMEIT:
         LOGGER.printLog(f'{ANSI.YELLOW}TIMED: nanopolish eventalign took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
@@ -678,6 +680,8 @@ def main() -> None:
     max_lines = args.max_lines
     # medaka_model = args.medaka_model
     calculate_data_density = args.calculate_data_density
+    if args.error_prefix is not None:
+        ERROR_PREFIX = args.error_prefix
 
     assert (guppy_bin is not None and guppy_model is not None) or path_to_basecalls is not None, 'Need at least the guppy binary path and model or path to basecalls'
 
@@ -704,14 +708,14 @@ def main() -> None:
 
         if not os.path.exists(path_to_basecalls + '.fastq'):
             if not os.path.exists(path_to_basecalls + '.fq'):
-                LOGGER.error(f'{path_to_basecalls}.fastq or .fq NOT FOUND!')
+                LOGGER.error(f'{path_to_basecalls}.fastq or .fq NOT FOUND!', error_type=ERROR_PREFIX+'26')
             else:
                 path_to_basecalls+='.fq'
         else:
             path_to_basecalls+='.fastq'
 
         if not os.path.exists(sequencing_summary):
-            LOGGER.error(f'{sequencing_summary} NOT FOUND!')
+            LOGGER.error(f'{sequencing_summary} NOT FOUND!', error_type=ERROR_PREFIX+'27')
 
     else:
 

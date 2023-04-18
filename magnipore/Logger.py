@@ -26,7 +26,7 @@ class Logger():
         if self.lp is not None:
             self.lp.write(string)
 
-    def error(self, string, error_type=1):
+    def error(self, string, error_type : str = '1'):
         '''
         Write error string to stderr and logfile if logfilepointer is set.
         Exit program with given error code.

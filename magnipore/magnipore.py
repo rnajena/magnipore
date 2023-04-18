@@ -93,7 +93,7 @@ def mafft(ref_first_sample : str, ref_sec_sample : str, first_sample_label : str
     ret = os.system(command)
     
     if ret != 0:
-        LOGGER.error(f'Error in concatenating both reference files with error code {ret}')
+        LOGGER.error(f'Error in concatenating both reference files with error code {ret}', error_type=11)
     
     # LOGGER.printLog(f'Building alignment in {ref_alignment}')
     command = f'mafft --auto --thread {threads} {ref_both_samples} > {ref_alignment}'
@@ -108,7 +108,7 @@ def mafft(ref_first_sample : str, ref_sec_sample : str, first_sample_label : str
         end = perf_counter_ns()
 
     if ret != 0:
-        LOGGER.error(f'Error in building alignment with mafft with error code {ret}')
+        LOGGER.error(f'Error in building alignment with mafft with error code {ret}', error_type=12)
 
     if TIMEIT:
         LOGGER.printLog(f'{ANSI.YELLOW}TIMED: mafft took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
@@ -690,7 +690,7 @@ def main():
 
     if not os.path.exists(red_first_sample) or not os.path.exists(path_to_reference_first_sample) or force_rebuild:
     
-        command_first_sample = f'{SUBSCRIPT} {path_to_fast5_first_sample} {path_to_reference_first_sample} {working_dir} {first_sample_label} -t {threads} -mx {mx} -mk {mk}'
+        command_first_sample = f'{SUBSCRIPT} {path_to_fast5_first_sample} {path_to_reference_first_sample} {working_dir} {first_sample_label} -t {threads} -mx {mx} -mk {mk} -e 1'
 
         if fast5_out:
             command_first_sample += ' --fast5_out'
@@ -718,7 +718,7 @@ def main():
             end = perf_counter_ns()
 
         if ret != 0:
-            LOGGER.error(f'Error in {SUBSCRIPT} for sample {first_sample_label} with error code {ret}')
+            LOGGER.error(f'Error in {SUBSCRIPT} for sample {first_sample_label} with error code {ret}', error_type=13)
 
         if TIMEIT:
             LOGGER.printLog(f'{ANSI.YELLOW}TIMED: Calculating distributions of sample {first_sample_label} took {pd.to_timedelta(end-start)}, {end-start} nanoseconds{ANSI.END}')
@@ -730,7 +730,7 @@ def main():
     red_sec_sample = os.path.join(working_dir, 'magnipore', sec_sample_label, f'{sec_sample_label}.red')
     
     if not os.path.exists(red_sec_sample) or not os.path.exists(path_to_reference_sec_sample) or force_rebuild:
-        command_sec_sample = f'{SUBSCRIPT} {path_to_fast5_sec_sample} {path_to_reference_sec_sample} {working_dir} {sec_sample_label} -t {threads} -mx {mx} -mk {mk}'
+        command_sec_sample = f'{SUBSCRIPT} {path_to_fast5_sec_sample} {path_to_reference_sec_sample} {working_dir} {sec_sample_label} -t {threads} -mx {mx} -mk {mk}-e 2'
 
         if fast5_out:
             command_sec_sample += ' --fast5_out'
@@ -758,7 +758,7 @@ def main():
             end = perf_counter_ns()
         
         if ret != 0:
-            LOGGER.error(f'Error in {SUBSCRIPT} for sample {sec_sample_label} with error code {ret}')
+            LOGGER.error(f'Error in {SUBSCRIPT} for sample {sec_sample_label} with error code {ret}', error_type=14)
     
         if TIMEIT:
             LOGGER.printLog(f'{ANSI.YELLOW}TIMED: Calculating distributions of sample {sec_sample_label} took {pd.to_timedelta(end-start)}, {end-start} nanoseconds{ANSI.END}')

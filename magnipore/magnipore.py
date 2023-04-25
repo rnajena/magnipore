@@ -730,7 +730,7 @@ def main():
     red_sec_sample = os.path.join(working_dir, 'magnipore', sec_sample_label, f'{sec_sample_label}.red')
     
     if not os.path.exists(red_sec_sample) or not os.path.exists(path_to_reference_sec_sample) or force_rebuild:
-        command_sec_sample = f'{SUBSCRIPT} {path_to_fast5_sec_sample} {path_to_reference_sec_sample} {working_dir} {sec_sample_label} -t {threads} -mx {mx} -mk {mk}-e 2'
+        command_sec_sample = f'{SUBSCRIPT} {path_to_fast5_sec_sample} {path_to_reference_sec_sample} {working_dir} {sec_sample_label} -t {threads} -mx {mx} -mk {mk} -e 2'
 
         if fast5_out:
             command_sec_sample += ' --fast5_out'

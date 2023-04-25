@@ -85,19 +85,35 @@ For each sample in the comparison, Magnipore takes:
 
 If you are not using the conda package replace "magnipore" by "python3 magnipore.py".
 
-Without basecalling:
+### Without basecalling:
 ```
 magnipore path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir --path_to_first_basecalls PATH_TO_FIRST_BASECALLS --path_to_sec_basecalls PATH_TO_SEC_BASECALLS
 ```
 
-With basecalling
+### With basecalling
 ```
 magnipore path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir --guppy_bin PATH --guppy_model PATH
 ```
 
-#### Help:
+### Using a single sequencing run with demultiplexed FASTQs
+- path_to_first_basecalls/path_to_sec_basecalls contains the FASTQs in format: <sample_label>.fastq and the sequencing summary!
+- FASTQs must be demultiplexed, meaning
+ - <first_sample_label>.fastq contains only those reads of the first condition
+ - <sec_sample_label>.fastq contains only those reads of the second condition
 ```
-usage: Magnipore [-h] [--guppy_bin GUPPY_BIN] [--guppy_model GUPPY_MODEL] [--guppy_device GUPPY_DEVICE] [--path_to_first_basecalls PATH_TO_FIRST_BASECALLS] [--path_to_sec_basecalls PATH_TO_SEC_BASECALLS] [--calculate_data_density] [-t THREADS] [-f5] [-fr] [--strict] [-r2] [-mx {map-ont,splice,ava-ont}] [-mk MINIMAP2K] [--timeit] [-v] path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir
+magnipore --path_to_first_basecalls path_to_first_basecalls --path_to_sec_basecalls path_to_sec_basecalls path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir
+```
+
+### Using the same reference sequence
+Using the same reference sequence for both samples results in no reported mutations. Magnipore will only report potential modifications in this case. If you assume there are mutations between the samples, try to provide different reference sequences containing these mutations.
+
+### Help Message
+```
+usage: magnipore.py [-h] [--guppy_bin GUPPY_BIN] [--guppy_model GUPPY_MODEL] [--guppy_device GUPPY_DEVICE] [--path_to_first_basecalls FASTQ_DIR] [--path_to_sec_basecalls FASTQ_DIR] [--calculate_data_density]
+                    [-t THREADS] [-f5] [-fr] [--strict] [-r2] [-mx {map-ont,splice,ava-ont}] [-mk MINIMAP2K] [--timeit]
+                    path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir
+
+Required tools in environment: see github https://github.com/JannesSP/magnipore
 
 positional arguments:
   path_to_fast5_first_sample
@@ -112,7 +128,7 @@ positional arguments:
   sec_sample_label      Name of the sample or pipeline run
   working_dir           Path to write all output files
 
-options:
+optional arguments:
   -h, --help            show this help message and exit
   --guppy_bin GUPPY_BIN
                         Guppy binary (default: None)
@@ -120,10 +136,10 @@ options:
                         Guppy model used for basecalling (default: None)
   --guppy_device GUPPY_DEVICE
                         Use the GPU to basecall "cuda:0" to use the GPU with ID 0 (default: cuda:0)
-  --path_to_first_basecalls PATH_TO_FIRST_BASECALLS
-                        FASTQ file to use: <first_sample_label>.fastq Will skip basecalling for first sample (default: None)
-  --path_to_sec_basecalls PATH_TO_SEC_BASECALLS
-                        FASTQ file to use: <sec_sample_label>.fastq Will skip basecalling for second sample (default: None)
+  --path_to_first_basecalls FASTQ_DIR
+                        Path to existing basecalls and sequencing summary file for first sample. Basecalls must be in one single file with the name <first_sample_label>.fastq (default: None)
+  --path_to_sec_basecalls FASTQ_DIR
+                        Path to existing basecalls and sequencing summary file for second sample. Basecalls must be in one single file with the name <sec_sample_label>.fastq (default: None)
   --calculate_data_density
                         Will calculate data density after building the models. Will increase runtime! (default: False)
   -t THREADS, --threads THREADS
@@ -190,7 +206,7 @@ same for second sample:
 - 12: Building mafft alignment failed
 - 13: Running nanosherlock for the first sample failed
 - 14: Running nanosherlock for the second sample failed
-
+---
 - 121: Guppy basecalling failed in first sample
 - 122: minimap2 mapping failed in first sample
 - 123: Samtools indexing failed in first sample
@@ -198,7 +214,7 @@ same for second sample:
 - 125: Nanopolish eventalign failed in first sample
 - 126: Could not find provided fastq files for first sample
 - 127: Could not find provided sequencing summary file for first sample
-
+---
 - 221: Guppy basecalling failed in second sample
 - 222: minimap2 mapping failed in second sample
 - 223: Samtools indexing failed in second sample

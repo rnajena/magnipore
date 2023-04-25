@@ -97,7 +97,7 @@ def parse() -> Namespace:
 
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsHelpFormatter,
-        # description='Required tools can be installed using conda and : guppy, minimap2, nanopolish, h5py, samtools, scipy, mafft, numpy\nsee github https://github.com/JannesSP/magnipore'
+        description='Required tools: see github https://github.com/JannesSP/magnipore',
         prog='Nanosherlock',
         ) 
     
@@ -110,7 +110,7 @@ def parse() -> Namespace:
     parser.add_argument('--guppy_model', type = str, default = None, help='Guppy model for basecalling')
     parser.add_argument('--guppy_device', type=str, default=None, help='Use the gpu to basecall with cuda:0')
 
-    parser.add_argument('--path_to_basecalls', default = None, type = str, help = 'Path to existing basecalls and sequencing summary file. Basecalls must be in one single file with the name <sample_label>.fastq')
+    parser.add_argument('--path_to_basecalls', metavar='FASTQ_DIR', default = None, type = str, help = 'Path to existing basecalls and sequencing summary file. Basecalls must be in one single file with the name <sample_label>.fastq')
     parser.add_argument('--calculate_data_density', action = 'store_true', default = False, help = 'Will calculate data density after building the models. Will increase runtime!')
     parser.add_argument('-t', '--threads', type=int, help='Number of threads to use')
     parser.add_argument('-f5', '--fast5_out', action = 'store_true', help='Guppy generates FAST5 output (workspace folder)')

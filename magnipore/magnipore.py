@@ -37,7 +37,7 @@ def parse() -> Namespace:
 
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsHelpFormatter,
-        # description='Required tools in environment: guppy, minimap2, nanopolish, h5py, samtools, scipy and mafft\nsee github https://github.com/JannesSP/magnipore'
+        description='Required tools: see github https://github.com/JannesSP/magnipore',
         prog='Magnipore',
         )
     
@@ -55,8 +55,8 @@ def parse() -> Namespace:
     parser.add_argument("--guppy_model", type = str, default = None, help='Guppy model used for basecalling')
     parser.add_argument('--guppy_device', type=str, default='cuda:0', help='Use the GPU to basecall "cuda:0" to use the GPU with ID 0')
 
-    parser.add_argument('--path_to_first_basecalls', type = str, default = None, help = 'FASTQ file to use: <first_sample_label>.fastq\nWill skip basecalling for first sample')
-    parser.add_argument('--path_to_sec_basecalls', type = str, default = None, help = 'FASTQ file to use: <sec_sample_label>.fastq\nWill skip basecalling for second sample')
+    parser.add_argument('--path_to_first_basecalls', metavar='FASTQ_DIR', type = str, default = None, help = 'Path to existing basecalls and sequencing summary file for first sample. Basecalls must be in one single file with the name <first_sample_label>.fastq')
+    parser.add_argument('--path_to_sec_basecalls', metavar='FASTQ_DIR', type = str, default = None, help = 'Path to existing basecalls and sequencing summary file for second sample. Basecalls must be in one single file with the name <sec_sample_label>.fastq')
     parser.add_argument('--calculate_data_density', action = 'store_true', default = False, help = 'Will calculate data density after building the models. Will increase runtime!')
 
     parser.add_argument('-t', "--threads", type=int, default=1, help='Number of threads to use')
@@ -290,7 +290,7 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
         
         for strand in ['+', '-']:
             
-            # check if both aligned positions have a distributions -> stdev for both are non-0
+            # check if both aligned positions have a distribution -> stdev for both are non-0
             if dist_first_sample[strand]['std'] and dist_sec_sample[strand]['std']:
 
                 m0 = dist_first_sample[strand]['mean']

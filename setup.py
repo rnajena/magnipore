@@ -10,12 +10,13 @@ requirements = [
       'scipy>=1.9',
       'nanopolish>=0.14',
       'minimap2>=2.24',
+      'samtools>=1.0',
       'pandas>=1.5',
       'seaborn>=0.12',
       'psutil>=5.9',
       'hdf5>=1.12',
       'hdf5plugin>=3.3',
-      'ont_vbz_hdf_plugin>=1.0'
+      'ont_vbz_hdf_plugin>=1.0',
       ]
 
 setup(

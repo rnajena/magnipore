@@ -444,6 +444,7 @@ def buildModels(sequences : dict, nano2readid : dict, readid2fast5 : dict, nanop
             opened_readid = ''
             opened_fast5 = ''
             last_position = None
+            last_contig = None
             event = {}
             strand = 0
 
@@ -460,11 +461,12 @@ def buildModels(sequences : dict, nano2readid : dict, readid2fast5 : dict, nanop
                 
                 # prepare signal data for new read
                 readid = nano2readid[event['read_index']]
+                # found new read, store last information
                 if readid != opened_readid:
 
-                    # new read -> count last position of last read if not first read
+                    # new read -> count last position of previous read on previous contig (if not first read)
                     if last_position is not None:
-                        sequences[event['contig']][last_position, strand, DATAENCODER['n_reads']] += 1
+                        sequences[last_contig][last_position, strand, DATAENCODER['n_reads']] += 1
                         last_position = None
 
                     if event['ref_kmer'] == event['model_kmer']:
@@ -499,8 +501,9 @@ def buildModels(sequences : dict, nano2readid : dict, readid2fast5 : dict, nanop
                     # see a new position within a previously opened read: add 1 to n_reads counter
                     if event['position'] != last_position:
                         if last_position is not None:
-                            sequences[event['contig']][last_position, strand, DATAENCODER['n_reads']] += 1
+                            sequences[last_contig][last_position, strand, DATAENCODER['n_reads']] += 1
                         last_position = event['position']
+                        last_contig = event['contig']
 
                 elif loop =='checking data':
 

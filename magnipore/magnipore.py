@@ -125,7 +125,7 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
 
     outfile = os.path.join(outpath, 'alignment', f'{first_label}_{second_label}_refdiffs.csv')
     w = open(outfile, 'w')
-    w.write(f'type,{first_label},{second_label},base_{first_label},base_{second_label}\n')
+    w.write(f'type,{first_label}_pos,{second_label}_pos,base_{first_label},base_{second_label},alignment_motif_{first_label},alignment_motif_{second_label}\n')
 
     for seq in fasta:
 
@@ -145,16 +145,19 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
         
         for alip, (base1, base2) in enumerate(zip(seq1_seq, seq2_seq)): # (seq1, base1), (seq2, base2) in zip(sequences.items()):
             
+            motif1 = seq1_seq[max(0,i1-3):min(len(seq1_seq),i1+4)]
+            motif2 = seq2_seq[max(0,i2-3):min(len(seq2_seq),i2+4)]
+
             if base1 == '-':
                 
                 unaligned_positions[seq2_id].append((i2, base2.upper()))
-                w.write(f'insert_{second_label},{i1},{i2},{base1},{base2.upper()}\n')
+                w.write(f'insert_{second_label},{i1},{i2},{base1},{base2.upper()},{motif1},{motif2}\n')
                 i2 += 1
                 
             elif base2 == '-':
                 
                 unaligned_positions[seq1_id].append((i1, base1.upper()))
-                w.write(f'insert_{first_label},{i1},{i2},{base1.upper()},{base2}\n')
+                w.write(f'insert_{first_label},{i1},{i2},{base1.upper()},{base2},{motif1},{motif2}\n')
                 i1 += 1
             
             else:
@@ -163,7 +166,7 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
                 if base1.lower() == 'n' or base2.lower() == 'n':
                     w.write(f'N,{i1},{i2},{base1.upper()},{base2.upper()}\n')
                 elif base1.lower() != base2.lower():
-                    w.write(f'substitution,{i1},{i2},{base1.upper()},{base2.upper()}\n')
+                    w.write(f'substitution,{i1},{i2},{base1.upper()},{base2.upper()},{motif1},{motif2}\n')
                 i1 += 1
                 i2 += 1
                 

@@ -145,8 +145,8 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
         
         for alip, (base1, base2) in enumerate(zip(seq1_seq, seq2_seq)): # (seq1, base1), (seq2, base2) in zip(sequences.items()):
             
-            motif1 = seq1_seq[max(0,i1-3):min(len(seq1_seq),i1+4)]
-            motif2 = seq2_seq[max(0,i2-3):min(len(seq2_seq),i2+4)]
+            motif1 = seq1_seq[max(0,alip-3):min(len(seq1_seq),alip+4)].upper()
+            motif2 = seq2_seq[max(0,alip-3):min(len(seq2_seq),alip+4)].upper()
 
             if base1 == '-':
                 

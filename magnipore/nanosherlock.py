@@ -413,6 +413,7 @@ def createSeqDict(path_to_reference : str) -> dict:
     for seq in fasta:
         
         # ([position], [+,-], [data])
+        # default values for mean, std etc is 0, default for expected model density is nan
         sequences[seq.id] = np.zeros((len(seq.seq), 2, 11), dtype=object)
         
         for pos, base in enumerate(seq.seq):
@@ -429,7 +430,6 @@ def createSeqDict(path_to_reference : str) -> dict:
             elif 2 <= pos <= sequences[seq.id].shape[0] - 3:
                 sequences[seq.id][pos, 0, DATAENCODER['motif']] = seq.seq[pos-2:pos+3]
                 sequences[seq.id][pos, 1, DATAENCODER['motif']] = complement(seq.seq[pos-2:pos+3])[::-1]
-
 
     return sequences
 
@@ -578,9 +578,7 @@ def writeOutput(red_file : str, sequences : dict, working_dir : str, sample_labe
                         nans += 1
                         expected_model_density = np.nan
 
-                    w.write(f'{sequence}\t{position}\t{STRANDDECODER[strand]}\t{data[DATAENCODER["base"]]}\t{data[DATAENCODER["mean"]]}\t{data[DATAENCODER["std"]]}\t{data[DATAENCODER["motif"]]}\t{data[DATAENCODER["data_density"]]}\t{expected_model_density}\t{data[DATAENCODER["n_datapoints"]]}\t{data[DATAENCODER["contained_datapoints"]]}\t{data[DATAENCODER["n_segments"]]}\t{data[DATAENCODER["contained_segments"]]}\t{data[DATAENCODER["n_reads"]]}\n')             
-
-    # LOGGER.printLog(f'Positions without information: {nans}')
+                    w.write(f'{sequence}\t{position}\t{STRANDDECODER[strand]}\t{data[DATAENCODER["base"]]}\t{data[DATAENCODER["mean"]]}\t{data[DATAENCODER["std"]]}\t{data[DATAENCODER["motif"]]}\t{data[DATAENCODER["data_density"]]}\t{expected_model_density}\t{data[DATAENCODER["n_datapoints"]]}\t{data[DATAENCODER["contained_datapoints"]]}\t{data[DATAENCODER["n_segments"]]}\t{data[DATAENCODER["contained_segments"]]}\t{data[DATAENCODER["n_reads"]]}\n')
 
     plotStatistics(plotting_data, working_dir, sample_label, calculate_data_density)
 

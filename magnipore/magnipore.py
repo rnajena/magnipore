@@ -282,7 +282,7 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
         if (sample_idx + 1) % 1000 == 0:
             print(f'\t{sample_idx + 1}/{mappingLength}', end='\r')
 
-        # no information for comparison, rare case in start and end of reference/contig (nanopolish artefact, limit of 5-mer models)
+        # no information for comparison, case in start and end (total: K-1 positions) of reference/contig (nanopolish artefact, limit of 5-mer models)
         if pos_first_sample not in red_first_sample[seqs_ids[0]] or pos_sec_sample not in red_sec_sample[seqs_ids[1]]:
             
             nans += 1
@@ -292,87 +292,85 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
         dist_sec_sample = red_sec_sample[seqs_ids[1]][pos_sec_sample]
         
         for strand in ['+', '-']:
-            
+
+            m0 = dist_first_sample[strand]['mean']
+            s0 = dist_first_sample[strand]['std']
+            m1 = dist_sec_sample[strand]['mean']
+            s1 = dist_sec_sample[strand]['std']
+            firstDist = NormalDist(m0, s0)
+            secDist = NormalDist(m1, s1)
+            mDiff = abs(m0 - m1)
+            sAvg = (s0 + s1)/2
+
             # check if both aligned positions have a distribution -> stdev for both are non-0
             if dist_first_sample[strand]['std'] and dist_sec_sample[strand]['std']:
-
-                m0 = dist_first_sample[strand]['mean']
-                s0 = dist_first_sample[strand]['std']
-                m1 = dist_sec_sample[strand]['mean']
-                s1 = dist_sec_sample[strand]['std']
-
-                firstDist = NormalDist(m0, s0)
-                secDist = NormalDist(m1, s1)
-                
-                mDiff = abs(m0 - m1)
-                sAvg = (s0 + s1)/2
                 kl_divergence = kullback_leibler_normal(m0, s0, m1, s1)
                 td = td_score(mDiff, sAvg)
-
-                first_motif = dist_first_sample[strand]['motif']
-                sec_motif = dist_sec_sample[strand]['motif']
-
-                # only look at context of range 2
-                if r2:
-                    first_motif = first_motif[len(first_motif)//2 - 2 : len(first_motif)//2 + 3]
-                    sec_motif = sec_motif[len(sec_motif)//2 - 2 : len(sec_motif)//2 + 3]
-    
-                    mut_context = first_motif != sec_motif
-
-                # range of 3
-                else:
-
-                    if len(first_motif) == len(sec_motif):
-
-                        mut_context = first_motif != sec_motif
-                    
-                    # motifs have different lengths, rare case in start and end of reference/contig
-                    else:
-
-                        mut_context = first_motif[len(first_motif)//2 - 2 : len(first_motif)//2 + 3] != sec_motif[len(sec_motif)//2 - 2 : len(sec_motif)//2 + 3]
-
-                new_entry = pd.DataFrame({
-                            'first_mean': [m0],
-                            'sec_mean': [m1],
-                            'first_std' : [s0],
-                            'sec_std' : [s1],
-                            'mean_diff' : [mDiff],
-                            'avg_std' : [sAvg],
-                            'mut_context' : ['mutation' if mut_context else 'matching reference'],
-                            'significant' : ['significant' if mDiff > sAvg else 'insignificant'],
-                            'td_score' : [td],
-                            'kl_divergence' : [kl_divergence]
-                    })
-        
-                plotting_data = pd.concat([plotting_data, new_entry], ignore_index=True)
-
-                all.write(f'{strand}\t{td}\t{kl_divergence}\t{firstDist.overlap(secDist)}\t{"mut" if mut_context else "mod"}\t{seqs_ids[0]}\t{pos_first_sample}\t{dist_first_sample[strand]["base"]}\t{dist_first_sample[strand]["motif"]}\t{m0}\t{s0}\t{dist_first_sample[strand]["n_datapoints"]}\t{dist_first_sample[strand]["contained_datapoints"]}\t{dist_first_sample[strand]["n_segments"]}\t{dist_first_sample[strand]["contained_segments"]}\t{dist_first_sample[strand]["n_reads"]}\t{seqs_ids[1]}\t{pos_sec_sample}\t{dist_sec_sample[strand]["base"]}\t{dist_sec_sample[strand]["motif"]}\t{m1}\t{s1}\t{dist_sec_sample[strand]["n_datapoints"]}\t{dist_sec_sample[strand]["contained_datapoints"]}\t{dist_sec_sample[strand]["n_segments"]}\t{dist_sec_sample[strand]["contained_segments"]}\t{dist_sec_sample[strand]["n_reads"]}\n')
-
-                # distance between both means is greater than the average std of both distributions
-                if mDiff > sAvg:
-
-                    # 7mer motif or if at border 5mer motif
-                    # both 7mers or both 5mers or one 7mer one 5mer
-                    if mut_context:
-                        
-                        num_motif_diff += 1
-
-                        # skip substitutions
-                        if strict:
-                            continue
-                    
-                    # X == interesting position
-                    magnipore_strings[0][alip] = 'X'
-                    magnipore_strings[1][alip] = 'X'
-
-                    sign_pos += 1
-                    
-                    magnipore.write(f'{strand}\t{td}\t{kl_divergence}\t{firstDist.overlap(secDist)}\t{"mut" if mut_context else "mod"}\t{seqs_ids[0]}\t{pos_first_sample}\t{dist_first_sample[strand]["base"]}\t{dist_first_sample[strand]["motif"]}\t{m0}\t{s0}\t{dist_first_sample[strand]["n_datapoints"]}\t{dist_first_sample[strand]["contained_datapoints"]}\t{dist_first_sample[strand]["n_segments"]}\t{dist_first_sample[strand]["contained_segments"]}\t{dist_first_sample[strand]["n_reads"]}\t{seqs_ids[1]}\t{pos_sec_sample}\t{dist_sec_sample[strand]["base"]}\t{dist_sec_sample[strand]["motif"]}\t{m1}\t{s1}\t{dist_sec_sample[strand]["n_datapoints"]}\t{dist_sec_sample[strand]["contained_datapoints"]}\t{dist_sec_sample[strand]["n_segments"]}\t{dist_sec_sample[strand]["contained_segments"]}\t{dist_sec_sample[strand]["n_reads"]}\n')
-
-            # one of the aligned and compared position is not present in the .red file
             else:
+            # one of the aligned and compared position is not present in the .red file
+                kl_divergence = np.nan
+                td = np.nan
                 nans += 1
 
+            first_motif = dist_first_sample[strand]['motif']
+            sec_motif = dist_sec_sample[strand]['motif']
+
+            # only look at context of range 2
+            if r2:
+                first_motif = first_motif[len(first_motif)//2 - 2 : len(first_motif)//2 + 3]
+                sec_motif = sec_motif[len(sec_motif)//2 - 2 : len(sec_motif)//2 + 3]
+
+                mut_context = first_motif != sec_motif
+
+            # range of 3
+            else:
+
+                if len(first_motif) == len(sec_motif):
+
+                    mut_context = first_motif != sec_motif
+                
+                # motifs have different lengths, rare case in start and end of reference/contig
+                else:
+
+                    mut_context = first_motif[len(first_motif)//2 - 2 : len(first_motif)//2 + 3] != sec_motif[len(sec_motif)//2 - 2 : len(sec_motif)//2 + 3]
+
+            new_entry = pd.DataFrame({
+                        'first_mean': [m0],
+                        'sec_mean': [m1],
+                        'first_std' : [s0],
+                        'sec_std' : [s1],
+                        'mean_diff' : [mDiff],
+                        'avg_std' : [sAvg],
+                        'mut_context' : ['mutation' if mut_context else 'matching reference'],
+                        'significant' : ['significant' if mDiff > sAvg else 'insignificant'],
+                        'td_score' : [td],
+                        'kl_divergence' : [kl_divergence]
+                })
+    
+            plotting_data = pd.concat([plotting_data, new_entry], ignore_index=True)
+
+            all.write(f'{strand}\t{td}\t{kl_divergence}\t{firstDist.overlap(secDist)}\t{"mut" if mut_context else "mod"}\t{seqs_ids[0]}\t{pos_first_sample}\t{dist_first_sample[strand]["base"]}\t{dist_first_sample[strand]["motif"]}\t{m0}\t{s0}\t{dist_first_sample[strand]["n_datapoints"]}\t{dist_first_sample[strand]["contained_datapoints"]}\t{dist_first_sample[strand]["n_segments"]}\t{dist_first_sample[strand]["contained_segments"]}\t{dist_first_sample[strand]["n_reads"]}\t{seqs_ids[1]}\t{pos_sec_sample}\t{dist_sec_sample[strand]["base"]}\t{dist_sec_sample[strand]["motif"]}\t{m1}\t{s1}\t{dist_sec_sample[strand]["n_datapoints"]}\t{dist_sec_sample[strand]["contained_datapoints"]}\t{dist_sec_sample[strand]["n_segments"]}\t{dist_sec_sample[strand]["contained_segments"]}\t{dist_sec_sample[strand]["n_reads"]}\n')
+
+            # distance between both means is greater than the average std of both distributions
+            if mDiff > sAvg:
+
+                # 7mer motif or if at border 5mer motif
+                # both 7mers or both 5mers or one 7mer one 5mer
+                if mut_context:
+                    
+                    num_motif_diff += 1
+
+                    # skip substitutions
+                    if strict:
+                        continue
+                
+                # X == interesting position
+                magnipore_strings[0][alip] = 'X'
+                magnipore_strings[1][alip] = 'X'
+
+                sign_pos += 1
+                
+                magnipore.write(f'{strand}\t{td}\t{kl_divergence}\t{firstDist.overlap(secDist)}\t{"mut" if mut_context else "mod"}\t{seqs_ids[0]}\t{pos_first_sample}\t{dist_first_sample[strand]["base"]}\t{dist_first_sample[strand]["motif"]}\t{m0}\t{s0}\t{dist_first_sample[strand]["n_datapoints"]}\t{dist_first_sample[strand]["contained_datapoints"]}\t{dist_first_sample[strand]["n_segments"]}\t{dist_first_sample[strand]["contained_segments"]}\t{dist_first_sample[strand]["n_reads"]}\t{seqs_ids[1]}\t{pos_sec_sample}\t{dist_sec_sample[strand]["base"]}\t{dist_sec_sample[strand]["motif"]}\t{m1}\t{s1}\t{dist_sec_sample[strand]["n_datapoints"]}\t{dist_sec_sample[strand]["contained_datapoints"]}\t{dist_sec_sample[strand]["n_segments"]}\t{dist_sec_sample[strand]["contained_segments"]}\t{dist_sec_sample[strand]["n_reads"]}\n')
 
     all.close()
     magnipore.close()

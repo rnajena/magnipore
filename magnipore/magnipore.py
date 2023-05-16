@@ -303,7 +303,7 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
             sAvg = (s0 + s1)/2
 
             # check if both aligned positions have a distribution -> stdev for both are non-0
-            if dist_first_sample[strand]['std'] and dist_sec_sample[strand]['std']:
+            if s0 and s1:
                 kl_divergence = kullback_leibler_normal(m0, s0, m1, s1)
                 td = td_score(mDiff, sAvg)
             else:
@@ -349,7 +349,7 @@ def magnipore(mapping : dict, unaligned : dict, seqs_ids : tuple, alignment_sequ
     
             plotting_data = pd.concat([plotting_data, new_entry], ignore_index=True)
 
-            all.write(f'{strand}\t{td}\t{kl_divergence}\t{firstDist.overlap(secDist)}\t{"mut" if mut_context else "mod"}\t{seqs_ids[0]}\t{pos_first_sample}\t{dist_first_sample[strand]["base"]}\t{dist_first_sample[strand]["motif"]}\t{m0}\t{s0}\t{dist_first_sample[strand]["n_datapoints"]}\t{dist_first_sample[strand]["contained_datapoints"]}\t{dist_first_sample[strand]["n_segments"]}\t{dist_first_sample[strand]["contained_segments"]}\t{dist_first_sample[strand]["n_reads"]}\t{seqs_ids[1]}\t{pos_sec_sample}\t{dist_sec_sample[strand]["base"]}\t{dist_sec_sample[strand]["motif"]}\t{m1}\t{s1}\t{dist_sec_sample[strand]["n_datapoints"]}\t{dist_sec_sample[strand]["contained_datapoints"]}\t{dist_sec_sample[strand]["n_segments"]}\t{dist_sec_sample[strand]["contained_segments"]}\t{dist_sec_sample[strand]["n_reads"]}\n')
+            all.write(f'{strand}\t{td}\t{kl_divergence}\t{firstDist.overlap(secDist) if s0 and s1 else np.nan}\t{"mut" if mut_context else "mod"}\t{seqs_ids[0]}\t{pos_first_sample}\t{dist_first_sample[strand]["base"]}\t{dist_first_sample[strand]["motif"]}\t{m0}\t{s0}\t{dist_first_sample[strand]["n_datapoints"]}\t{dist_first_sample[strand]["contained_datapoints"]}\t{dist_first_sample[strand]["n_segments"]}\t{dist_first_sample[strand]["contained_segments"]}\t{dist_first_sample[strand]["n_reads"]}\t{seqs_ids[1]}\t{pos_sec_sample}\t{dist_sec_sample[strand]["base"]}\t{dist_sec_sample[strand]["motif"]}\t{m1}\t{s1}\t{dist_sec_sample[strand]["n_datapoints"]}\t{dist_sec_sample[strand]["contained_datapoints"]}\t{dist_sec_sample[strand]["n_segments"]}\t{dist_sec_sample[strand]["contained_segments"]}\t{dist_sec_sample[strand]["n_reads"]}\n')
 
             # distance between both means is greater than the average std of both distributions
             if mDiff > sAvg:

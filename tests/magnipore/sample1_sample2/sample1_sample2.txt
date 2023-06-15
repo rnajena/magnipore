@@ -1,0 +1,5 @@
+Number of indels: 6
+Number of significant positions: 5
+Number of significant positions with reference differences: 3
+Number of nans 19, at least one aligned position without information (no signals)
+Can be high if one strand has no information!

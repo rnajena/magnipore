@@ -13,17 +13,13 @@ import numpy as np
 from scipy import stats
 from Bio import SeqIO
 import pandas as pd
-import seaborn as sns
-from matplotlib.pyplot import figure
-from matplotlib import pyplot as plt
-from matplotlib import rcParams
 from time import perf_counter_ns
 import os
 import psutil
 
 from magnipore.__init__ import __version__
 from magnipore.Logger import Logger
-from magnipore.Helper import ANSI, DATAENCODER, STRANDDECODER, complement
+from magnipore.Helper import ANSI, REDENCODER, STRANDDECODER, sizeof_fmt
 import magnipore.OnlineMeanVar as omv
 
 PROCESS = psutil.Process(os.getpid())
@@ -31,14 +27,11 @@ LOGGER : Logger = None
 TIMEIT = False
 ERROR_PREFIX : str = '0'
 
-def sizeof_fmt(num, suffix="B"):
-    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
-        if abs(num) < 1024.0:
-            return f"{num:3.1f}{unit}{suffix}"
-        num /= 1024.0
-    return f"{num:.1f}Yi{suffix}"
+def initLogger(file = None) -> None:
+    global LOGGER
+    LOGGER = Logger(file)
 
-def readFast5(fast5_path : str, sequencing_summary : str):
+def readFast5(fast5_path : str, sequencing_summary : str = None) -> dict:
     '''
     Returns a dictionary mapping the readid to the corresponding fast5 file containing the read.
     '''
@@ -67,11 +60,12 @@ def readFast5(fast5_path : str, sequencing_summary : str):
 
             for ridx, line in enumerate(seqsum):
                 if (ridx + 1) % 1000 == 0:
-                    LOGGER.printLog(f'Indexing readid {ridx + 1}\r', newline_after=False)
+                    LOGGER.printLog(f'Indexing read {ridx + 1}\r', newline_after=False)
             
                 filename, read_id = line.strip().split('\t')[:2]
                 readid2fast5[read_id] = os.path.join(fast5_path, filename)
     
+    LOGGER.printLog(f'Indexed {ridx + 1} reads')
     return readid2fast5
 
 def readNanoSum(nanoSum_path : str):
@@ -102,7 +96,7 @@ def parse() -> Namespace:
         ) 
     
     parser.add_argument('path_to_fast5', type = str, help='FAST5 file')
-    parser.add_argument('path_to_reference', type = str, help='reference FASTA file')
+    parser.add_argument('path_to_reference', type = str, help='reference FASTA file, POSITIVE (+) or FORWARD strand')
     parser.add_argument('working_dir', type = str, help='Path to write all output files')
     parser.add_argument('sample_label', type = str, help='Name of the sample or pipeline run')
     
@@ -159,15 +153,11 @@ def guppy_basecalling(guppy_bin : str, guppy_model : str,  guppy_device : str, p
     
     if TIMEIT:
         start = perf_counter_ns()
-
     ret = os.system(command)
-    
     if TIMEIT:
         end = perf_counter_ns()
-
     if ret != 0:
         LOGGER.error(f'Error in guppy basecalling with error code {ret}', error_type=ERROR_PREFIX+'21')
-        
     if TIMEIT:
         LOGGER.printLog(f'{ANSI.YELLOW}TIMED: Guppy basecalling took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
 
@@ -193,7 +183,6 @@ def minimap(path_to_reference : str, path_to_basecalls : str, working_dir : str,
     if os.path.exists(bam_path) and not force_rebuild:
         LOGGER.printLog(f'Bam alignment/mapping file already exists\n-\t{bam_path}')
         return bam_path, force_rebuild
-
     else:
         force_rebuild = True
     
@@ -208,15 +197,11 @@ def minimap(path_to_reference : str, path_to_basecalls : str, working_dir : str,
     
     if TIMEIT:
         start = perf_counter_ns()
-
     ret = os.system(command)
-    
     if TIMEIT:
         end = perf_counter_ns()
-
     if ret != 0:
         LOGGER.error(f'Error in minimap2 run with error code {ret}', error_type=ERROR_PREFIX+'22')
-    
     if TIMEIT:
         LOGGER.printLog(f'{ANSI.YELLOW}TIMED: minimap2 took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
 
@@ -248,15 +233,11 @@ def nanopolish(path_to_fast5 : str, path_to_sequencing_summary : str, path_to_ba
     
         if TIMEIT:
             start = perf_counter_ns()
-
         ret = os.system(command)
-        
         if TIMEIT:
             end = perf_counter_ns()
-
         if ret != 0:
             LOGGER.error(f'Error in samtools indexing for nanopolish with error code {ret}', error_type=ERROR_PREFIX+'23')
-        
         if TIMEIT:
             LOGGER.printLog(f'{ANSI.YELLOW}TIMED: samtools indexing took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
 
@@ -271,15 +252,11 @@ def nanopolish(path_to_fast5 : str, path_to_sequencing_summary : str, path_to_ba
 
         if TIMEIT:
             start = perf_counter_ns()
-
         ret = os.system(command)
-
         if TIMEIT:
             end = perf_counter_ns()
-        
         if ret != 0:
             LOGGER.error(f'Error in nanopolish indexing with error code {ret}', error_type=ERROR_PREFIX+'24')
-
         if TIMEIT:
             LOGGER.printLog(f'{ANSI.YELLOW}TIMED: nanopolish indexing took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
 
@@ -293,15 +270,11 @@ def nanopolish(path_to_fast5 : str, path_to_sequencing_summary : str, path_to_ba
     
     if TIMEIT:
         start = perf_counter_ns()
-
     ret = os.system(command)
-    
     if TIMEIT:
         end = perf_counter_ns()
-
     if ret != 0:
         LOGGER.error(f'Error in nanopolish eventalign with error code {ret}', error_type=ERROR_PREFIX+'25')
-    
     if TIMEIT:
         LOGGER.printLog(f'{ANSI.YELLOW}TIMED: nanopolish eventalign took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
 
@@ -383,14 +356,16 @@ def aggregate_events(nanopolish_result_csv : str, nanopolish_summary_csv: str, p
 
     readid2fast5 = readFast5(path_to_fast5, sequencing_summary)
     nano2readid = readNanoSum(nanopolish_summary_csv)
-    sequences = createSeqDict(path_to_reference)
+    ref_seqs = SeqIO.parse(open(path_to_reference), 'fasta')
+    red_dict, omvs = createREDDict(ref_seqs)
     
-    LOGGER.printLog(f'Found sequences: {list(sequences.keys())}. Start getting event signal distributions per reference position and write red file for {sample_label}')
+    LOGGER.printLog(f'Found sequences: {list(red_dict.keys())}. Start getting event signal distributions per reference position and write red file for {sample_label}')
 
     if TIMEIT:
         start = perf_counter_ns()
 
-    buildModels(sequences, nano2readid, readid2fast5, nanopolish_result_csv, calculate_data_density, max_lines)
+    buildModels(red_dict, omvs, nano2readid, readid2fast5, nanopolish_result_csv, calculate_data_density, max_lines)
+    del omvs # actively release memory
 
     if TIMEIT:
         end = perf_counter_ns()
@@ -399,44 +374,45 @@ def aggregate_events(nanopolish_result_csv : str, nanopolish_summary_csv: str, p
         LOGGER.printLog(f'{ANSI.YELLOW}TIMED: Building distribution models took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
 
     LOGGER.printLog('Writing output files')
-    writeOutput(red_file, sequences, working_dir, sample_label, calculate_data_density)
+    writeOutput(red_file, red_dict)
         
     return red_file, force_rebuild
 
-def createSeqDict(path_to_reference : str) -> dict:
+def createREDDict(fasta) -> tuple:
+    '''
+    Parameters
+    ----------
+    fasta : SeqIO.parse Generator
 
-    sequences = {}
-    fasta = SeqIO.parse(open(path_to_reference), 'fasta')
+    Returns
+    -------
+    red_dict : dict
+        stores the data that will be written to the RED files
+    omvs : dict
+        stores OnlineMeanVar objects to calculate mean and stdev using bayes
+    '''
 
     # get all sequences from the reference file
     # sequences are stored as {reference: {pos: {strand: {base: (A|C|G|T), signal: []}}}}
+    red_dict = {}
+    omvs = {}
     for seq in fasta:
         
-        # ([position], [+,-], [data])
         # default values for mean, std etc is 0, default for expected model density is nan
-        sequences[seq.id] = np.zeros((len(seq.seq), 2, 11), dtype=object)
-        
-        for pos, base in enumerate(seq.seq):
-            
-            sequences[seq.id][pos, 0, DATAENCODER['base']] = base
-            sequences[seq.id][pos, 0, DATAENCODER['omv']] = omv.LocShift(30)
+        seq_size = len(seq.seq)
+        # ([position], [+,-], [data])
+        red_dict[seq.id] = np.zeros((seq_size, len(STRANDDECODER), len(REDENCODER)-1), dtype=float)
+        omvs[seq.id] = np.zeros((seq_size, len(STRANDDECODER)), dtype=object)
 
-            sequences[seq.id][pos, 1, DATAENCODER['base']] = complement(base)
-            sequences[seq.id][pos, 1, DATAENCODER['omv']] = omv.LocShift(30)
+        for pos in range(seq_size):
+            omvs[seq.id][pos, 0] = omv.LocShift(10)
+            omvs[seq.id][pos, 1] = omv.LocShift(10)
 
-            if 3 <= pos <= sequences[seq.id].shape[0] - 4:
-                sequences[seq.id][pos, 0, DATAENCODER['motif']] = seq.seq[pos-3:pos+4]
-                sequences[seq.id][pos, 1, DATAENCODER['motif']] = complement(seq.seq[pos-3:pos+4])[::-1]
-            elif 2 <= pos <= sequences[seq.id].shape[0] - 3:
-                sequences[seq.id][pos, 0, DATAENCODER['motif']] = seq.seq[pos-2:pos+3]
-                sequences[seq.id][pos, 1, DATAENCODER['motif']] = complement(seq.seq[pos-2:pos+3])[::-1]
+    return red_dict, omvs
 
-    return sequences
-
-def buildModels(sequences : dict, nano2readid : dict, readid2fast5 : dict, nanopolish_result_csv : str, calculate_data_density : bool, max_lines : int):
+def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readid2fast5 : dict, nanopolish_result_csv : str, calculate_data_density : bool, max_lines : int = None):
 
     for loop in ['building models', 'checking data']:
-        # LOGGER.printLog(f'Starting {loop}')
 
         with open(nanopolish_result_csv, 'r') as nano_result:
             # skip header
@@ -457,7 +433,7 @@ def buildModels(sequences : dict, nano2readid : dict, readid2fast5 : dict, nanop
 
                 read_line(line, event) # read data from nanopolish and store into event dictionary
                 if event['model_kmer'] == 'NNNNN': # maybe haplotypes end up here as NNNNN? -> actually mutations in the reads, nanopolish has no clue what to do?
-                        continue
+                    continue
                 
                 # prepare signal data for new read
                 readid = nano2readid[event['read_index']]
@@ -466,7 +442,7 @@ def buildModels(sequences : dict, nano2readid : dict, readid2fast5 : dict, nanop
 
                     # new read -> count last position of previous read on previous contig (if not first read)
                     if last_position is not None:
-                        sequences[last_contig][last_position, strand, DATAENCODER['n_reads']] += 1
+                        red_dict[last_contig][last_position, strand, REDENCODER['n_reads']] += 1
                         last_position = None
 
                     if event['ref_kmer'] == event['model_kmer']:
@@ -489,177 +465,72 @@ def buildModels(sequences : dict, nano2readid : dict, readid2fast5 : dict, nanop
 
                 # extract segment signal from read
                 segment = norm_signal[event['start_idx']:event['end_idx']]
-                red = sequences[event['contig']][event['position'], strand] 
+                red = red_dict[event['contig']][event['position'], strand]
+                omv = omvs[event['contig']][event['position'], strand]
 
                 if loop == 'building models':
                 
                     # online bayesian updating
-                    red[DATAENCODER['omv']].append(segment)
-                    red[DATAENCODER['n_datapoints']] += len(segment)
-                    red[DATAENCODER['n_segments']] += 1
+                    omv.append(segment)
+                    red[REDENCODER['n_datapoints']] += len(segment)
+                    red[REDENCODER['n_segments']] += 1
 
                     # see a new position within a previously opened read: add 1 to n_reads counter
                     if event['position'] != last_position:
                         if last_position is not None:
-                            sequences[last_contig][last_position, strand, DATAENCODER['n_reads']] += 1
+                            red_dict[last_contig][last_position, strand, REDENCODER['n_reads']] += 1
                         last_position = event['position']
                         last_contig = event['contig']
 
                 elif loop =='checking data':
 
-                    red[DATAENCODER['mean']], red[DATAENCODER['std']] = red[DATAENCODER['omv']].meanStdev()
+                    red[REDENCODER['mean']], red[REDENCODER['std']] = omv.meanStdev()
 
-                    r = 3 * red[DATAENCODER['std']] # ~99% density of normal distribution
-                    l = red[DATAENCODER['mean']] - r # lower bound
-                    u = red[DATAENCODER['mean']] + r # upper bound
+                    r = 3 * red[REDENCODER['std']] # ~99% density of normal distribution
+                    l = red[REDENCODER['mean']] - r # lower bound
+                    u = red[REDENCODER['mean']] + r # upper bound
 
                     contained = ((l <= segment) & (segment <= u)).sum()
                     if contained == len(segment):
-                        red[DATAENCODER['contained_segments']] += 1
-                    red[DATAENCODER['contained_datapoints']] += contained
+                        red[REDENCODER['contained_segments']] += 1
+                    red[REDENCODER['contained_datapoints']] += contained
                     
                     if calculate_data_density:
-                        red[DATAENCODER['data_density']] += np.mean(stats.norm.pdf(
-                            segment,
-                            loc = red[DATAENCODER['mean']],
-                            scale = red[DATAENCODER['std']]))
-                    
+                        red[REDENCODER['data_density']] += np.mean(stats.norm.pdf(segment, loc = red[REDENCODER['mean']], scale = red[REDENCODER['std']]))
+        
         LOGGER.printLog(f'Line {lidx + 1}, {loop}, memory usage: {sizeof_fmt(PROCESS.memory_info().rss)}\t\t\r', newline_after=False)
         print()
 
     if calculate_data_density: 
         # normalize log density
-        for contig in sequences:
-            for positions in sequences[contig]:
-                for strand in sequences[contig][positions]:
-                    if sequences[contig][positions, strand, DATAENCODER['n_segments']] != 0:
+        for contig in red_dict:
+            for positions in red_dict[contig]:
+                for strand in red_dict[contig][positions]:
+                    if red_dict[contig][positions, strand, REDENCODER['n_segments']] != 0:
                         # compare data density with the expected model density -> how good describes my model the data
-                        sequences[contig][positions, strand, DATAENCODER['data_density']] = sequences[contig][positions, strand, DATAENCODER['data_density']] / sequences[contig][positions, strand, DATAENCODER['n_segments']]
+                        red_dict[contig][positions, strand, REDENCODER['data_density']] = red_dict[contig][positions, strand, REDENCODER['data_density']] / red_dict[contig][positions, strand, REDENCODER['n_segments']]
 
-def writeOutput(red_file : str, sequences : dict, working_dir : str, sample_label : str, calculate_data_density : bool):
+def writeOutput(red_file : str, red_dict : dict):
 
     nans = 0
-    plotting_data = pd.DataFrame(columns=['contig', 'position', 'strand', 'density difference', 'n_datapoints', 'n_segments', 'n_reads'])
-    plotting_data = plotting_data.astype(
-        {
-            'contig' : 'str',
-            'position' : 'int',
-            'strand' : 'str',
-            'density difference': 'float',
-            'n_datapoints' : 'int',
-            'n_segments' : 'int',
-            'n_reads' : 'int'
-        })
-    
+
     with open(red_file, 'w') as w:
 
-        w.write('reference\tposition\tstrand\tbase\tsignal_mean\tsignal_std\tmotif\tdata_density\texpected_model_density\tn_datapoints\tcontained_datapoints\tn_segments\tcontained_segments\tn_reads\n')
+        w.write('reference\tposition\tstrand\tsignal_mean\tsignal_std\tdata_density\texpected_model_density\tn_datapoints\tcontained_datapoints\tn_segments\tcontained_segments\tn_reads\n')
 
-        for sequence in sequences:
-            for position in range(len(sequences[sequence])):
-                for strand in range(len(sequences[sequence][position])):
+        for seq_id in red_dict:
+            for pos in range(len(red_dict[seq_id])):
+                for strand in [0, 1]:
 
-                    data = sequences[sequence][position, strand]
+                    data = red_dict[seq_id][pos, strand]
 
-                    if data[DATAENCODER['std']]: # True if std != 0
-                        expected_model_density = 1 / (2 * np.sqrt(np.pi) * data[DATAENCODER['std']])
-                        new_entry = pd.DataFrame({
-                            'contig': [sequence],
-                            'position': [position],
-                            'strand': [STRANDDECODER[strand]],
-                            'density difference': [expected_model_density - data[DATAENCODER["data_density"]] if calculate_data_density else expected_model_density],
-                            'n_datapoints' : [data[DATAENCODER["n_datapoints"]]],
-                            'n_segments' : [data[DATAENCODER["n_segments"]]],
-                            'n_reads' : [data[DATAENCODER["n_reads"]]]
-
-                        })
-                        plotting_data = pd.concat([plotting_data, new_entry], ignore_index=True)
+                    if data[REDENCODER['std']]: # True if std != 0
+                        expected_model_density = 1 / (2 * np.sqrt(np.pi) * data[REDENCODER['std']])
                     else:
                         nans += 1
                         expected_model_density = np.nan
 
-                    w.write(f'{sequence}\t{position}\t{STRANDDECODER[strand]}\t{data[DATAENCODER["base"]]}\t{data[DATAENCODER["mean"]]}\t{data[DATAENCODER["std"]]}\t{data[DATAENCODER["motif"]]}\t{data[DATAENCODER["data_density"]]}\t{expected_model_density}\t{data[DATAENCODER["n_datapoints"]]}\t{data[DATAENCODER["contained_datapoints"]]}\t{data[DATAENCODER["n_segments"]]}\t{data[DATAENCODER["contained_segments"]]}\t{data[DATAENCODER["n_reads"]]}\n')
-
-    plotStatistics(plotting_data, working_dir, sample_label, calculate_data_density)
-
-def plotStatistics(dataFrame : pd.DataFrame, working_dir : str, sample_label : str, calculate_data_density : bool) -> None:
-    LOGGER.printLog('Plotting data ...')
-    working_dir = os.path.join(working_dir, 'magnipore', sample_label, 'plots')
-    rcParams['agg.path.chunksize'] = 10000
-
-    if not os.path.exists(working_dir):
-        os.mkdir(working_dir)
-
-    dataFrame.replace({'Strand':STRANDDECODER})
-    dataFrame['Contig, Strand'] =  pd.Series(dataFrame.reindex(['contig', 'strand'], axis='columns').astype('str').values.tolist()).str.join(', ')
-
-    try:
-        figure(figsize = (12,8), dpi=2000)
-        g = sns.lineplot(data = dataFrame, x = 'position', y = 'n_reads', hue = 'Contig, Strand')
-        g.set_xlim((0, max(dataFrame['position'])))
-        g.set_xticks(range(0, max(dataFrame['position']), max(dataFrame['position'])//10))
-        plt.title(f'Read coverage of segmented signals for sample {sample_label}')
-        plt.setp(g.get_legend().get_texts(), fontsize='6') # for legend text
-        plt.setp(g.get_legend().get_title(), fontsize='6') # for legend title
-        g.set_yscale("log")
-        plt.grid(True, 'both', 'both', alpha=0.6, color='grey')
-        plt.tight_layout()
-        plt.savefig(os.path.join(working_dir, f'{sample_label}_readCoverage.png'))
-        plt.savefig(os.path.join(working_dir, f'{sample_label}_readCoverage.pdf'))
-        plt.close()
-    except:
-        plt.close()
-        LOGGER.warning('Plotting read coverage failed')
-
-    try:
-        figure(figsize = (12,8), dpi=2000)
-        g = sns.lineplot(data = dataFrame, x = 'position', y = 'n_segments', hue = 'Contig, Strand')
-        g.set_xlim((0, max(dataFrame['position'])))
-        g.set_xticks(range(0, max(dataFrame['position']), max(dataFrame['position'])//10))
-        plt.title(f'Segment coverage of segmented signals for sample {sample_label}')
-        plt.setp(g.get_legend().get_texts(), fontsize='6') # for legend text
-        plt.setp(g.get_legend().get_title(), fontsize='6') # for legend title
-        g.set_yscale("log")
-        plt.grid(True, 'both', 'both', alpha=0.6, color='grey')
-        plt.tight_layout()
-        plt.savefig(os.path.join(working_dir, f'{sample_label}_segmentCoverage.png'))
-        plt.savefig(os.path.join(working_dir, f'{sample_label}_segmentCoverage.pdf'))
-        plt.close()
-    except:
-        plt.close()
-        LOGGER.warning('Plotting segment coverage failed')
-
-    try:
-        figure(figsize = (12,8), dpi=2000)
-        g = sns.lineplot(data = dataFrame, x = 'position', y = 'n_datapoints', hue = 'Contig, Strand')
-        g.set_xlim((0, max(dataFrame['position'])))
-        g.set_xticks(range(0, max(dataFrame['position']), max(dataFrame['position'])//10))
-        plt.title(f'Signal coverage of segmented signals for sample {sample_label}')
-        plt.setp(g.get_legend().get_texts(), fontsize='6') # for legend text
-        plt.setp(g.get_legend().get_title(), fontsize='6') # for legend title
-        g.set_yscale("log")
-        plt.grid(True, 'both', 'both', alpha=0.6, color='grey')
-        plt.tight_layout()
-        plt.savefig(os.path.join(working_dir, f'{sample_label}_signalCoverage.png'))
-        plt.savefig(os.path.join(working_dir, f'{sample_label}_signalCoverage.pdf'))
-        plt.close()
-    except:
-        plt.close()
-        LOGGER.warning('Plotting signal coverage failed')
-
-    try:
-        figure(figsize = (12,8), dpi=2000)
-        g = sns.histplot(data = dataFrame, x = 'density difference', kde = True, hue = 'Contig, Strand', stat = 'density')
-        plt.title('Distribution of model density vs data density difference of all position.' if calculate_data_density else 'Model density per position.')
-        plt.setp(g.get_legend().get_texts(), fontsize='6') # for legend text
-        plt.setp(g.get_legend().get_title(), fontsize='6') # for legend title
-        plt.tight_layout()
-        plt.savefig(os.path.join(working_dir, f'{sample_label}_densityDiff.png' if calculate_data_density else f'{sample_label}_modeldensity.png'))
-        plt.savefig(os.path.join(working_dir, f'{sample_label}_densityDiff.pdf' if calculate_data_density else f'{sample_label}_modeldensity.pdf'))
-        plt.close()
-    except:
-        plt.close()
-        LOGGER.warning('Plotting density failed')
+                    w.write(f'{seq_id}\t{pos}\t{STRANDDECODER[strand]}\t{data[REDENCODER["mean"]]:.8f}\t{data[REDENCODER["std"]]:.8f}\t{data[REDENCODER["data_density"]]:.8f}\t{expected_model_density:.8f}\t{data[REDENCODER["n_datapoints"]]:.0f}\t{data[REDENCODER["contained_datapoints"]]:.0f}\t{data[REDENCODER["n_segments"]]:.0f}\t{data[REDENCODER["contained_segments"]]:.0f}\t{data[REDENCODER["n_reads"]]:.0f}\n')
 
 def main() -> None:
     
@@ -679,7 +550,6 @@ def main() -> None:
     mx = args.minimap2x
     mk = args.minimap2k
     max_lines = args.max_lines
-    # medaka_model = args.medaka_model
     calculate_data_density = args.calculate_data_density
     if args.error_prefix is not None:
         ERROR_PREFIX = args.error_prefix
@@ -697,7 +567,6 @@ def main() -> None:
 
     if not os.path.exists(working_dir):
         os.mkdir(working_dir)
-        # LOGGER.printLog(f'Creating working directory {working_dir}')
             
     LOGGER.printLog(f'Starting magnipore pipeline. Writing log to {log_file}')
 
@@ -730,8 +599,6 @@ def main() -> None:
     red_file, force_rebuild = aggregate_events(nanopolish_result_csv, nanopolish_summary_csv, path_to_fast5, path_to_reference, working_dir, sample_label, force_rebuild, sequencing_summary, calculate_data_density, max_lines)
 
     LOGGER.printLog(f'Aggregated reference event distributions for {sample_label} are stored in {red_file}')
-
-    # return red_file
 
 if __name__ == '__main__':
     main()

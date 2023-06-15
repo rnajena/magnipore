@@ -41,6 +41,7 @@ test:
   commands:
     - magnipore --help
     - nanosherlock --help
+    - pytest -vv tests/
 
 about:
   home: https://github.com/JannesSP/magnipore

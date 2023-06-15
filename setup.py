@@ -17,6 +17,7 @@ requirements = [
       'hdf5>=1.12',
       'hdf5plugin>=3.3',
       'ont_vbz_hdf_plugin>=1.0',
+      'pytest>=7.1',
       ]
 
 setup(

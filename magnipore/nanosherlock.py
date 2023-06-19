@@ -405,8 +405,8 @@ def createREDDict(fasta) -> tuple:
         omvs[seq.id] = np.zeros((seq_size, len(STRANDDECODER)), dtype=object)
 
         for pos in range(seq_size):
-            omvs[seq.id][pos, 0] = omv.LocShift(10)
-            omvs[seq.id][pos, 1] = omv.LocShift(10)
+            omvs[seq.id][pos, 0] = omv.LocShift(20)
+            omvs[seq.id][pos, 1] = omv.LocShift(20)
 
     return red_dict, omvs
 
@@ -498,8 +498,7 @@ def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readid2fast5 :
                     if calculate_data_density:
                         red[REDENCODER['data_density']] += np.mean(stats.norm.pdf(segment, loc = red[REDENCODER['mean']], scale = red[REDENCODER['std']]))
         
-        LOGGER.printLog(f'Line {lidx + 1}, {loop}, memory usage: {sizeof_fmt(PROCESS.memory_info().rss)}\t\t\r', newline_after=False)
-        print()
+            LOGGER.printLog(f'Line {lidx + 1}, {loop}, memory usage: {sizeof_fmt(PROCESS.memory_info().rss)}\t\t', newline_after=True)
 
     if calculate_data_density: 
         # normalize log density

@@ -174,7 +174,7 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
         first2sec_refpos_mapping = {i:(i,i) for i in range(len(seq))}
         unaligned_positions = {seq_id : []}
 
-        return first2sec_refpos_mapping, unaligned_positions, (seq_id, seq_id), (seq, seq)
+        return first2sec_refpos_mapping, unaligned_positions, sequences
 
 def readRedFile(red_file : str, seq_dict : dict):
     '''

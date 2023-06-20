@@ -413,6 +413,7 @@ def createREDDict(fasta) -> tuple:
 def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readid2fast5 : dict, nanopolish_result_csv : str, calculate_data_density : bool, max_lines : int = None):
 
     for loop in ['building models', 'checking data']:
+        max_mem = 0
 
         with open(nanopolish_result_csv, 'r') as nano_result:
             # skip header
@@ -427,7 +428,8 @@ def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readid2fast5 :
             for lidx, line in enumerate(nano_result):
 
                 if (lidx + 1) % 100000 == 0:
-                    print(f'Line {lidx + 1}{f"/{max_lines}" if max_lines is not None else ""}, {loop}, memory usage: {sizeof_fmt(PROCESS.memory_info().rss)}\t\t', end = '\r')
+                    max_mem = max(max_mem, sizeof_fmt(PROCESS.memory_info().rss))
+                    print(f'Line {lidx + 1}{f"/{max_lines}" if max_lines is not None else ""}, {loop}, max memory usage: {max_mem}\t\t', end = '\r')
                     if max_lines is not None and lidx >= max_lines:
                         break
 
@@ -498,7 +500,7 @@ def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readid2fast5 :
                     if calculate_data_density:
                         red[REDENCODER['data_density']] += np.mean(stats.norm.pdf(segment, loc = red[REDENCODER['mean']], scale = red[REDENCODER['std']]))
         
-            LOGGER.printLog(f'Line {lidx + 1}, {loop}, memory usage: {sizeof_fmt(PROCESS.memory_info().rss)}\t\t', newline_after=True)
+            LOGGER.printLog(f'Line {lidx + 1}, {loop}, max memory usage: {max_mem}\t\t', newline_after=True)
 
     if calculate_data_density: 
         # normalize log density

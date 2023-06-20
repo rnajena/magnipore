@@ -18,7 +18,7 @@ import re
 import matplotlib.lines as mlines
 from time import perf_counter_ns
 from magnipore.__init__ import __version__
-from magnipore.Helper import ANSI, MAGNIPORE_COLUMNS, REDENCODER, STRANDENCODER, STRANDDECODER, complement, rev_complement, truncate_colormap
+from magnipore.Helper import ANSI, MAGNIPORE_COLUMNS, REDENCODER, STRANDENCODER, STRANDDECODER, IUPAC, complement, rev_complement
 from magnipore.Logger import Logger
 
 LOGGER : Logger = None
@@ -137,23 +137,25 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
         for alip, (base1, base2) in enumerate(zip(seq1_seq, seq2_seq)): # (seq1, base1), (seq2, base2) in zip(sequences.items()):
             motif1 = seq1_seq[max(0,alip-3):min(len(seq1_seq),alip+4)].upper()
             motif2 = seq2_seq[max(0,alip-3):min(len(seq2_seq),alip+4)].upper()
+            base1 = base2.upper()
+            base2 = base2.upper()
 
             if base1 == '-':
-                unaligned_positions[seq2_id].append((i2, base2.upper()))
-                w.write(f'insert_{second_label},{i1},{i2},{base1},{base2.upper()},{motif1},{motif2}\n')
+                unaligned_positions[seq2_id].append((i2, base2))
+                w.write(f'insert_{second_label},{i1},{i2},{base1},{base2},{motif1},{motif2}\n')
                 i2 += 1
                 
             elif base2 == '-':
-                unaligned_positions[seq1_id].append((i1, base1.upper()))
-                w.write(f'insert_{first_label},{i1},{i2},{base1.upper()},{base2},{motif1},{motif2}\n')
+                unaligned_positions[seq1_id].append((i1, base1))
+                w.write(f'insert_{first_label},{i1},{i2},{base1},{base2},{motif1},{motif2}\n')
                 i1 += 1
             
             else:
                 first2sec_refpos_mapping[i1] = (i2, alip)
-                if base1.lower() == 'n' or base2.lower() == 'n':
-                    w.write(f'N,{i1},{i2},{base1.upper()},{base2.upper()},{motif1},{motif2}\n')
-                elif base1.lower() != base2.lower():
-                    w.write(f'substitution,{i1},{i2},{base1.upper()},{base2.upper()},{motif1},{motif2}\n')
+                if base1 == 'N' or base2 == 'N':
+                    w.write(f'N,{i1},{i2},{base1},{base2},{motif1},{motif2}\n')
+                elif base2 not in IUPAC[base1]: # mutation
+                    w.write(f'substitution,{i1},{i2},{base1},{base2},{motif1},{motif2}\n')
                 i1 += 1
                 i2 += 1
                 

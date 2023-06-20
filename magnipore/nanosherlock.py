@@ -389,6 +389,8 @@ def createREDDict(fasta) -> tuple:
     # sequences are stored as {reference: {pos: {strand: {base: (A|C|G|T), signal: []}}}}
     red_dict = {}
     omvs = {}
+    omv_size = 30
+    LOGGER.printLog(f'Using {omv_size} datapoints for OMV initialization.')
     for seq in fasta:
         
         # default values for mean, std etc is 0, default for expected model density is nan
@@ -398,8 +400,8 @@ def createREDDict(fasta) -> tuple:
         omvs[seq.id] = np.zeros((seq_size, len(STRANDDECODER)), dtype=object)
 
         for pos in range(seq_size):
-            omvs[seq.id][pos, 0] = omv.LocShift(20)
-            omvs[seq.id][pos, 1] = omv.LocShift(20)
+            omvs[seq.id][pos, 0] = omv.LocShift(omv_size)
+            omvs[seq.id][pos, 1] = omv.LocShift(omv_size)
 
     return red_dict, omvs
 

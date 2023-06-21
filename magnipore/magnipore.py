@@ -127,7 +127,7 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
     
     # {(pos_of_first_sample, base) : (pos_of_second_sample, base)}
     # different reference files for both samples
-    try:
+    if len(sequences) == 2:
         seq1_id, seq2_id = sequences.keys()
         seq1_seq, seq2_seq = sequences.values()
         i1 = i2 = 0
@@ -137,7 +137,7 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
         for alip, (base1, base2) in enumerate(zip(seq1_seq, seq2_seq)): # (seq1, base1), (seq2, base2) in zip(sequences.items()):
             motif1 = seq1_seq[max(0,alip-3):min(len(seq1_seq),alip+4)].upper()
             motif2 = seq2_seq[max(0,alip-3):min(len(seq2_seq),alip+4)].upper()
-            base1 = base2.upper()
+            base1 = base1.upper()
             base2 = base2.upper()
 
             if base1 == '-':
@@ -158,16 +158,16 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
                     w.write(f'substitution,{i1},{i2},{base1},{base2},{motif1},{motif2}\n')
                 i1 += 1
                 i2 += 1
-                
-        assert i1 == len(seq1_seq.replace('-', '')), 'Mapping iterator for sample 1 does not match sequence length'
-        assert i2 == len(seq2_seq.replace('-', '')), 'Mapping iterator for sample 2 does not match sequence length'
+
+        assert i1 == len(seq1_seq.replace('-', '')), f'Iterator mismatch: {i1} != {len(seq1_seq.replace("-", ""))}\t{seq1_seq}'
+        assert i2 == len(seq2_seq.replace('-', '')), f'Iterator mismatch: {i2} != {len(seq2_seq.replace("-", ""))}\t{seq2_seq}'
 
         LOGGER.printLog(f'Found {len(first2sec_refpos_mapping)} aligned positions, {len(unaligned_positions[seq1_id])} unaligned positions for sequence {seq1_id}, {len(unaligned_positions[seq2_id])} unaligned positions for sequence {seq2_id}')
 
         return first2sec_refpos_mapping, unaligned_positions, sequences
 
     # case: same reference fasta for both samples
-    except:
+    else:
         seq_id = list(sequences.keys())[0]
         seq = list(sequences.values())[0]
 

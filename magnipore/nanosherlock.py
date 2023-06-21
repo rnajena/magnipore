@@ -423,8 +423,8 @@ def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readid2fast5 :
             for lidx, line in enumerate(nano_result):
 
                 if (lidx + 1) % 100000 == 0:
-                    max_mem = max(max_mem, sizeof_fmt(PROCESS.memory_info().rss))
-                    print(f'Line {lidx + 1}{f"/{max_lines}" if max_lines is not None else ""}, {loop}, max memory usage: {max_mem}\t\t', end = '\r')
+                    max_mem = max(max_mem, PROCESS.memory_info().rss)
+                    print(f'Line {lidx + 1}{f"/{max_lines}" if max_lines is not None else ""}, {loop}, max memory usage: {sizeof_fmt(max_mem)}\t\t', end = '\r')
                     if max_lines is not None and lidx >= max_lines:
                         break
 

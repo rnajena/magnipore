@@ -73,6 +73,11 @@ STRANDDECODER = {
     1:'-'
 }
 
+MUTDECODER = {
+    True:'mut',
+    False:'mod'
+}
+
 REDENCODER = {
     'mean':0,
     'std':1,

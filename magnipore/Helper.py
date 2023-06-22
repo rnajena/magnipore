@@ -1,3 +1,6 @@
+import matplotlib.colors as colors
+import numpy as np
+
 class ANSI:
     PURPLE = '\033[95m'
     CYAN = '\033[96m'
@@ -17,6 +20,22 @@ def complement(seq):
     for b in seq:
         ret += COMPLEMENT.get(b, 'N')
     return ret
+
+def rev_complement(seq):
+    return complement(seq)[::-1]
+
+# def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
+#     new_cmap = colors.LinearSegmentedColormap.from_list(
+#         'trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
+#         cmap(np.linspace(minval, maxval, n)))
+#     return new_cmap
+
+def sizeof_fmt(num : float, suffix : str = 'B') -> str:
+    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+        if abs(num) < 1024.0:
+            return f"{num:3.1f}{unit}{suffix}"
+        num /= 1024.0
+    return f'{num:.1f}Yi{suffix}'
 
 BASEENCODER = {
     'A':0,
@@ -54,18 +73,21 @@ STRANDDECODER = {
     1:'-'
 }
 
-DATAENCODER = {
-    'base':0,
-    'omv':1,
-    'motif':2,
-    'mean':3,
-    'std':4,
-    'data_density':5,
-    'contained_datapoints':6,
-    'contained_segments':7,
-    'n_datapoints':8,
-    'n_segments':9,
-    'n_reads':10,
+MUTDECODER = {
+    True:'mut',
+    False:'mod'
+}
+
+REDENCODER = {
+    'mean':0,
+    'std':1,
+    'data_density':2,
+    'n_datapoints':3,
+    'contained_datapoints':4,
+    'n_segments':5,
+    'contained_segments':6,
+    'n_reads':7,
+    'expected_model_density':8,
 }
 
 COMPLEMENT = {
@@ -78,7 +100,7 @@ COMPLEMENT = {
     'R':'Y',
     'S':'S',
     'W':'W',
-    'M':'K', 
+    'M':'K',
     'K':'M'}
 
 IUPAC = {

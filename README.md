@@ -63,8 +63,8 @@ Magnipore depends on/requires other tools to preprocess and analyze the data.
 ### Input
 
 For each sample in the comparison, Magnipore takes:
-- (FASTA) a reference sequence file and
-- (FAST5) the raw sequencing data from ONT and
+- (FASTA) exactly ONE reference sequence
+- (FAST5) the raw sequencing data from ONT
 - (optinal FASTQ) optionally basecalls, if you do not have the guppy binary or do not want to basecall the raw ONT data (again).
 
 ### Output
@@ -119,12 +119,12 @@ positional arguments:
   path_to_fast5_first_sample
                         FAST5 file of first sample
   path_to_reference_first_sample
-                        reference FASTA file of first sample
+                        reference FASTA file of first sample, POSITIVE (+) or FORWARD strand, ATTENTION: can only contain a single sequence
   first_sample_label    Name of the sample or pipeline run
   path_to_fast5_sec_sample
                         FAST5 file of second sample
   path_to_reference_sec_sample
-                        reference FASTA file of second sample
+                        reference FASTA file of second sample, POSITIVE (+) or FORWARD strand, ATTENTION: can only contain a single sequence
   sec_sample_label      Name of the sample or pipeline run
   working_dir           Path to write all output files
 

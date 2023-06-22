@@ -37,10 +37,15 @@ requirements:
 
 test:
   source_files:
-    - magnipore
+    - tests/sample1.fa
+    - tests/sample2.fa
+    - tests/sample1.red
+    - tests/sample2.red
+    - tests/test_magnipore.py
   commands:
     - magnipore --help
     - nanosherlock --help
+    - pytest -vv
 
 about:
   home: https://github.com/JannesSP/magnipore

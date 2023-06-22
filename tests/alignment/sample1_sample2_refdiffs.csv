@@ -1,0 +1,8 @@
+type,sample1_pos,sample2_pos,base_sample1,base_sample2,alignment_motif_sample1,alignment_motif_sample2
+substitution,1,1,T,C,ATCAA,ACCAA
+insert_sample1,5,5,T,-,CAATTTT,CAA----
+insert_sample1,6,5,T,-,AATTTTT,AA-----
+insert_sample1,7,5,T,-,ATTTTTG,A-----G
+insert_sample1,8,5,T,-,TTTTTGG,-----GG
+insert_sample1,9,5,T,-,TTTTGGA,----GGA
+insert_sample1,22,17,T,-,CTTT,CTT-

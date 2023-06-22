@@ -144,7 +144,7 @@ def guppy_basecalling(guppy_bin : str, guppy_model : str,  guppy_device : str, p
     command = f'{guppy_bin} -i {path_to_fast5} -s {basecalls_path} --disable_pings --disable_qscore_filtering --calib_detect -c {guppy_model}'
 
     if fast5_out:
-        command += ' --fast5_out'
+        command += ' --post_out'
     
     if guppy_device is not None:
         command += f' --device {guppy_device}'

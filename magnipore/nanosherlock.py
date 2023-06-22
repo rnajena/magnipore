@@ -495,7 +495,7 @@ def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readid2fast5 :
                     if calculate_data_density:
                         red[REDENCODER['data_density']] += np.mean(stats.norm.pdf(segment, loc = red[REDENCODER['mean']], scale = red[REDENCODER['std']]))
         
-            LOGGER.printLog(f'Line {lidx + 1}, {loop}, max memory usage: {max_mem}\t\t', newline_after=True)
+            LOGGER.printLog(f'Line {lidx + 1}, {loop}, max memory usage: {sizeof_fmt(max_mem)}\t\t', newline_after=True)
 
     if calculate_data_density: 
         # normalize log density

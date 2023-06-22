@@ -63,7 +63,7 @@ def test_magnipore():
     seq_dict = {key:seq.replace('-', '') for key,seq in aln_dict.items()}
     plotting_data, magnipore_strings = magnipore(mapping_dict, unaligned_dict, seq_dict, aln_dict, red1_dict, red2_dict, lab1, lab2, this_file_dir)
     magn = pd.read_csv(os.path.join(this_file_dir, 'magnipore', 'sample1_sample2', 'sample1_sample2.magnipore'), sep='\t')
-    for i, row in magn[magn['strand'] == '+'].iterrows():
+    for i, row in magn[magn['strand'] == 0].iterrows():
         assert np.isclose(row['td_score'], tdscores[i])
         assert np.isclose(row['bayesian_p'], bayesian_ps[i])
         assert (row[['ref_1', 'ref_2']].values == (lab1, lab2)).all()

@@ -234,16 +234,16 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
     magnipore_strings = list(map(reformat, aln_dict.values()))
 
     # TODO add some quality value
-    plotting_data = pd.DataFrame(columns=['mean_diff', 'first_std', 'sec_std', 'avg_std', 'mut_context', 'td_score', 'kl_divergence'])
+    plotting_data = pd.DataFrame(columns=['Mean Difference', 'Avg Stdev', 'Strand', 'Mutational Context', 'Significant', 'TD Score', 'KL Divergence'])
     plotting_data = plotting_data.astype(
         {
-            'mean_diff': 'float64',
-            'first_std': 'float64',
-            'sec_std': 'float64',
-            'avg_std': 'float64',
-            'mut_context': 'str',
-            'td_score':'float64',
-            'kl_divergence':'float64'
+            'Mean Difference': 'float64',
+            'Avg Stdev': 'float64',
+            'Strand': 'bool',
+            'Mutational Context': 'bool',
+            'Significant': 'bool',
+            'TD Score':'float64',
+            'KL Divergence':'float64'
         })
     num_muts = 0
 
@@ -293,16 +293,13 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
                 sec_motif = rev_complement(sec_motif)
 
             new_entry = pd.DataFrame({
-                        'first_mean': [m0],
-                        'sec_mean': [m1],
-                        'first_std' : [s0],
-                        'sec_std' : [s1],
-                        'mean_diff' : [mDiff],
-                        'avg_std' : [sAvg],
-                        'mut_context' : ['mutation' if mut_context else 'matching reference'],
-                        'significant' : ['significant' if mDiff > sAvg else 'insignificant'],
-                        'td_score' : [td],
-                        'kl_divergence' : [kl_divergence]
+                        'Mean Difference' : [mDiff],
+                        'Avg Stdev' : [sAvg],
+                        'Strand' : [strand],
+                        'Mutational Context' : [mut_context],
+                        'Significant' : [mDiff>=sAvg],
+                        'TD Score' : [td],
+                        'KL Divergence' : [kl_divergence]
                 })
     
             plotting_data = pd.concat([plotting_data, new_entry], ignore_index=True)
@@ -383,11 +380,11 @@ def plotScores(dataframe : pd.DataFrame, working_dir : str, first_sample_label :
         'matching reference, significant':'darkorange',
         'mutation, insignificant':'skyblue',
         'mutation, significant':'darkblue'}
-    dataframe['Context, Significance'] =  pd.Series(dataframe.reindex(['mut_context', 'significant'], axis='columns').astype('str').values.tolist()).str.join(', ')
+    dataframe['Mutation, Significance'] =  pd.Series(dataframe.reindex(['Mutational Context', 'Significant'], axis='columns').astype('str').values.tolist()).str.join(', ')
 
     plt.figure(figsize = (12,8), dpi=300)
     plt.title(f'TD score for all positions\n{first_sample_label} vs. {sec_sample_label}')
-    sns.histplot(data=dataframe, x='td_score', hue=dataframe['Context, Significance'], log_scale=(True, True), multiple="stack", palette=colors)
+    sns.histplot(data=dataframe, x='TD Score', hue=dataframe['Mutation, Significance'], log_scale=(True, True), multiple="stack", palette=colors)
     plt.grid(True,  'both', 'both', alpha=0.6, linestyle='--')
     plt.tight_layout()
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_td_score.png'))
@@ -396,7 +393,7 @@ def plotScores(dataframe : pd.DataFrame, working_dir : str, first_sample_label :
 
     plt.figure(figsize = (12,8), dpi=300)
     plt.title(f'Kullback-Leibler divergence for all positions\n{first_sample_label} vs. {sec_sample_label}')
-    sns.histplot(data=dataframe, x='kl_divergence', hue=dataframe['Context, Significance'], log_scale=(True, True), multiple="stack", palette=colors)
+    sns.histplot(data=dataframe, x='KL Divergence', hue=dataframe['Mutation, Significance'], log_scale=(True, True), multiple="stack", palette=colors)
     plt.grid(True,  'both', 'both', alpha=0.6, linestyle='--')
     plt.tight_layout()
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_kl_div.png'))
@@ -405,8 +402,8 @@ def plotScores(dataframe : pd.DataFrame, working_dir : str, first_sample_label :
     
 def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample_label : str, sec_sample_label : str) -> None:
     
-    marker = lambda mut_context: 'D' if mut_context == 'mutation' else 'o'
-    color = lambda mut_context: 'blue' if mut_context == 'mutation' else '#d95f02' 
+    marker = lambda mut_context: 'D' if mut_context else 'o'
+    color = lambda mut_context: 'blue' if mut_context else '#d95f02' 
 
     ### Mean Dist vs Std Avg plot
     plt.figure(figsize = (12,12), dpi=300)
@@ -416,25 +413,25 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     label1 = first_sample_label.replace("_", " ")
     label2 = sec_sample_label.replace("_", " ")
 
-    g = sns.JointGrid(x = 'mean_diff', y = 'avg_std', data = dataframe, hue = 'mut_context', marginal_ticks=True, palette=['blue', '#d95f02'], hue_order=['mutation', 'matching reference'], height = 10)
+    g = sns.JointGrid(x='Mean Difference', y='Avg Stdev', data=dataframe, hue='Mutational Context', marginal_ticks=True, palette=['blue', '#d95f02'], hue_order=['mutation', 'matching reference'], height = 10)
     g.plot_joint(func=sns.scatterplot, s = 8)
     g.ax_joint.cla()
     for _, row in dataframe.iterrows():
-        g.ax_joint.plot(row['mean_diff'], row['avg_std'], color = color(row['mut_context']), marker = marker(row['mut_context']), markersize=3, alpha = 0.6)
+        g.ax_joint.plot(row['Mean Difference'], row['Avg Stdev'], color = color(row['Mutational Context']), marker = marker(row['Mutational Context']), markersize=3, alpha = 0.6)
     
     g.fig.suptitle(f'{len(dataframe.index)} compared bases mean difference against\naverage standard deviation\n{label1} and {label2}', y=0.98)
     g.ax_joint.grid(True, 'both', 'both', alpha = 0.4, linestyle = '--', linewidth = 0.5)
 
     lims = np.array([
-        [-.02, max(dataframe['mean_diff']) + 0.1],
-        [-.02, max(dataframe['avg_std']) + 0.1]
+        [-.02, max(dataframe['Mean Difference']) + 0.1],
+        [-.02, max(dataframe['Avg Stdev']) + 0.1]
     ])
 
     y1 = np.arange(min(lims[:, 0]), max(lims[:, 1]) + 0.01, 0.01)
     y2 = np.repeat(max(lims[:, 1]), len(y1))
 
-    g.ax_joint.fill_between(y1, lims[1,0], y1, color = '#1b9e77', alpha = 0.15, label = 'significant, TD>=1')
-    g.ax_joint.fill_between(y1, y1, y2, color = '#7570b3', alpha = 0.15, label = 'insignificant, TD<1')
+    g.ax_joint.fill_between(y1, lims[1,0], y1, color='#1b9e77', alpha=0.15, label='significant, TD>=1')
+    g.ax_joint.fill_between(y1, y1, y2, color='#7570b3', alpha=0.15, label='insignificant, TD<1')
 
     g.ax_joint.set_xlim(tuple(lims[0]))
     g.ax_joint.set_ylim(tuple(lims[1]))

@@ -18,7 +18,7 @@ import re
 import matplotlib.lines as mlines
 from time import perf_counter_ns
 from magnipore.__init__ import __version__
-from magnipore.Helper import ANSI, MAGNIPORE_COLUMNS, REDENCODER, STRANDENCODER, STRANDDECODER, IUPAC, complement, rev_complement
+from magnipore.Helper import ANSI, MAGNIPORE_COLUMNS, REDENCODER, STRANDENCODER, STRANDDECODER, MUTDECODER, IUPAC, complement, rev_complement
 from magnipore.Logger import Logger
 
 LOGGER : Logger = None
@@ -212,7 +212,7 @@ def readRedFile(red_file : str, seq_dict : dict):
     return red_sequences
 
 # TODO adjust seq_ids for multiple references? -> how to align multiple segments/chromosomes between two samples?
-def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict, red_first_sample : dict, red_sec_sample : dict, first_sample_label : str, sec_sample_label : str, working_dir : str) -> tuple:
+def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict, red1 : dict, red2 : dict, first_sample_label : str, sec_sample_label : str, working_dir : str) -> tuple:
 
     seqs_ids = list(seq_dict.keys())
     working_dir = os.path.join(working_dir, 'magnipore', f'{first_sample_label}_{sec_sample_label}')
@@ -237,77 +237,88 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
     plotting_data = pd.DataFrame(columns=['Mean Difference', 'Avg Stdev', 'Strand', 'Mutational Context', 'Significant', 'TD Score', 'KL Divergence'])
     plotting_data = plotting_data.astype(
         {
-            'Mean Difference': 'float64',
-            'Avg Stdev': 'float64',
+            'Mean Difference': 'float32',
+            'Avg Stdev': 'float32',
             'Strand': 'bool',
             'Mutational Context': 'bool',
             'Significant': 'bool',
-            'TD Score':'float64',
-            'KL Divergence':'float64'
+            'TD Score':'float32',
+            'KL Divergence':'float32'
         })
     num_muts = 0
 
     LOGGER.printLog(f'Start comparing sequences position wise ...')
-    first_seq = seq_dict[seqs_ids[0]].upper()
-    sec_seq = seq_dict[seqs_ids[1]].upper()
+    seq1 = seq_dict[seqs_ids[0]].upper()
+    seq2 = seq_dict[seqs_ids[1]].upper()
 
     # compare distributions of aligned positions
-    for sample_idx, (pos_first_sample, (pos_sec_sample, alip)) in enumerate(mapping.items()):
+    for sidx, (pos1, (pos2, alip)) in enumerate(mapping.items()):
         
-        if (sample_idx + 1) % 1000 == 0:
-            print(f'\t{sample_idx + 1}/{len(mapping)}', end='\r')
+        if (sidx + 1) % 1000 == 0:
+            print(f'\t{sidx + 1}/{len(mapping)}', end='\r')
         
-        dist_first_sample = red_first_sample[seqs_ids[0]][pos_first_sample]
-        dist_sec_sample = red_sec_sample[seqs_ids[1]][pos_sec_sample]
-        first_base = first_seq[pos_first_sample]
-        sec_base = sec_seq[pos_sec_sample]
+        data_pos1 = red1[seqs_ids[0]][pos1]
+        data_pos2 = red2[seqs_ids[1]][pos2]
+        base1 = seq1[pos1]
+        base2 = seq2[pos2]
         # no data for first and last two positions in red file, these positions should never be significant
         # motifs can have different lengths, rare case in start and end of reference
-        if min(pos_first_sample, pos_sec_sample) >= 3 and pos_first_sample+r <= len(first_seq) and pos_sec_sample+r <= len(sec_seq):
+        if min(pos1, pos2) >= 3 and pos1+3 <= len(seq1) and pos2+3 < len(seq2):
             r = 3
-        else:
+        elif min(pos1, pos2) >= 2 and pos1+2 <= len(seq1) and pos2+2 < len(seq2):
             r = 2
-        first_motif = first_seq[pos_first_sample-r:pos_first_sample+r+1]
-        sec_motif = sec_seq[pos_sec_sample-r:pos_sec_sample+r+1]
-        mut_context = first_motif != sec_motif
+        else:
+            continue
+        motif1 = seq1[pos1-r:pos1+r+1]
+        motif2 = seq2[pos2-r:pos2+r+1]
+        mut_context = motif1 != motif2
         
         for strand in [0, 1]:
 
-            m0 = dist_first_sample[strand, REDENCODER['mean']]
-            s0 = dist_first_sample[strand, REDENCODER['std']]
-            m1 = dist_sec_sample[strand, REDENCODER['mean']]
-            s1 = dist_sec_sample[strand, REDENCODER['std']]
-            firstDist = NormalDist(m0, s0)
-            secDist = NormalDist(m1, s1)
-            mDiff = abs(m0 - m1)
-            sAvg = (s0 + s1)/2
-            # functions check if positions have a distribution -> stdev for both are non-0
-            kl_divergence = kullback_leibler_normal(m0, s0, m1, s1)
-            td, isnan = td_score(mDiff, sAvg)
+            m1 = data_pos1[strand, REDENCODER['mean']]
+            s1 = data_pos1[strand, REDENCODER['std']]
+            m2 = data_pos2[strand, REDENCODER['mean']]
+            s2 = data_pos2[strand, REDENCODER['std']]
+            # check if positions have a distribution -> stdev for both are non-0
+            isnan = not s1 or not s2
             nans += isnan
-            
-            if strand == 1:
-                first_base = complement(first_base)
-                first_motif = rev_complement(first_motif)
-                sec_base = complement(sec_base)
-                sec_motif = rev_complement(sec_motif)
 
-            new_entry = pd.DataFrame({
-                        'Mean Difference' : [mDiff],
-                        'Avg Stdev' : [sAvg],
-                        'Strand' : [strand],
-                        'Mutational Context' : [mut_context],
-                        'Significant' : [mDiff>=sAvg],
-                        'TD Score' : [td],
-                        'KL Divergence' : [kl_divergence]
-                })
-    
-            plotting_data = pd.concat([plotting_data, new_entry], ignore_index=True)
-            outline = f'{STRANDDECODER[strand]}\t{td:.8f}\t{kl_divergence:.8f}\t{firstDist.overlap(secDist) if s0 and s1 else np.nan:.8f}\t{"mut" if mut_context else "mod"}\t{seqs_ids[0]}\t{pos_first_sample}\t{first_base}\t{first_motif}\t{m0:.8f}\t{s0:.8f}\t{dist_first_sample[strand, REDENCODER["n_datapoints"]]:.0f}\t{dist_first_sample[strand, REDENCODER["contained_datapoints"]]:.0f}\t{dist_first_sample[strand, REDENCODER["n_segments"]]:.0f}\t{dist_first_sample[strand, REDENCODER["contained_segments"]]:.0f}\t{dist_first_sample[strand, REDENCODER["n_reads"]]:.0f}\t{seqs_ids[1]}\t{pos_sec_sample}\t{sec_base}\t{sec_motif}\t{m1:.8f}\t{s1:.8f}\t{dist_sec_sample[strand, REDENCODER["n_datapoints"]]:.0f}\t{dist_sec_sample[strand, REDENCODER["contained_datapoints"]]:.0f}\t{dist_sec_sample[strand, REDENCODER["n_segments"]]:.0f}\t{dist_sec_sample[strand, REDENCODER["contained_segments"]]:.0f}\t{dist_sec_sample[strand, REDENCODER["n_reads"]]:.0f}\n'
+            if strand == 1:
+                base1 = complement(base1)
+                motif1 = rev_complement(motif1)
+                base2 = complement(base2)
+                motif2 = rev_complement(motif2)
+
+            if not isnan:
+                dist1 = NormalDist(m1, s1)
+                dist2 = NormalDist(m2, s2)
+                mDiff = abs(m1 - m2)
+                sAvg = (s1 + s2)/2
+                bayesian_p = dist1.overlap(dist2)
+                kl_divergence = kullback_leibler_normal(m1, s1, m2, s2)
+                td = td_score(mDiff, sAvg)
+                significant = td>=1
+                new_entry = pd.DataFrame({
+                            'Mean Difference' : [mDiff],
+                            'Avg Stdev' : [sAvg],
+                            'Strand' : [strand],
+                            'Mutational Context' : [mut_context],
+                            'Significant' : [significant],
+                            'TD Score' : [td],
+                            'KL Divergence' : [kl_divergence]
+                    })
+                plotting_data = pd.concat([plotting_data, new_entry], ignore_index=True)
+            else:
+                bayesian_p = np.nan
+                kl_divergence = np.nan
+                td = np.nan
+                significant = False
+
+            outline = f'{STRANDDECODER[strand]}\t{td:.8f}\t{kl_divergence:.8f}\t{bayesian_p:.8f}\t{MUTDECODER[mut_context]}\t{seqs_ids[0]}\t{pos1}\t{base1}\t{motif1}\t{m1:.8f}\t{s1:.8f}\t{data_pos1[strand, REDENCODER["n_datapoints"]]:.0f}\t{data_pos1[strand, REDENCODER["contained_datapoints"]]:.0f}\t{data_pos1[strand, REDENCODER["n_segments"]]:.0f}\t{data_pos1[strand, REDENCODER["contained_segments"]]:.0f}\t{data_pos1[strand, REDENCODER["n_reads"]]:.0f}\t{seqs_ids[1]}\t{pos2}\t{base2}\t{motif2}\t{m2:.8f}\t{s2:.8f}\t{data_pos2[strand, REDENCODER["n_datapoints"]]:.0f}\t{data_pos2[strand, REDENCODER["contained_datapoints"]]:.0f}\t{data_pos2[strand, REDENCODER["n_segments"]]:.0f}\t{data_pos2[strand, REDENCODER["contained_segments"]]:.0f}\t{data_pos2[strand, REDENCODER["n_reads"]]:.0f}\n'
             all.write(outline)
 
             # distance between both means is greater than the average std of both distributions
-            if mDiff > sAvg and s0 and s1:
+            if significant:
                 num_muts += mut_context
                 # X == interesting position
                 magnipore_strings[0][alip] = 'X'
@@ -325,7 +336,7 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
                 indels.write(f'insert\t+\t{seq}\t{position}\t{base}\n')
                 num_indels += 1
 
-    print(f'\t{sample_idx + 1}/{len(mapping)}')
+    print(f'\t{sidx + 1}/{len(mapping)}')
     LOGGER.printLog(f'Number of indels: {num_indels}\n'\
                f'Number of significant positions: {sign_pos}\n'\
                f'Number of significant positions with reference differences: {num_muts}\n'\
@@ -364,11 +375,9 @@ def plotStatistics(plotting_data : pd.DataFrame, working_dir : str, first_sample
     plot_dir = os.path.join(working_dir, 'magnipore', f'{first_sample_label}_{sec_sample_label}', 'plots')
     if not os.path.exists(plot_dir):
         os.mkdir(plot_dir)
-
     ### Mean Dist vs Std Avg plot
     LOGGER.printLog('Plotting Mean vs Stdev')
     plotMeanDiffStdAvg(plotting_data, plot_dir, first_sample_label, sec_sample_label)
-
     ### plot scores
     LOGGER.printLog(f'Plotting TD score and KL divergence')
     plotScores(plotting_data, plot_dir, first_sample_label, sec_sample_label)
@@ -376,10 +385,10 @@ def plotStatistics(plotting_data : pd.DataFrame, working_dir : str, first_sample
 def plotScores(dataframe : pd.DataFrame, working_dir : str, first_sample_label : str, sec_sample_label : str) -> None:
     
     colors = {
-        'matching reference, insignificant':'wheat',
-        'matching reference, significant':'darkorange',
-        'mutation, insignificant':'skyblue',
-        'mutation, significant':'darkblue'}
+        'False, False':'wheat',
+        'False, True':'darkorange',
+        'True, False':'skyblue',
+        'True, True':'darkblue'}
     dataframe['Mutation, Significance'] =  pd.Series(dataframe.reindex(['Mutational Context', 'Significant'], axis='columns').astype('str').values.tolist()).str.join(', ')
 
     plt.figure(figsize = (12,8), dpi=300)
@@ -413,7 +422,7 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     label1 = first_sample_label.replace("_", " ")
     label2 = sec_sample_label.replace("_", " ")
 
-    g = sns.JointGrid(x='Mean Difference', y='Avg Stdev', data=dataframe, hue='Mutational Context', marginal_ticks=True, palette=['blue', '#d95f02'], hue_order=['mutation', 'matching reference'], height = 10)
+    g = sns.JointGrid(x='Mean Difference', y='Avg Stdev', data=dataframe, hue='Mutational Context', marginal_ticks=True, palette=['blue', '#d95f02'], hue_order=[True, False], height = 10)
     g.plot_joint(func=sns.scatterplot, s = 8)
     g.ax_joint.cla()
     for _, row in dataframe.iterrows():
@@ -436,11 +445,7 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     g.ax_joint.set_xlim(tuple(lims[0]))
     g.ax_joint.set_ylim(tuple(lims[1]))
 
-    xlabel = 'Mean Difference'
-    ylabel = 'Average Standard Deviation'
-
-    g.ax_joint.set_xlabel(xlabel)
-    g.ax_joint.set_ylabel(ylabel)
+    g.ax_joint.set_ylabel('Average Standard Deviation')
     legend_mut = mlines.Line2D([], [], color='blue', marker='D', linestyle='None', markersize=10, label='mutation')
     legend_mod = mlines.Line2D([], [], color='#d95f02', marker='o', linestyle='None', markersize=10, label='matching reference')
     sign = mlines.Line2D([], [], color='#1b9e77', marker='s', linestyle='None', markersize=10, label='significant, TD>=1')
@@ -473,11 +478,8 @@ def td_score(mDiff, sAvg) -> tuple:
     Returns
     -------
     tdscore : float
-    isnan : bool
     '''
-    if not sAvg:
-        return np.nan, True
-    return mDiff/sAvg, 0
+    return mDiff/sAvg
     # return np.abs(mDiff - sAvg) / np.sqrt(2)
 
 def kullback_leibler_normal(m0 : float, s0 : float, m1 : float, s1 : float) -> float:

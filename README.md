@@ -1,12 +1,25 @@
 # ![](figures/magnipore_logo.png)
 
-Conda: [![Conda package](https://anaconda.org/jannessp/magnipore/badges/version.svg)](https://anaconda.org/jannessp/magnipore)
+[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-teal.svg)](https://www.gnu.org/licenses/gpl-3.0)![Python3.8](https://img.shields.io/badge/Language-Python_3.9-darkred.svg)![conda](https://img.shields.io/badge/Uses-conda-green.svg)
+
+[![Conda package](https://anaconda.org/jannessp/magnipore/badges/version.svg)](https://anaconda.org/jannessp/magnipore) ![Conda](https://img.shields.io/conda/dn/jannessp/magnipore)
 [![Conda package](https://anaconda.org/jannessp/magnipore/badges/latest_release_date.svg)](https://anaconda.org/jannessp/magnipore) [![Conda package](https://anaconda.org/jannessp/magnipore/badges/platforms.svg)](https://anaconda.org/jannessp/magnipore)
 
-Zenodo: [![DOI](https://zenodo.org/badge/545997776.svg)](https://zenodo.org/badge/latestdoi/545997776)
+[![DOI](https://zenodo.org/badge/545997776.svg)](https://zenodo.org/badge/latestdoi/545997776)
 
-- If you find a bug, please add it to the issues on GitHub with a detailed description.
+[![Twitter Follow](https://img.shields.io/twitter/follow/Ja_Spangenberg)](https://twitter.com/Ja_Spangenberg)
 
+
+>If you find a bug, please add it to the issues on GitHub with a detailed description.
+___
+1.  [Installation via Conda](#installation-via-conda)
+2.  [Description](#description)
+3.  [Dependencies](#dependencies)
+4.  [Workflow](#workflow)
+5.  [Usage](#usage)
+6.  [Output File Description](#output-file-description)
+7.  [Error Codes Explanation](#error-codes-explanation)
+___
 ## Installation via Conda
 To install Magnipore we recommend to use Conda:
 Magnipore depends on nanopolish eventalign which is designed for **linux-64 and osx-64**.
@@ -16,7 +29,7 @@ conda create -n magnipore -c jannessp magnipore
 conda activate magnipore
 ```
 
-Alternatively you can create a conda environment using the [conda_env.yml](conda/conda_env.yml) and mamba.
+Alternatively you can create a conda environment using the [conda_env.yml](conda.recipe/conda_env.yml) and mamba.
 ```
 mamba env create -f conda/conda_env.yml
 conda activate magnipore
@@ -41,6 +54,8 @@ Magnipore classifies these differences and provides the user with a position-wis
 
 Magnipore depends on/requires other tools to preprocess and analyze the data.
 
+<details><summary>Click here to see dependencies</summary>
+
 - python>=3.9
 - h5py>=3.7
 - biopython>=1.80
@@ -55,6 +70,9 @@ Magnipore depends on/requires other tools to preprocess and analyze the data.
 - psutil>=5.9
 - hdf5plugin>=3.3.1
 - ont_vbz_hdf_plugin>=1.0.1
+- pytest>=7.1
+
+</details>
 
 ---
 
@@ -86,16 +104,24 @@ For each sample in the comparison, Magnipore takes:
 If you are not using the conda package replace "magnipore" by "python3 magnipore.py".
 
 ### Without basecalling:
-```
+
+<details><summary>Click here to see command:</summary>
+```bash
 magnipore path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir --path_to_first_basecalls PATH_TO_FIRST_BASECALLS --path_to_sec_basecalls PATH_TO_SEC_BASECALLS
 ```
+  </details>
 
 ### With basecalling
-```
+
+<details><summary>Click here to see command:</summary>
+```bash
 magnipore path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir --guppy_bin PATH --guppy_model PATH
 ```
+  </details>
 
 ### Using a single sequencing run with demultiplexed FASTQs
+
+<details><summary>Click here to see command:</summary>
 - path_to_first_basecalls/path_to_sec_basecalls contains the FASTQs in format: <sample_label>.fastq and the sequencing summary!
 - FASTQs must be demultiplexed, meaning
  - <first_sample_label>.fastq contains only those reads of the first condition
@@ -103,11 +129,16 @@ magnipore path_to_fast5_first_sample path_to_reference_first_sample first_sample
 ```
 magnipore --path_to_first_basecalls path_to_first_basecalls --path_to_sec_basecalls path_to_sec_basecalls path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir
 ```
+</details>
 
 ### Using the same reference sequence
+
 Using the same reference sequence for both samples results in no reported mutations. Magnipore will only report potential modifications in this case. If you assume there are mutations between the samples, try to provide different reference sequences containing these mutations.
 
 ### Help Message
+
+<details><summary>Click here to see help message:</summary>
+
 ```
 usage: magnipore.py [-h] [--guppy_bin GUPPY_BIN] [--guppy_model GUPPY_MODEL] [--guppy_device GUPPY_DEVICE] [--path_to_first_basecalls FASTQ_DIR] [--path_to_sec_basecalls FASTQ_DIR] [--calculate_data_density]
                     [-t THREADS] [-f5] [-fr] [--strict] [-r2] [-mx {map-ont,splice,ava-ont}] [-mk MINIMAP2K] [--timeit]
@@ -155,14 +186,7 @@ optional arguments:
   --timeit              Measure and print time used by submodules (default: False)
   -v, --version         show program's version number and exit
 ```
-<!-- #### positional arguments:
-- path_to_fast5_first_sample : FAST5 directory of first sample
-- path_to_reference_first_sample : reference FASTA file of first sample
-- first_sample_label : Name of the sample or pipeline run
-- path_to_fast5_sec_sample : FAST5 file of second sample
-- path_to_reference_sec_sample : reference FASTA file of second sample
-- sec_sample_label : Name of the sample or pipeline run
-- working_dir : Path to write all output files
+</details>
 
 #### required arguments:
 use either the basecalling arguments or provide basecalls
@@ -176,8 +200,9 @@ use either the basecalling arguments or provide basecalls
 
 For optional arguments see magnipore.py --help. Includes small number of mapping parameters and the option to skip basecalling. -->
 
-## .magnipore Overview
+## Output File Description
 
+<details><summary>Click here to see overview:</summary>
 The .magnipore file is a TSV containing the following columns.
 
 - strand : on which strand the comparison took place
@@ -199,8 +224,11 @@ The .magnipore file is a TSV containing the following columns.
 
 same for second sample:
 - ref_2, pos_2, base_2, motif_2, signal_mean_2, signal_std_2, n_datapoints_2, contained_datapoints_2, n_segments_2, contained_segments_2, n_reads_2
+</details>
 
 ## Error Codes Explanation
+
+<details><summary>Click here to see error codes:</summary>
 
 - 11: Concatenating both reference files failed
 - 12: Building mafft alignment failed
@@ -234,3 +262,4 @@ The -e parameter of nanosherlock specifies the leading number of the error code.
 - 025: Nanopolish eventalign failed in sample
 - 026: Could not find provided fastq files for sample
 - 027: Could not find provided sequencing summary file for sample
+  </details>

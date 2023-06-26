@@ -116,19 +116,6 @@ IUPAC = {
     'M':'AC',
     'K':'GT'}
 
-OPPOSITION = {
-    'A':'CGT',
-    'C':'AGT',
-    'G':'ACT',
-    'T':'ACG',
-    'N':'N',
-    'Y':'AG',
-    'R':'CT',
-    'S':'AT',
-    'W':'GC',
-    'M':'GT', 
-    'K':'AC'}
-
 MAGNIPORE_COLUMNS = [
     'strand',                   #1
     'td_score',                 #2

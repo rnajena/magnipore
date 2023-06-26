@@ -1,6 +1,6 @@
 # ![](figures/magnipore_logo.png)
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-teal.svg)](https://www.gnu.org/licenses/gpl-3.0)![Python3.8](https://img.shields.io/badge/Language-Python_3.9-darkred.svg)![conda](https://img.shields.io/badge/Uses-conda-green.svg)
+[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-teal.svg)](https://www.gnu.org/licenses/gpl-3.0)![Python3.9](https://img.shields.io/badge/Language-Python_3.9-darkred.svg)![conda](https://img.shields.io/badge/Uses-conda-green.svg)
 
 [![Conda package](https://anaconda.org/jannessp/magnipore/badges/version.svg)](https://anaconda.org/jannessp/magnipore) ![Conda](https://img.shields.io/conda/dn/jannessp/magnipore)
 [![Conda package](https://anaconda.org/jannessp/magnipore/badges/latest_release_date.svg)](https://anaconda.org/jannessp/magnipore) [![Conda package](https://anaconda.org/jannessp/magnipore/badges/platforms.svg)](https://anaconda.org/jannessp/magnipore)

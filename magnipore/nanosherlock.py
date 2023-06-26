@@ -59,7 +59,7 @@ def readFast5(fast5_path : str, sequencing_summary : str = None) -> dict:
             seqsum.readline()
 
             for ridx, line in enumerate(seqsum):
-                if (ridx + 1) % 1000 == 0:
+                if (ridx + 1) % 10000 == 0:
                     LOGGER.printLog(f'Indexing read {ridx + 1}\r', newline_after=False)
             
                 filename, read_id = line.strip().split('\t')[:2]
@@ -79,7 +79,7 @@ def readNanoSum(nanoSum_path : str):
         next(summary) # skip header
 
         for lidx, line in enumerate(summary):
-            if (lidx + 1) % 1000 == 0:
+            if (lidx + 1) % 10000 == 0:
                 LOGGER.printLog(f'Loading id {lidx + 1}\r', newline_after=False)
             r_index, r_ID = line.strip().split()[:2]
             read_index2ID[int(r_index)] = r_ID
@@ -389,7 +389,7 @@ def createREDDict(fasta) -> tuple:
     # sequences are stored as {reference: {pos: {strand: {base: (A|C|G|T), signal: []}}}}
     red_dict = {}
     omvs = {}
-    omv_size = 30
+    omv_size = 10
     LOGGER.printLog(f'Using {omv_size} datapoints for OMV initialization.')
     for seq in fasta:
         

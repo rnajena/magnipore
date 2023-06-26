@@ -154,8 +154,11 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
                 first2sec_refpos_mapping[i1] = (i2, alip)
                 if base1 == 'N' or base2 == 'N':
                     w.write(f'N,{i1},{i2},{base1},{base2},{motif1},{motif2}\n')
-                elif base2 not in IUPAC[base1]: # mutation
-                    w.write(f'substitution,{i1},{i2},{base1},{base2},{motif1},{motif2}\n')
+                elif base1 != base2:
+                    if base2 in IUPAC[base1] or base1 in IUPAC[base2]: # could be a mutation, could not be
+                        w.write(f'possible_subsitution,{i1},{i2},{base1},{base2},{motif1},{motif2}\n')
+                    else: # mutation
+                        w.write(f'substitution,{i1},{i2},{base1},{base2},{motif1},{motif2}\n')
                 i1 += 1
                 i2 += 1
 

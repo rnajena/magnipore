@@ -121,7 +121,7 @@ OPPOSITION = {
     'C':'AGT',
     'G':'ACT',
     'T':'ACG',
-    'N':'',
+    'N':'N',
     'Y':'AG',
     'R':'CT',
     'S':'AT',

@@ -198,7 +198,7 @@ use either the basecalling arguments or provide basecalls
     - path_to_first_basecalls : Path
     - path_to_sec_basecalls : Path
 
-For optional arguments see magnipore.py --help. Includes small number of mapping parameters and the option to skip basecalling. -->
+For optional arguments see magnipore.py --help. Includes small number of mapping parameters and the option to skip basecalling.
 
 ## Output File Description
 

@@ -52,10 +52,10 @@ def parse() -> Namespace:
     parser.add_argument("--guppy_model", type = str, default = None, help='Guppy model used for basecalling')
     parser.add_argument('--guppy_device', type=str, default='cuda:0', help='Use the GPU to basecall "cuda:0" to use the GPU with ID 0')
 
-    parser.add_argument('--path_to_first_basecalls', metavar='FASTQ', type = str, default = None, help = 'Path to existing basecalls for first sample. Basecalls must be in one single file.')
-    parser.add_argument('--path_to_sec_basecalls', metavar='FASTQ', type = str, default = None, help = 'Path to existing basecalls for second sample. Basecalls must be in one single file.')
-    parser.add_argument('--path_to_first_sequencing_summary', metavar='TXT', type = str, default = None, help = 'Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file for second sample.')
-    parser.add_argument('--path_to_sec_sequencing_summary', metavar='TXT', type = str, default = None, help = 'Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file for first sample.')
+    parser.add_argument('--path_to_first_basecalls', metavar='FASTQ', type = str, default = None, help = 'Path to existing basecalls of first sample. Basecalls must be in one single file.')
+    parser.add_argument('--path_to_sec_basecalls', metavar='FASTQ', type = str, default = None, help = 'Path to existing basecalls of second sample. Basecalls must be in one single file.')
+    parser.add_argument('--path_to_first_sequencing_summary', metavar='TXT', type = str, default = None, help = 'Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file of second sample.')
+    parser.add_argument('--path_to_sec_sequencing_summary', metavar='TXT', type = str, default = None, help = 'Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file of first sample.')
     parser.add_argument('--calculate_data_density', action = 'store_true', default = False, help = 'Will calculate data density after building the models. Will increase runtime!')
 
     parser.add_argument('-t', "--threads", type=int, default=1, help='Number of threads to use')

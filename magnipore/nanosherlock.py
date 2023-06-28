@@ -105,7 +105,7 @@ def parse() -> Namespace:
     parser.add_argument('--guppy_device', type=str, default=None, help='Use the gpu to basecall with cuda:0')
 
     parser.add_argument('--path_to_basecalls', metavar='FASTQ', default = None, type = str, help = 'Path to existing basecalls. Basecalls must be in one single file.')
-    parser.add_argument('--path_to_sequencing_summary', metavar='TXT', type = str, default = None, help = 'Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file for sample.')
+    parser.add_argument('--path_to_sequencing_summary', metavar='TXT', type = str, default = None, help = 'Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file of sample.')
     parser.add_argument('--calculate_data_density', action = 'store_true', default = False, help = 'Will calculate data density after building the models. Will increase runtime!')
     parser.add_argument('-t', '--threads', type=int, help='Number of threads to use')
     parser.add_argument('-f5', '--fast5_out', action = 'store_true', help='Guppy generates FAST5 output (workspace folder)')

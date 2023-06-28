@@ -104,7 +104,8 @@ def parse() -> Namespace:
     parser.add_argument('--guppy_model', type = str, default = None, help='Guppy model for basecalling')
     parser.add_argument('--guppy_device', type=str, default=None, help='Use the gpu to basecall with cuda:0')
 
-    parser.add_argument('--path_to_basecalls', metavar='FASTQ_DIR', default = None, type = str, help = 'Path to existing basecalls and sequencing summary file. Basecalls must be in one single file with the name <sample_label>.fastq')
+    parser.add_argument('--path_to_basecalls', metavar='FASTQ', default = None, type = str, help = 'Path to existing basecalls. Basecalls must be in one single file.')
+    parser.add_argument('--path_to_sequencing_summary', metavar='TXT', type = str, default = None, help = 'Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file for sample.')
     parser.add_argument('--calculate_data_density', action = 'store_true', default = False, help = 'Will calculate data density after building the models. Will increase runtime!')
     parser.add_argument('-t', '--threads', type=int, help='Number of threads to use')
     parser.add_argument('-f5', '--fast5_out', action = 'store_true', help='Guppy generates FAST5 output (workspace folder)')
@@ -543,6 +544,7 @@ def main() -> None:
     threads = args.threads
     force_rebuild = args.force_rebuild
     path_to_basecalls = args.path_to_basecalls
+    path_to_sequencing_summary = args.path_to_sequencing_summary
     mx = args.minimap2x
     mk = args.minimap2k
     max_lines = args.max_lines
@@ -566,19 +568,14 @@ def main() -> None:
             
     LOGGER.printLog(f'Starting magnipore pipeline. Writing log to {log_file}')
 
-    sequencing_summary = None
-
     if path_to_basecalls is not None:
-        sequencing_summary = os.path.join(path_to_basecalls, 'sequencing_summary.txt')
-        path_to_basecalls = os.path.join(path_to_basecalls, sample_label)
-
-        if not os.path.exists(path_to_basecalls + '.fastq'):
-            if not os.path.exists(path_to_basecalls + '.fq'):
-                LOGGER.error(f'{path_to_basecalls}.fastq or .fq NOT FOUND!', error_type=ERROR_PREFIX+'26')
-            else:
-                path_to_basecalls+='.fq'
+        if path_to_sequencing_summary is not None:
+            sequencing_summary = path_to_sequencing_summary
         else:
-            path_to_basecalls+='.fastq'
+            sequencing_summary = os.path.join(os.path.dirname(path_to_basecalls), 'sequencing_summary.txt')
+
+        if not os.path.exists(path_to_basecalls):
+            LOGGER.error(f'{path_to_basecalls} NOT FOUND!', error_type=ERROR_PREFIX+'26')
 
         if not os.path.exists(sequencing_summary):
             LOGGER.error(f'{sequencing_summary} NOT FOUND!', error_type=ERROR_PREFIX+'27')

@@ -52,14 +52,16 @@ def parse() -> Namespace:
     parser.add_argument("--guppy_model", type = str, default = None, help='Guppy model used for basecalling')
     parser.add_argument('--guppy_device', type=str, default='cuda:0', help='Use the GPU to basecall "cuda:0" to use the GPU with ID 0')
 
-    parser.add_argument('--path_to_first_basecalls', metavar='FASTQ_DIR', type = str, default = None, help = 'Path to existing basecalls and sequencing summary file for first sample. Basecalls must be in one single file with the name <first_sample_label>.fastq')
-    parser.add_argument('--path_to_sec_basecalls', metavar='FASTQ_DIR', type = str, default = None, help = 'Path to existing basecalls and sequencing summary file for second sample. Basecalls must be in one single file with the name <sec_sample_label>.fastq')
+    parser.add_argument('--path_to_first_basecalls', metavar='FASTQ', type = str, default = None, help = 'Path to existing basecalls for first sample. Basecalls must be in one single file.')
+    parser.add_argument('--path_to_sec_basecalls', metavar='FASTQ', type = str, default = None, help = 'Path to existing basecalls for second sample. Basecalls must be in one single file.')
+    parser.add_argument('--path_to_first_sequencing_summary', metavar='TXT', type = str, default = None, help = 'Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file for second sample.')
+    parser.add_argument('--path_to_sec_sequencing_summary', metavar='TXT', type = str, default = None, help = 'Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file for first sample.')
     parser.add_argument('--calculate_data_density', action = 'store_true', default = False, help = 'Will calculate data density after building the models. Will increase runtime!')
 
     parser.add_argument('-t', "--threads", type=int, default=1, help='Number of threads to use')
     parser.add_argument('-f5', '--fast5_out', action = 'store_true', help='Guppy generates FAST5 output (workspace folder) of Guppy')
     parser.add_argument('-fr', '--force_rebuild', action = 'store_true', help='Run commands regardless if files are already present')
-    parser.add_argument('-mx', '--minimap2x', default = 'splice', choices = ['map-ont', 'splice', 'ava-ont'], help = '-x parameter for minimap2')
+    parser.add_argument('-mx', '--minimap2x', default = 'map-ont', choices = ['map-ont', 'splice', 'ava-ont'], help = '-x parameter for minimap2')
     parser.add_argument('-mk', '--minimap2k', default = 14, help = '-k parameter for minimap2')
     parser.add_argument('--timeit', default = False, action = 'store_true', help = 'Measure and print time used by submodules')
 
@@ -490,7 +492,7 @@ def kullback_leibler_normal(m0 : float, s0 : float, m1 : float, s1 : float) -> f
         return np.nan
     return (np.square(s0/s1) + np.square(m1-m0)/np.square(s1) - 1 + np.log(np.square(s1)/np.square(s0))) / 2
 
-def callNanosherlock(working_dir : str, sample_label : str, reference_path : str, fast5_path : str, basecalls_path : str, threads : int, mx : int, mk : int, guppy_bin : str, guppy_model : str, guppy_device : str, fast5_out : bool, calculate_data_density : bool, force_rebuild : bool) -> str:
+def callNanosherlock(working_dir : str, sample_label : str, reference_path : str, fast5_path : str, basecalls_path : str, seq_sum_path : str, threads : int, mx : int, mk : int, guppy_bin : str, guppy_model : str, guppy_device : str, fast5_out : bool, calculate_data_density : bool, force_rebuild : bool) -> str:
 
     red_file_path = os.path.join(working_dir, 'magnipore', sample_label, f'{sample_label}.red')
     if not os.path.exists(red_file_path) or not os.path.exists(reference_path) or force_rebuild:
@@ -504,6 +506,8 @@ def callNanosherlock(working_dir : str, sample_label : str, reference_path : str
             command += ' --calculate_data_density'
         if basecalls_path is not None:
             command += f' --path_to_basecalls {basecalls_path}'
+            if seq_sum_path is not None:
+                command += f' --path_to_sequencing_summary {seq_sum_path}'
         else:
             assert guppy_bin is not None and guppy_model is not None, 'Need at least the guppy binary path and model or path to basecalls'
             command += f' --guppy_bin {guppy_bin} --guppy_model {guppy_model} --guppy_device {guppy_device}'
@@ -539,6 +543,8 @@ def main():
     
     path_to_first_basecalls = args.path_to_first_basecalls
     path_to_sec_basecalls = args.path_to_sec_basecalls
+    path_to_first_sequencing_summary = args.path_to_first_sequencing_summary
+    path_to_sec_sequencing_summary = args.path_to_sec_sequencing_summary
 
     working_dir = args.working_dir
     guppy_bin = args.guppy_bin
@@ -563,10 +569,10 @@ def main():
     LOGGER = Logger(open(log_file, 'w'))
     
     # first sample
-    red_first_sample = callNanosherlock(working_dir, first_sample_label, path_to_reference_first_sample, path_to_fast5_first_sample, path_to_first_basecalls, threads, mx, mk, guppy_bin, guppy_model, guppy_device, fast5_out, calculate_data_density, force_rebuild)
+    red_first_sample = callNanosherlock(working_dir, first_sample_label, path_to_reference_first_sample, path_to_fast5_first_sample, path_to_first_basecalls, path_to_first_sequencing_summary, threads, mx, mk, guppy_bin, guppy_model, guppy_device, fast5_out, calculate_data_density, force_rebuild)
 
     # second sample
-    red_sec_sample = callNanosherlock(working_dir, sec_sample_label, path_to_reference_sec_sample, path_to_fast5_sec_sample, path_to_sec_basecalls, threads, mx, mk, guppy_bin, guppy_model, guppy_device, fast5_out, calculate_data_density, force_rebuild)
+    red_sec_sample = callNanosherlock(working_dir, sec_sample_label, path_to_reference_sec_sample, path_to_fast5_sec_sample, path_to_sec_basecalls, path_to_sec_sequencing_summary, threads, mx, mk, guppy_bin, guppy_model, guppy_device, fast5_out, calculate_data_density, force_rebuild)
 
     # mafft alignment
     alignment_path = mafft(path_to_reference_first_sample, path_to_reference_sec_sample, first_sample_label, sec_sample_label, working_dir, threads, force_rebuild)

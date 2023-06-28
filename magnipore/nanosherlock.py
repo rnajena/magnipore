@@ -110,7 +110,7 @@ def parse() -> Namespace:
     parser.add_argument('-t', '--threads', type=int, help='Number of threads to use')
     parser.add_argument('-f5', '--fast5_out', action = 'store_true', help='Guppy generates FAST5 output (workspace folder)')
     parser.add_argument('-fr', '--force_rebuild', action = 'store_true', help='Run commands regardless if files are already present')
-    parser.add_argument('-mx', '--minimap2x', default = 'splice', choices = ['map-ont', 'splice', 'ava-ont'], help = '-x parameter for minimap2')
+    parser.add_argument('-mx', '--minimap2x', default = 'map-ont', choices = ['map-ont', 'splice', 'ava-ont'], help = '-x parameter for minimap2')
     parser.add_argument('-mk', '--minimap2k', default = 14, type = int, help = '-k parameter for minimap2')
     parser.add_argument('--timeit', default = False, action = 'store_true', help = 'Measure and print time used by submodules')
     parser.add_argument('--max_lines', default=None, type=int, help='Only process first given number of lines from nanopolish eventalign')

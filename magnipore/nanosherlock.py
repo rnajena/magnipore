@@ -127,8 +127,6 @@ def guppy_basecalling(guppy_bin : str, guppy_model : str,  guppy_device : str, p
 
     if sequencing_summary is None:
         sequencing_summary = os.path.join(basecalls_path, 'sequencing_summary.txt')
-    else:
-        assert os.path.exists(sequencing_summary)
 
     if os.path.exists(sequencing_summary) and os.path.exists(basecalls) and not force_rebuild:
         LOGGER.printLog(f'basecalls and sequencing summary already exist:\n-\t{basecalls}\n-\t{sequencing_summary}')
@@ -543,8 +541,8 @@ def main() -> None:
     fast5_out = args.fast5_out
     threads = args.threads
     force_rebuild = args.force_rebuild
-    path_to_basecalls = args.path_to_basecalls
-    path_to_sequencing_summary = args.path_to_sequencing_summary
+    basecalls = args.path_to_basecalls
+    sequencing_summary = args.path_to_sequencing_summary
     mx = args.minimap2x
     mk = args.minimap2k
     max_lines = args.max_lines
@@ -552,7 +550,7 @@ def main() -> None:
     if args.error_prefix is not None:
         ERROR_PREFIX = args.error_prefix
 
-    assert (guppy_bin is not None and guppy_model is not None) or path_to_basecalls is not None, 'Need at least the guppy binary path and model or path to basecalls'
+    assert (guppy_bin is not None and guppy_model is not None) or basecalls is not None, 'Need at least the guppy binary path and model or path to basecalls'
 
     global TIMEIT
     TIMEIT = args.timeit
@@ -568,26 +566,23 @@ def main() -> None:
             
     LOGGER.printLog(f'Starting magnipore pipeline. Writing log to {log_file}')
 
-    if path_to_basecalls is not None:
-        if path_to_sequencing_summary is not None:
-            sequencing_summary = path_to_sequencing_summary
-        else:
-            sequencing_summary = os.path.join(os.path.dirname(path_to_basecalls), 'sequencing_summary.txt')
+    if basecalls is not None:
+        if sequencing_summary is None:
+            sequencing_summary = os.path.join(os.path.dirname(basecalls), 'sequencing_summary.txt')
 
-        if not os.path.exists(path_to_basecalls):
-            LOGGER.error(f'{path_to_basecalls} NOT FOUND!', error_type=ERROR_PREFIX+'26')
+        if not os.path.exists(basecalls):
+            LOGGER.error(f'{basecalls} NOT FOUND!', error_type=ERROR_PREFIX+'26')
 
         if not os.path.exists(sequencing_summary):
             LOGGER.error(f'{sequencing_summary} NOT FOUND!', error_type=ERROR_PREFIX+'27')
 
     else:
-
-        path_to_basecalls, sequencing_summary, force_rebuild = guppy_basecalling(guppy_bin, guppy_model, guppy_device, path_to_fast5, working_dir, sample_label, fast5_out, force_rebuild, sequencing_summary)
+        basecalls, sequencing_summary, force_rebuild = guppy_basecalling(guppy_bin, guppy_model, guppy_device, path_to_fast5, working_dir, sample_label, fast5_out, force_rebuild, None)
 
     # new alignment/mapping for nanopolish with the corrected reference
-    alignment_bam, force_rebuild = minimap(path_to_reference, path_to_basecalls, working_dir, sample_label, threads, force_rebuild, mx, mk)
+    alignment_bam, force_rebuild = minimap(path_to_reference, basecalls, working_dir, sample_label, threads, force_rebuild, mx, mk)
     
-    nanopolish_summary_csv, nanopolish_result_csv, force_rebuild = nanopolish(path_to_fast5, sequencing_summary, path_to_basecalls, path_to_reference, alignment_bam, working_dir, sample_label, threads, force_rebuild)
+    nanopolish_summary_csv, nanopolish_result_csv, force_rebuild = nanopolish(path_to_fast5, sequencing_summary, basecalls, path_to_reference, alignment_bam, working_dir, sample_label, threads, force_rebuild)
     
     red_file, force_rebuild = aggregate_events(nanopolish_result_csv, nanopolish_summary_csv, path_to_fast5, path_to_reference, working_dir, sample_label, force_rebuild, sequencing_summary, calculate_data_density, max_lines)
 

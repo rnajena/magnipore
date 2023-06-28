@@ -167,10 +167,14 @@ optional arguments:
                         Guppy model used for basecalling (default: None)
   --guppy_device GUPPY_DEVICE
                         Use the GPU to basecall "cuda:0" to use the GPU with ID 0 (default: cuda:0)
-  --path_to_first_basecalls FASTQ_DIR
-                        Path to existing basecalls and sequencing summary file for first sample. Basecalls must be in one single file with the name <first_sample_label>.fastq (default: None)
-  --path_to_sec_basecalls FASTQ_DIR
-                        Path to existing basecalls and sequencing summary file for second sample. Basecalls must be in one single file with the name <sec_sample_label>.fastq (default: None)
+  --path_to_first_basecalls FASTQ
+                        Path to existing basecalls of first sample. Basecalls must be in one single file. (default: None)
+  --path_to_sec_basecalls FASTQ
+                        Path to existing basecalls of second sample. Basecalls must be in one single file. (default: None)
+  --path_to_first_sequencing_summary TXT
+                        Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file of first sample. (default: None)
+  --path_to_sec_sequencing_summary TXT
+                        Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file of second sample. (default: None)
   --calculate_data_density
                         Will calculate data density after building the models. Will increase runtime! (default: False)
   -t THREADS, --threads THREADS
@@ -180,7 +184,7 @@ optional arguments:
   --strict              Do not write positions with a mutational context into .magnipore files (default: False)
   -r2, --range2         Use range 2 instead of range 3 for the mutational context check (default: False)
   -mx {map-ont,splice,ava-ont}, --minimap2x {map-ont,splice,ava-ont}
-                        -x parameter for minimap2 (default: splice)
+                        -x parameter for minimap2 (default: map-ont)
   -mk MINIMAP2K, --minimap2k MINIMAP2K
                         -k parameter for minimap2 (default: 14)
   --timeit              Measure and print time used by submodules (default: False)

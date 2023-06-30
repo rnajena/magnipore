@@ -388,7 +388,7 @@ def createREDDict(fasta) -> tuple:
     # sequences are stored as {reference: {pos: {strand: {base: (A|C|G|T), signal: []}}}}
     red_dict = {}
     omvs = {}
-    omv_size = 10
+    omv_size = 30
     LOGGER.printLog(f'Using {omv_size} datapoints for OMV initialization.')
     for seq in fasta:
         

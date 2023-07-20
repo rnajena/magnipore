@@ -1,11 +1,15 @@
-from magnipore.magnipore import readRedFile, initLogger, mafft, getMapping, magnipore
+from magnipore.magnipore import readRedFile, align, getMapping
+from magnipore import magnipore
 from magnipore.Helper import REDENCODER
+from magnipore.nanosherlock import mapping, signalSegmentation, aggregate_events
+from magnipore import nanosherlock
 from Bio import SeqIO
 import os
 import numpy as np
 import pandas as pd
 
-initLogger(None)
+magnipore.initLogger(None)
+nanosherlock.initLogger(None)
 this_file_dir = os.path.dirname(__file__)
 lab1 = 'sample1'
 ref1 = os.path.join(this_file_dir, 'sample1.fa')
@@ -15,11 +19,11 @@ ref2 = os.path.join(this_file_dir, 'sample2.fa')
 red2 = os.path.join(this_file_dir, 'sample2.red')
 red1DF = pd.read_csv(red1, sep='\t') # assuming pandas is tested and working correctly
 red2DF = pd.read_csv(red2, sep='\t') # assuming pandas is tested and working correctly
-seq_dict = SeqIO.to_dict(SeqIO.parse(ref1, format='fasta')) | SeqIO.to_dict(SeqIO.parse(ref2, format='fasta'))
+seq_dict = {**SeqIO.to_dict(SeqIO.parse(ref1, format='fasta')), **SeqIO.to_dict(SeqIO.parse(ref2, format='fasta'))}
 # print(seq_dict)
 s=['+','-']
 # ===================================
-alignment_path = mafft(ref1, ref2, lab1, lab2, this_file_dir, 1, False)
+alignment_path = align(ref1, ref2, lab1, lab2, this_file_dir, 1, False)
 mapping_dict, unaligned_dict, aln_dict = getMapping(alignment_path, this_file_dir, lab1, lab2)
 red1_dict = readRedFile(red1, seq_dict)
 red2_dict = readRedFile(red2, seq_dict)
@@ -32,7 +36,10 @@ motifs_sample1 = ['ATCAA', 'TCAATTT', 'TTTGGAC', 'CCAACAC', 'GTGTTGG']
 motifs_sample2 = ['ACCAA', 'CCAAGGA', 'CAAGGAC', 'CCAACAC', 'GTGTTGG']
 bases_sample1 = 'CAGAT'
 bases_sample2 = 'CAGAT'
-
+# ===================================
+targets = [38, 366]
+target_mean = [-0.2045173406607994, 2.584417871497208]
+target_std = [0.6050989516056662, 0.42849883560181956]
 def test_ReadREDFile():
 
     for sequence in red1_dict:
@@ -61,7 +68,7 @@ def test_mapping():
 
 def test_magnipore():
     seq_dict = {key:seq.replace('-', '') for key,seq in aln_dict.items()}
-    plotting_data, magnipore_strings = magnipore(mapping_dict, unaligned_dict, seq_dict, aln_dict, red1_dict, red2_dict, lab1, lab2, this_file_dir)
+    plotting_data, magnipore_strings = magnipore.magnipore(mapping_dict, unaligned_dict, seq_dict, aln_dict, red1_dict, red2_dict, lab1, lab2, this_file_dir)
     magn = pd.read_csv(os.path.join(this_file_dir, 'magnipore', 'sample1_sample2', 'sample1_sample2.magnipore'), sep='\t')
     for i, row in magn[magn['strand'] == 0].iterrows():
         assert np.isclose(row['td_score'], tdscores[i])
@@ -96,3 +103,72 @@ def test_magnipore():
     assert magnipore_strings[1].count('.') == 13
     assert magnipore_strings[1].count('-') == 6
     
+def test_event_aggregation_fast5():
+    raw_data_path = os.path.join(this_file_dir, 'raw_data')
+    basecalls = os.path.join(this_file_dir, 'basecalls', 'test.fastq')
+    seq_sum = os.path.join(this_file_dir, 'basecalls', 'sequencing_summary.txt')
+    map_file = os.path.join(this_file_dir, 'mapping', 'test', 'test.bam')
+    reference = os.path.join(this_file_dir, 'reference', 'test.fasta')
+    segmentation = os.path.join(this_file_dir, 'segmentation', 'test', 'eventalign_result.csv')
+    assert os.path.exists(basecalls)
+    mapping(reference, basecalls, this_file_dir, 'test', 1, True, 'splice', 14)
+    assert os.path.exists(map_file)
+    summary, segmentation, _ = signalSegmentation(raw_data_path, '.fast5', basecalls, reference, map_file, this_file_dir, 'test_fast5', 1, True, True, False, None)
+    assert os.path.exists(segmentation)
+    assert os.path.exists(summary)
+    red_file = aggregate_events(segmentation, summary, raw_data_path, '.fast5', reference, this_file_dir, 'test_fast5', True, seq_sum, False, False)
+    assert os.path.exists(red_file)
+    # 38: 36 0 54767	54773   0008609d-0d3e-46e5-9b69-25f7ab4b194e
+    # 38: 36 2 56368	56421   00425ffc-17d7-4ba0-87ae-9c01215661ca
+    # 38: 36 3 15561	15586   00118376-02d0-40a7-88db-5b450adebe13
+    # 366: 364 0    41422:41445   0008609d-0d3e-46e5-9b69-25f7ab4b194e
+    # 366: 364 2    42862:42909   00425ffc-17d7-4ba0-87ae-9c01215661ca
+    # 366: 364 5    25219:25226   003deea8-84e6-4161-9659-12a9fee2cfd4
+    checkRed(red_file)
+
+def test_event_aggregation_slow5():
+    raw_data_path = os.path.join(this_file_dir, 'raw_data', 'test.slow5')
+    basecalls = os.path.join(this_file_dir, 'basecalls', 'test.fastq')
+    seq_sum = os.path.join(this_file_dir, 'basecalls', 'sequencing_summary.txt')
+    map_file = os.path.join(this_file_dir, 'mapping', 'test', 'test.bam')
+    reference = os.path.join(this_file_dir, 'reference', 'test.fasta')
+    segmentation = os.path.join(this_file_dir, 'segmentation', 'test', 'eventalign_result.csv')
+    assert os.path.exists(basecalls)
+    mapping(reference, basecalls, this_file_dir, 'test', 1, True, 'splice', 14)
+    assert os.path.exists(map_file)
+    summary, segmentation, _ = signalSegmentation(raw_data_path, '.slow5', basecalls, reference, map_file, this_file_dir, 'test_slow5', 1, True, True, False, None)
+    assert os.path.exists(segmentation)
+    assert os.path.exists(summary)
+    red_file = aggregate_events(segmentation, summary, raw_data_path, '.slow5', reference, this_file_dir, 'test_slow5', True, seq_sum, False, False)
+    assert os.path.exists(red_file)
+    checkRed(red_file)
+
+def test_event_aggregation_blow5():
+    raw_data_path = os.path.join(this_file_dir, 'raw_data', 'test.blow5')
+    basecalls = os.path.join(this_file_dir, 'basecalls', 'test.fastq')
+    seq_sum = os.path.join(this_file_dir, 'basecalls', 'sequencing_summary.txt')
+    map_file = os.path.join(this_file_dir, 'mapping', 'test', 'test.bam')
+    reference = os.path.join(this_file_dir, 'reference', 'test.fasta')
+    segmentation = os.path.join(this_file_dir, 'segmentation', 'test', 'eventalign_result.csv')
+    assert os.path.exists(basecalls)
+    mapping(reference, basecalls, this_file_dir, 'test', 1, True, 'splice', 14)
+    assert os.path.exists(map_file)
+    summary, segmentation, _ = signalSegmentation(raw_data_path, '.slow5', basecalls, reference, map_file, this_file_dir, 'test_blow5', 1, True, True, False, None)
+    assert os.path.exists(segmentation)
+    assert os.path.exists(summary)
+    red_file = aggregate_events(segmentation, summary, raw_data_path, '.slow5', reference, this_file_dir, 'test_blow5', True, seq_sum, False, False)
+    assert os.path.exists(red_file)
+    checkRed(red_file)
+
+def checkRed(red_file : str) -> None:
+    relative_tolerance = 0.05 # allow for error as the online update of meanVar is heuristic and inaccurate for low number of values in case of stdev
+    with open(red_file, 'r') as red:
+        next(red) # skip header
+        for line in red:
+            line = line.strip().split('\t')
+            if int(line[1]) == 38 and line[2] == '+':
+                assert np.isclose(float(line[3]), target_mean[0], rtol = relative_tolerance)
+                assert np.isclose(float(line[4]), target_std[0], rtol = relative_tolerance)
+            elif int(line[1]) == 366 and line[2] == '+':
+                assert np.isclose(float(line[3]), target_mean[1], rtol = relative_tolerance)
+                assert np.isclose(float(line[4]), target_std[1], rtol = relative_tolerance)

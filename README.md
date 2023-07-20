@@ -1,8 +1,6 @@
 # ![](figures/magnipore_logo.png)
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-teal.svg)](https://www.gnu.org/licenses/gpl-3.0)![PyPI - Python Version](https://img.shields.io/pypi/pyversions/magnipore)![conda](https://img.shields.io/badge/Uses-conda-green.svg)
-
-[![PyPI](https://img.shields.io/pypi/v/magnipore) ![PyPI - Downloads](https://img.shields.io/pypi/dm/magnipore) ![PyPI - Status](https://img.shields.io/pypi/status/magnipore)](https://pypi.org/project/magnipore/)
+[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-teal.svg)](https://www.gnu.org/licenses/gpl-3.0)![conda](https://img.shields.io/badge/Uses-conda-green.svg)
 
 [![Conda package](https://anaconda.org/jannessp/magnipore/badges/version.svg)](https://anaconda.org/jannessp/magnipore) ![Conda](https://img.shields.io/conda/dn/jannessp/magnipore)
 [![Conda package](https://anaconda.org/jannessp/magnipore/badges/latest_release_date.svg)](https://anaconda.org/jannessp/magnipore) [![Conda package](https://anaconda.org/jannessp/magnipore/badges/platforms.svg)](https://anaconda.org/jannessp/magnipore)
@@ -22,15 +20,8 @@ ___
 6.  [Output File Description](#output-file-description)
 7.  [Error Codes Explanation](#error-codes-explanation)
 ___
-## Installation
+## Installation via Conda
 
-### via pip
-
-```bash
-pip install magnipore
-```
-
-### via Conda
 To install Magnipore we recommend to use Conda:
 Magnipore is available for **linux-64 and osx-64**.
 

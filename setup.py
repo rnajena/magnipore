@@ -1,7 +1,7 @@
 from setuptools import setup
 import versioneer
 
-# pypi dependencies
+# conda dependencies
 requirements = [
     'h5py>=3.7',
     'biopython>=1.80',
@@ -16,11 +16,11 @@ requirements = [
     'psutil>=5.9',
     'hdf5>=1.12',
     'hdf5plugin>=3.3',
-    'vbz-h5py-plugin>=1.0',
+    'ont_vbz_hdf_plugin>=1.0',
     'pytest>=7.1',
     'gzip>=1.12',
     'f5c>=1.2',
-    'read5>=1.2.0'
+    'read5>=1.2'
 ]
 
 setup(

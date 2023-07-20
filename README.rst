@@ -1,15 +1,5 @@
-Installation
-============
-
-via pip
--------
-
-.. code:: bash
-
-   pip install magnipore
-
-via Conda
----------
+Installation via Conda
+======================
 
 To install Magnipore we recommend to use Conda: Magnipore is available
 for **linux-64 and osx-64**.

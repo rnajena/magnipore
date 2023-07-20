@@ -58,8 +58,10 @@ about:
   dev_url: {{ data['url'] }}
   description: |
     # Magnipore
-    
-    [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-teal.svg)](https://www.gnu.org/licenses/gpl-3.0)![Python3.8](https://img.shields.io/badge/Language-Python_3.8-darkred.svg)![Python3.9](https://img.shields.io/badge/Language-Python_3.9-darkred.svg)![Python3.10](https://img.shields.io/badge/Language-Python_3.10-darkred.svg)![conda](https://img.shields.io/badge/Uses-conda-green.svg)
+
+    [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-teal.svg)](https://www.gnu.org/licenses/gpl-3.0)![PyPI - Python Version](https://img.shields.io/pypi/pyversions/magnipore)![conda](https://img.shields.io/badge/Uses-conda-green.svg)
+
+    [![PyPI](https://img.shields.io/pypi/v/magnipore) ![PyPI - Downloads](https://img.shields.io/pypi/dm/magnipore) ![PyPI - Status](https://img.shields.io/pypi/status/magnipore)](https://pypi.org/project/magnipore/)
 
     [![Conda package](https://anaconda.org/jannessp/magnipore/badges/version.svg)](https://anaconda.org/jannessp/magnipore) ![Conda](https://img.shields.io/conda/dn/jannessp/magnipore)
     [![Conda package](https://anaconda.org/jannessp/magnipore/badges/latest_release_date.svg)](https://anaconda.org/jannessp/magnipore) [![Conda package](https://anaconda.org/jannessp/magnipore/badges/platforms.svg)](https://anaconda.org/jannessp/magnipore)
@@ -67,7 +69,6 @@ about:
     [![DOI](https://zenodo.org/badge/545997776.svg)](https://zenodo.org/badge/latestdoi/545997776)
 
     [![Twitter Follow](https://img.shields.io/twitter/follow/Ja_Spangenberg)](https://twitter.com/Ja_Spangenberg)
-
 
     >If you find a bug, please add it to the issues on GitHub with a detailed description.
     ___
@@ -123,9 +124,8 @@ about:
 
     Magnipore depends on/requires other tools to preprocess and analyze the data.
 
-    <details><summary>Click here to see dependencies</summary>
-
     Conda Dependencies
+
     - python>=3.8
     - h5py>=3.7
     - biopython>=1.80
@@ -144,8 +144,6 @@ about:
     - f5c>=1.2
     - read5>=1.2.0
 
-    </details>
-
     ---
 
     ## Workflow
@@ -153,6 +151,7 @@ about:
     ### Input
 
     For each sample in the comparison, Magnipore takes:
+
     - (FASTA) exactly ONE reference sequence
     - (FAST5) the raw sequencing data from ONT
     - (optinal FASTQ) optionally basecalls, if you do not have the guppy binary or do not want to basecall the raw ONT data (again).
@@ -177,26 +176,17 @@ about:
 
     ### Without basecalling:
 
-    <details><summary>Click here to see command:</summary>
-
     ```bash
     magnipore path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir --path_to_first_basecalls PATH_TO_FIRST_BASECALLS --path_to_sec_basecalls PATH_TO_SEC_BASECALLS
     ```
-      </details>
-
     ### With basecalling
-
-    <details><summary>Click here to see command:</summary>
 
     ```bash
     magnipore path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir --guppy_bin PATH --guppy_model PATH
     ```
-      </details>
+          ### Using a single sequencing run with demultiplexed FASTQs
 
-    ### Using a single sequencing run with demultiplexed FASTQs
-
-    <details><summary>Click here to see command:</summary>
-    - path_to_first_basecalls/path_to_sec_basecalls contains the FASTQs in format: <sample_label>.fastq and the sequencing summary!
+        - path_to_first_basecalls/path_to_sec_basecalls contains the FASTQs in format: <sample_label>.fastq and the sequencing summary!
     - FASTQs must be demultiplexed, meaning
     - <first_sample_label>.fastq contains only those reads of the first condition
     - <sec_sample_label>.fastq contains only those reads of the second condition
@@ -204,15 +194,11 @@ about:
     ```bash
     magnipore --path_to_first_basecalls path_to_first_basecalls --path_to_sec_basecalls path_to_sec_basecalls path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir
     ```
-    </details>
-
-    ### Using the same reference sequence
+        ### Using the same reference sequence
 
     Using the same reference sequence for both samples results in no reported mutations. Magnipore will only report potential modifications in this case. If you assume there are mutations between the samples, try to provide different reference sequences containing these mutations.
 
     ### Help Message
-
-    <details><summary>Click here to see help message:</summary>
 
     ```bash
     usage: Magnipore [-h] [--guppy_bin GUPPY_BIN] [--guppy_model GUPPY_MODEL] [--guppy_device GUPPY_DEVICE] [-b1 FASTQ] [-b2 FASTQ] [-s1 TXT] [-s2 TXT] [-d] [-t THREADS] [-fr]
@@ -265,9 +251,7 @@ about:
                             custom kmer model file for f5c eventalign (default: None)
       -v, --version         show program's version number and exit
     ```
-    </details>
-
-    #### required arguments:
+        #### required arguments:
     use either the basecalling arguments or provide basecalls
     - basecalling arguments:
         - guppy_bin : Path to guppy binary
@@ -281,7 +265,6 @@ about:
 
     ## Output File Description
 
-    <details><summary>Click here to see overview:</summary>
     The .magnipore file is a TSV containing the following columns.
 
     - strand : on which strand the comparison took place
@@ -302,13 +285,10 @@ about:
     - n_reads_1 : number of reads (coverage) that formed the signal distribution
 
     same for second sample:
+
     - ref_2, pos_2, base_2, motif_2, signal_mean_2, signal_std_2, n_datapoints_2, contained_datapoints_2, n_segments_2, contained_segments_2, n_reads_2
-    </details>
-
     ## Error Codes Explanation
-
-    <details><summary>Click here to see error codes:</summary>
-
+    
     - 10: No pod5 module installed
     - 11: Concatenating both reference files failed
     - 12: Building mafft alignment failed
@@ -316,6 +296,7 @@ about:
     - 14: Running nanosherlock of the second sample failed
     ---
     Errors of first sample:
+
     - 119: Cannot basecall other .slow5/.blow5 with guppy
     - 120: Could not find raw data or unknown file format
     - 121: Guppy basecalling failed
@@ -327,6 +308,7 @@ about:
     - 127: Could not find provided sequencing summary file
     ---
     Errors of second sample
+
     - 219: Cannot basecall other .slow5/.blow5 with guppy
     - 220: Could not find raw data or unknown file format
     - 221: Guppy basecalling failed
@@ -340,6 +322,7 @@ about:
     ### If Subscript Nanosherlock is Executed Separately
 
     The -e parameter of nanosherlock specifies the leading number of the error code. Default is 0.
+
     - 019: Cannot basecall other .slow5/.blow5 with guppy
     - 020: Could not find raw data or unknown file format 
     - 021: Guppy basecalling failed
@@ -349,9 +332,8 @@ about:
     - 025: f5c eventalign failed
     - 026: Could not find provided fastq files
     - 027: Could not find provided sequencing summary file
-      </details>
-
-
+      
 extra:
   recipe-maintainers:
     - 38325576
+    - JannesSP

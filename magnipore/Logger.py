@@ -34,8 +34,8 @@ class Logger():
         @param string: String to write to stderr and logfile.
         @param error_type: used error_type, default 1.
         '''
-        sys.stderr.write(f'{ANSI.RED}ERROR: {string}{ANSI.END}\n')
-        self.writeLog(f'ERROR: {string}\n')
+        sys.stderr.write(f'{ANSI.RED}ERROR: {string}\nMagnipore Error Code: {error_type}\n{ANSI.END}\n')
+        self.writeLog(f'ERROR: {string}\nMagnipore Error Code: {error_type}\n')
         sys.exit(error_type)
 
     def warning(self, string):

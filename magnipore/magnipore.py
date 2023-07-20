@@ -4,10 +4,12 @@
 # github: https://github.com/JannesSP
 # website: https://jannessp.github.io
 
+from magnipore.__init__ import __version__
+from magnipore.Helper import ANSI, MAGNIPORE_COLUMNS, REDENCODER, STRANDENCODER, STRANDDECODER, MUTDECODER, IUPAC, complement, rev_complement
+from magnipore.Logger import Logger
 import seaborn as sns
 import os
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
-
 import numpy as np
 from Bio import SeqIO, Seq
 from matplotlib import pyplot as plt
@@ -17,9 +19,6 @@ from statistics import NormalDist
 import re
 import matplotlib.lines as mlines
 from time import perf_counter_ns
-from magnipore.__init__ import __version__
-from magnipore.Helper import ANSI, MAGNIPORE_COLUMNS, REDENCODER, STRANDENCODER, STRANDDECODER, MUTDECODER, IUPAC, complement, rev_complement
-from magnipore.Logger import Logger
 
 LOGGER : Logger = None
 FONTSIZE = 18
@@ -31,45 +30,38 @@ def initLogger(file = None) -> None:
     LOGGER = Logger(file)
 
 def parse() -> Namespace:
-
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsHelpFormatter,
         description='Required tools: see github https://github.com/JannesSP/magnipore',
         prog='Magnipore',
         )
-    
-    parser.add_argument("path_to_fast5_first_sample", type = str, help='FAST5 file of first sample')
-    parser.add_argument("path_to_reference_first_sample", type = str, help='reference FASTA file of first sample, POSITIVE (+) or FORWARD strand, ATTENTION: can only contain a single sequence')
-    parser.add_argument("first_sample_label", type = str, help='Name of the sample or pipeline run')
-    
-    parser.add_argument("path_to_fast5_sec_sample", type = str, help='FAST5 file of second sample')
-    parser.add_argument("path_to_reference_sec_sample", type = str, help='reference FASTA file of second sample, POSITIVE (+) or FORWARD strand, ATTENTION: can only contain a single sequence')
-    parser.add_argument("sec_sample_label", type = str, help='Name of the sample or pipeline run')
-    
+    parser.add_argument("raw_data_first_sample", type = str, help='Parent directory of FAST5 files of first sample, can also be a single SLOW5 or BLOW5 file of first sample, that contains all reads, if FASTQs are provided')
+    parser.add_argument("reference_first_sample", type = str, help='reference FASTA file of first sample, POSITIVE (+) or FORWARD strand, ATTENTION: can only contain a single sequence')
+    parser.add_argument("label_first_sample", type = str, help='Name of the sample or pipeline run')
+    parser.add_argument("raw_data_sec_sample", type = str, help='Parent directory of FAST5 files of second sample, can also be SLOW5 or BLOW5 file of second sample, that contains all reads, if FASTQs are provided')
+    parser.add_argument("reference_sec_sample", type = str, help='reference FASTA file of second sample, POSITIVE (+) or FORWARD strand, ATTENTION: can only contain a single sequence')
+    parser.add_argument("label_sec_sample", type = str, help='Name of the sample or pipeline run')
     parser.add_argument("working_dir", type = str, help='Path to write all output files')
-    
     parser.add_argument("--guppy_bin", type = str, default = None, help='Guppy binary')
     parser.add_argument("--guppy_model", type = str, default = None, help='Guppy model used for basecalling')
     parser.add_argument('--guppy_device', type=str, default='cuda:0', help='Use the GPU to basecall "cuda:0" to use the GPU with ID 0')
-
-    parser.add_argument('--path_to_first_basecalls', metavar='FASTQ', type = str, default = None, help = 'Path to existing basecalls of first sample. Basecalls must be in one single file.')
-    parser.add_argument('--path_to_sec_basecalls', metavar='FASTQ', type = str, default = None, help = 'Path to existing basecalls of second sample. Basecalls must be in one single file.')
-    parser.add_argument('--path_to_first_sequencing_summary', metavar='TXT', type = str, default = None, help = 'Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file of second sample.')
-    parser.add_argument('--path_to_sec_sequencing_summary', metavar='TXT', type = str, default = None, help = 'Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file of first sample.')
-    parser.add_argument('--calculate_data_density', action = 'store_true', default = False, help = 'Will calculate data density after building the models. Will increase runtime!')
-
+    parser.add_argument('-b1', '--basecalls_first_sample', metavar='FASTQ', type = str, default = None, help = 'Path to existing basecalls of first sample. Basecalls must be in one single file.')
+    parser.add_argument('-b2', '--basecalls_sec_sample', metavar='FASTQ', type = str, default = None, help = 'Path to existing basecalls of second sample. Basecalls must be in one single file.')
+    parser.add_argument('-s1', '--sequencing_summary_first_sample', metavar='TXT', type = str, default = None, help = 'Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file of second sample.')
+    parser.add_argument('-s2', '--sequencing_summary_sec_sample', metavar='TXT', type = str, default = None, help = 'Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file of first sample.')
+    parser.add_argument('-d', '--calculate_data_density', action = 'store_true', default = False, help = 'Will calculate data density after building the models. Will increase runtime!')
     parser.add_argument('-t', "--threads", type=int, default=1, help='Number of threads to use')
-    parser.add_argument('-f5', '--fast5_out', action = 'store_true', help='Guppy generates FAST5 output (workspace folder) of Guppy')
     parser.add_argument('-fr', '--force_rebuild', action = 'store_true', help='Run commands regardless if files are already present')
     parser.add_argument('-mx', '--minimap2x', default = 'map-ont', choices = ['map-ont', 'splice', 'ava-ont'], help = '-x parameter for minimap2')
     parser.add_argument('-mk', '--minimap2k', default = 14, help = '-k parameter for minimap2')
     parser.add_argument('--timeit', default = False, action = 'store_true', help = 'Measure and print time used by submodules')
-
+    parser.add_argument('-rna', default=False, action='store_true', help='Use when data is rna')
+    parser.add_argument('-r10', default=False, action='store_true', help='Use when data is from R10.4.1 flowcell')
+    parser.add_argument('-km', '--kmer_model', default = None, type=str, help='custom kmer model file for f5c eventalign')
     parser.add_argument('-v', '--version', action='version', version='%(prog)s' + f' {__version__}')
-
     return parser.parse_args()
 
-def mafft(ref_first_sample : str, ref_sec_sample : str, first_sample_label : str, sec_sample_label : str, working_dir : str, threads : int, force_rebuild : bool):
+def align(ref_first_sample : str, ref_sec_sample : str, first_sample_label : str, sec_sample_label : str, working_dir : str, threads : int, force_rebuild : bool):
     
     # write both references into one file
     alignment_path = os.path.join(working_dir, 'alignment')
@@ -112,20 +104,16 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
     '''
     Get base mapping from reference to reference, split indels and substitutions/matches
     '''
-    
     fasta = SeqIO.parse(open(alignment_path), 'fasta')
     sequences = {}
-
     outfile = os.path.join(outpath, 'alignment', f'{first_label}_{second_label}_refdiffs.csv')
     w = open(outfile, 'w')
     w.write(f'type,{first_label}_pos,{second_label}_pos,base_{first_label},base_{second_label},alignment_motif_{first_label},alignment_motif_{second_label}\n')
 
     for seq in fasta:
-
         sequences[seq.id] = str(seq.seq)
         
     LOGGER.printLog(f'Found an alignment for sequences {list(sequences.keys())}')
-    # LOGGER.printLog(f'Lengths are {list(map(len, sequences.values()))}')
     
     # {(pos_of_first_sample, base) : (pos_of_second_sample, base)}
     # different reference files for both samples
@@ -191,16 +179,12 @@ def readRedFile(red_file : str, seq_dict : dict):
         read data from RED files
         {seq_id:[pos, strand, features]}
     '''
-    
     LOGGER.printLog(f'Reading RED file {red_file}')
-    
     # sequences are stored as {reference: [pos, strand, REDENCODER]}
     red_sequences = {}
 
     with open(red_file, 'r') as red:
-        
         for line in red:
-            
             if line.startswith('reference\t'):
                 continue
 
@@ -213,7 +197,6 @@ def readRedFile(red_file : str, seq_dict : dict):
 
             # Order of REDENCODER + expected_model_density at the end
             red_sequences[ref_id][pos, STRANDENCODER[strand]] = [mean, std, data_density, n_datapoints, contained_datapoints, n_segments, contained_segments, n_reads, expected_model_density]
-
     return red_sequences
 
 # TODO adjust seq_ids for multiple references? -> how to align multiple segments/chromosomes between two samples?
@@ -470,10 +453,8 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     plt.close()
 
 def ks_test(dist1 : tuple, dist2 : tuple) -> tuple:
-    
     data1 = np.random.normal(dist1[0], dist1[1], 100)
     data2 = np.random.normal(dist2[0], dist2[1], 100)
-    
     return ks_2samp(data1, data2)
 
 def td_score(mDiff, sAvg) -> tuple:
@@ -492,22 +473,26 @@ def kullback_leibler_normal(m0 : float, s0 : float, m1 : float, s1 : float) -> f
         return np.nan
     return (np.square(s0/s1) + np.square(m1-m0)/np.square(s1) - 1 + np.log(np.square(s1)/np.square(s0))) / 2
 
-def callNanosherlock(working_dir : str, sample_label : str, reference_path : str, fast5_path : str, basecalls_path : str, seq_sum_path : str, threads : int, mx : int, mk : int, guppy_bin : str, guppy_model : str, guppy_device : str, fast5_out : bool, calculate_data_density : bool, force_rebuild : bool) -> str:
+def callNanosherlock(working_dir : str, sample_label : str, reference_path : str, fast5_path : str, basecalls_path : str, seq_sum_path : str, threads : int, mx : int, mk : int, guppy_bin : str, guppy_model : str, guppy_device : str, calculate_data_density : bool, rna : bool, r10 : bool, kmer_model : str, force_rebuild : bool) -> str:
 
     red_file_path = os.path.join(working_dir, 'magnipore', sample_label, f'{sample_label}.red')
     if not os.path.exists(red_file_path) or not os.path.exists(reference_path) or force_rebuild:
         command = f'{SUBSCRIPT} {fast5_path} {reference_path} {working_dir} {sample_label} -t {threads} -mx {mx} -mk {mk} -e 1'
 
-        if fast5_out:
-            command += ' --fast5_out'
         if force_rebuild:
             command += ' --force_rebuild'
         if calculate_data_density:
             command += ' --calculate_data_density'
+        if rna:
+            command += ' -rna'
+        if r10:
+            command += ' -r10'
+        if kmer_model is not None:
+            command += f' -kmer {kmer_model}'
         if basecalls_path is not None:
-            command += f' --path_to_basecalls {basecalls_path}'
+            command += f' --basecalls {basecalls_path}'
             if seq_sum_path is not None:
-                command += f' --path_to_sequencing_summary {seq_sum_path}'
+                command += f' --sequencing_summary {seq_sum_path}'
         else:
             assert guppy_bin is not None and guppy_model is not None, 'Need at least the guppy binary path and model or path to basecalls'
             command += f' --guppy_bin {guppy_bin} --guppy_model {guppy_model} --guppy_device {guppy_device}'
@@ -533,18 +518,18 @@ def main():
     
     args = parse()
     
-    path_to_fast5_first_sample = args.path_to_fast5_first_sample
-    path_to_reference_first_sample = args.path_to_reference_first_sample
-    first_sample_label = args.first_sample_label
+    raw_data_first_sample = args.raw_data_first_sample
+    ref_first_sample = args.reference_first_sample
+    label_first_sample = args.label_first_sample
     
-    path_to_fast5_sec_sample = args.path_to_fast5_sec_sample
-    path_to_reference_sec_sample = args.path_to_reference_sec_sample
-    sec_sample_label = args.sec_sample_label
+    raw_data_sec_sample = args.raw_data_sec_sample
+    ref_sec_sample = args.reference_sec_sample
+    label_sec_sample = args.label_sec_sample
     
-    path_to_first_basecalls = args.path_to_first_basecalls
-    path_to_sec_basecalls = args.path_to_sec_basecalls
-    path_to_first_sequencing_summary = args.path_to_first_sequencing_summary
-    path_to_sec_sequencing_summary = args.path_to_sec_sequencing_summary
+    basecalls_first_sample = args.basecalls_first_sample
+    basecalls_sec_sample = args.basecalls_sec_sample
+    seqsum_first_sample = args.sequencing_summary_first_sample
+    seqsum_sec_sample = args.sequencing_summary_sec_sample
 
     working_dir = args.working_dir
     guppy_bin = args.guppy_bin
@@ -552,31 +537,34 @@ def main():
     guppy_device = args.guppy_device
     
     threads = args.threads
-    fast5_out = args.fast5_out
     force_rebuild = args.force_rebuild
     calculate_data_density = args.calculate_data_density
+    rna = args.rna
+    r10 = args.r10
 
     mx = args.minimap2x
     mk = args.minimap2k
+
+    kmer_model = args.kmer_model
 
     global TIMEIT 
     TIMEIT = args.timeit
 
     global LOGGER
-    log_file = os.path.join(working_dir, 'log', f'{first_sample_label}_{sec_sample_label}_magnipore.log')
+    log_file = os.path.join(working_dir, 'log', f'{label_first_sample}_{label_sec_sample}_magnipore.log')
     if not os.path.exists(os.path.join(working_dir, 'log')):
         os.makedirs(os.path.join(working_dir, 'log'))
     LOGGER = Logger(open(log_file, 'w'))
     
     # first sample
-    red_first_sample = callNanosherlock(working_dir, first_sample_label, path_to_reference_first_sample, path_to_fast5_first_sample, path_to_first_basecalls, path_to_first_sequencing_summary, threads, mx, mk, guppy_bin, guppy_model, guppy_device, fast5_out, calculate_data_density, force_rebuild)
+    red_first_sample = callNanosherlock(working_dir, label_first_sample, ref_first_sample, raw_data_first_sample, basecalls_first_sample, seqsum_first_sample, threads, mx, mk, guppy_bin, guppy_model, guppy_device, calculate_data_density, rna, r10, kmer_model, force_rebuild)
 
     # second sample
-    red_sec_sample = callNanosherlock(working_dir, sec_sample_label, path_to_reference_sec_sample, path_to_fast5_sec_sample, path_to_sec_basecalls, path_to_sec_sequencing_summary, threads, mx, mk, guppy_bin, guppy_model, guppy_device, fast5_out, calculate_data_density, force_rebuild)
+    red_sec_sample = callNanosherlock(working_dir, label_sec_sample, ref_sec_sample, raw_data_sec_sample, basecalls_sec_sample, seqsum_sec_sample, threads, mx, mk, guppy_bin, guppy_model, guppy_device, calculate_data_density, rna, r10, kmer_model, force_rebuild)
 
     # mafft alignment
-    alignment_path = mafft(path_to_reference_first_sample, path_to_reference_sec_sample, first_sample_label, sec_sample_label, working_dir, threads, force_rebuild)
-    mapping, unaligned, aln_dict = getMapping(alignment_path, working_dir, first_sample_label, sec_sample_label)
+    alignment_path = align(ref_first_sample, ref_sec_sample, label_first_sample, label_sec_sample, working_dir, threads, force_rebuild)
+    mapping, unaligned, aln_dict = getMapping(alignment_path, working_dir, label_first_sample, label_sec_sample)
     seq_dict = {key:seq.replace('-', '') for key,seq in aln_dict.items()}
 
     # reading RED files
@@ -585,9 +573,9 @@ def main():
     
     if TIMEIT:
         start = perf_counter_ns()
-    plotting_data, magnipore_strings = magnipore(mapping, unaligned, seq_dict, aln_dict, red_first_sample, red_sec_sample, first_sample_label, sec_sample_label, working_dir)
-    plotStatistics(plotting_data, working_dir, first_sample_label, sec_sample_label)
-    writeStockholm(magnipore_strings, alignment_path, first_sample_label, sec_sample_label, working_dir)
+    plotting_data, magnipore_strings = magnipore(mapping, unaligned, seq_dict, aln_dict, red_first_sample, red_sec_sample, label_first_sample, label_sec_sample, working_dir)
+    plotStatistics(plotting_data, working_dir, label_first_sample, label_sec_sample)
+    writeStockholm(magnipore_strings, alignment_path, label_first_sample, label_sec_sample, working_dir)
     if TIMEIT:
         end = perf_counter_ns()
         LOGGER.printLog(f'{ANSI.YELLOW}TIMED: Evaluating distributions took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')

@@ -1,0 +1,19 @@
+[meth_main::WARNING][1;33m Option --collapse-events is experimental. Exercise caution.[0m
+[init_core::INFO][1;34m builtin RNA R9 nucleotide model loaded[0m
+[meth_main::0.063*0.36] 7 Entries (0.0M bases) loaded
+[pthread_processor::0.333*0.88] 7 Entries (0.0M bases) processed
+[meth_main] skipped unmapped: 0, skipped secondary: 0, skipped low_mapq: 0
+[meth_main] total entries: 7, qc fail: 2, could not calibrate: 0, no alignment: 0, bad reads: 0
+[meth_main] total bases: 0.0 Mbases
+[meth_main] Data loading time: 0.054 sec
+[meth_main]     - bam load time: 0.000 sec
+[meth_main]     - fasta load time: 0.001 sec
+[meth_main]     - fast5 load time: 0.053 sec
+[meth_main]         - fast5 open time: 0.006 sec
+[meth_main]         - fast5 read time: 0.046 sec
+[meth_main] Data processing time: 0.269 sec
+[meth_main] Data output time: 0.000 sec
+[main] Version: 1.2
+[main] CMD: f5c eventalign -r /home/yi98suv/projects/magnipore/tests/basecalls/test.fastq -b /home/yi98suv/projects/magnipore/tests/mapping/test/test.bam -g /home/yi98suv/projects/magnipore/tests/reference/test.fasta --summary=/home/yi98suv/projects/magnipore/tests/segmentation/test_fast5/eventalign_summary.csv --scale-events --signal-index --secondary=no --rna --collapse-events --iop 1 -t 1 -o /home/yi98suv/projects/magnipore/tests/segmentation/test_fast5/eventalign_result.csv
+[main] Real time: 0.337 sec; CPU time: 0.294 sec; Peak RAM: 0.018 GB
+

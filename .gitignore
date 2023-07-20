@@ -130,3 +130,5 @@ dmypy.json
 setup_old.py
 pull_request.md
 zenodo/trick_zenodo.py
+readme.md
+.vscode/settings.json

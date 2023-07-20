@@ -1,6 +1,6 @@
 # ![](figures/magnipore_logo.png)
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-teal.svg)](https://www.gnu.org/licenses/gpl-3.0)![Python3.9](https://img.shields.io/badge/Language-Python_3.9-darkred.svg)![conda](https://img.shields.io/badge/Uses-conda-green.svg)
+[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-teal.svg)](https://www.gnu.org/licenses/gpl-3.0)![Python3.8](https://img.shields.io/badge/Language-Python_3.8-darkred.svg)![Python3.9](https://img.shields.io/badge/Language-Python_3.9-darkred.svg)![Python3.10](https://img.shields.io/badge/Language-Python_3.10-darkred.svg)![conda](https://img.shields.io/badge/Uses-conda-green.svg)
 
 [![Conda package](https://anaconda.org/jannessp/magnipore/badges/version.svg)](https://anaconda.org/jannessp/magnipore) ![Conda](https://img.shields.io/conda/dn/jannessp/magnipore)
 [![Conda package](https://anaconda.org/jannessp/magnipore/badges/latest_release_date.svg)](https://anaconda.org/jannessp/magnipore) [![Conda package](https://anaconda.org/jannessp/magnipore/badges/platforms.svg)](https://anaconda.org/jannessp/magnipore)
@@ -20,17 +20,27 @@ ___
 6.  [Output File Description](#output-file-description)
 7.  [Error Codes Explanation](#error-codes-explanation)
 ___
-## Installation via Conda
-To install Magnipore we recommend to use Conda:
-Magnipore depends on nanopolish eventalign which is designed for **linux-64 and osx-64**.
+## Installation
 
+### via pip
+
+```bash
+pip install magnipore
 ```
-conda create -n magnipore -c jannessp magnipore
+
+### via Conda
+To install Magnipore we recommend to use Conda:
+Magnipore is available for **linux-64 and osx-64**.
+
+```bash
+conda install mamba
+mamba create -n magnipore -c jannessp magnipore
 conda activate magnipore
 ```
 
-Alternatively you can create a conda environment using the [conda_env.yml](conda.recipe/conda_env.yml) and mamba.
-```
+*Alternatively you can create a conda environment using the [conda_env.yml](conda.recipe/conda_env.yml) and mamba.*
+```bash
+conda install mamba
 mamba env create -f conda/conda_env.yml
 conda activate magnipore
 git clone https://github.com/JannesSP/magnipore.git
@@ -56,14 +66,14 @@ Magnipore depends on/requires other tools to preprocess and analyze the data.
 
 <details><summary>Click here to see dependencies</summary>
 
-- python>=3.9
+Conda Dependencies
+- python (>=3.8,<3.11)
 - h5py>=3.7
 - biopython>=1.80
 - mafft>=7.508
 - matplotlib>=3.6.2
 - numpy>=1.23
 - scipy>=1.9
-- nanopolish>=0.14
 - minimap2>=2.24
 - pandas>=1.5
 - seaborn>=0.12
@@ -71,6 +81,10 @@ Magnipore depends on/requires other tools to preprocess and analyze the data.
 - hdf5plugin>=3.3.1
 - ont_vbz_hdf_plugin>=1.0.1
 - pytest>=7.1
+- gzip>=1.12
+- read5>=1.1.6
+- f5c>=1.2
+- read5>=1.2.0
 
 </details>
 
@@ -106,28 +120,31 @@ If you are not using the conda package replace "magnipore" by "python3 magnipore
 ### Without basecalling:
 
 <details><summary>Click here to see command:</summary>
+
 ```bash
-magnipore path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir --path_to_first_basecalls PATH_TO_FIRST_BASECALLS --path_to_sec_basecalls PATH_TO_SEC_BASECALLS
+magnipore raw_data_first_sample reference_first_sample label_first_sample raw_data_sec_sample reference_sec_sample label_sec_sample working_dir --basecalls_first_sample basecalls_first_sample --basecalls_sec_sample basecalls_sec_sample
 ```
   </details>
 
 ### With basecalling
 
 <details><summary>Click here to see command:</summary>
+
 ```bash
-magnipore path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir --guppy_bin PATH --guppy_model PATH
+magnipore raw_data_first_sample reference_first_sample label_first_sample raw_data_sec_sample reference_sec_sample label_sec_sample working_dir --guppy_bin PATH --guppy_model PATH
 ```
   </details>
 
 ### Using a single sequencing run with demultiplexed FASTQs
 
 <details><summary>Click here to see command:</summary>
-- path_to_first_basecalls/path_to_sec_basecalls contains the FASTQs in format: <sample_label>.fastq and the sequencing summary!
+- basecalls_first_sample/basecalls_sec_sample contains the FASTQs in format: <sample_label>.fastq and the sequencing summary!
 - FASTQs must be demultiplexed, meaning
- - <first_sample_label>.fastq contains only those reads of the first condition
- - <sec_sample_label>.fastq contains only those reads of the second condition
-```
-magnipore --path_to_first_basecalls path_to_first_basecalls --path_to_sec_basecalls path_to_sec_basecalls path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir
+ - <label_first_sample>.fastq contains only those reads of the first condition
+ - <label_sec_sample>.fastq contains only those reads of the second condition
+
+```bash
+magnipore --basecalls_first_sample basecalls_first_sample --basecalls_sec_sample basecalls_sec_sample raw_data_first_sample reference_first_sample label_first_sample raw_data_sec_sample reference_sec_sample label_sec_sample working_dir
 ```
 </details>
 
@@ -139,24 +156,23 @@ Using the same reference sequence for both samples results in no reported mutati
 
 <details><summary>Click here to see help message:</summary>
 
-```
-usage: magnipore.py [-h] [--guppy_bin GUPPY_BIN] [--guppy_model GUPPY_MODEL] [--guppy_device GUPPY_DEVICE] [--path_to_first_basecalls FASTQ_DIR] [--path_to_sec_basecalls FASTQ_DIR] [--calculate_data_density]
-                    [-t THREADS] [-f5] [-fr] [--strict] [-r2] [-mx {map-ont,splice,ava-ont}] [-mk MINIMAP2K] [--timeit]
-                    path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir
+```bash
+usage: Magnipore [-h] [--guppy_bin GUPPY_BIN] [--guppy_model GUPPY_MODEL] [--guppy_device GUPPY_DEVICE] [-b1 FASTQ] [-b2 FASTQ] [-s1 TXT] [-s2 TXT] [-d] [-t THREADS] [-fr]
+                 [-mx {map-ont,splice,ava-ont}] [-mk MINIMAP2K] [--timeit] [--rna] [-v]
+                 raw_data_first_sample reference_first_sample label_first_sample raw_data_sec_sample reference_sec_sample label_sec_sample working_dir
 
-Required tools in environment: see github https://github.com/JannesSP/magnipore
+Required tools: see github https://github.com/JannesSP/magnipore
 
 positional arguments:
-  path_to_fast5_first_sample
-                        FAST5 file of first sample
-  path_to_reference_first_sample
+  raw_data_first_sample
+                        Parent directory of FAST5 files of first sample, can also be a single SLOW5 or BLOW5 file of first sample, that contains all reads, if FASTQs are
+                        provided
+  reference_first_sample
                         reference FASTA file of first sample, POSITIVE (+) or FORWARD strand, ATTENTION: can only contain a single sequence
-  first_sample_label    Name of the sample or pipeline run
-  path_to_fast5_sec_sample
-                        FAST5 file of second sample
-  path_to_reference_sec_sample
-                        reference FASTA file of second sample, POSITIVE (+) or FORWARD strand, ATTENTION: can only contain a single sequence
-  sec_sample_label      Name of the sample or pipeline run
+  label_first_sample    Name of the sample or pipeline run
+  raw_data_sec_sample   Parent directory of FAST5 files of second sample, can also be SLOW5 or BLOW5 file of second sample, that contains all reads, if FASTQs are provided
+  reference_sec_sample  reference FASTA file of second sample, POSITIVE (+) or FORWARD strand, ATTENTION: can only contain a single sequence
+  label_sec_sample      Name of the sample or pipeline run
   working_dir           Path to write all output files
 
 optional arguments:
@@ -167,27 +183,28 @@ optional arguments:
                         Guppy model used for basecalling (default: None)
   --guppy_device GUPPY_DEVICE
                         Use the GPU to basecall "cuda:0" to use the GPU with ID 0 (default: cuda:0)
-  --path_to_first_basecalls FASTQ
+  -b1 FASTQ, --basecalls_first_sample FASTQ
                         Path to existing basecalls of first sample. Basecalls must be in one single file. (default: None)
-  --path_to_sec_basecalls FASTQ
+  -b2 FASTQ, --basecalls_sec_sample FASTQ
                         Path to existing basecalls of second sample. Basecalls must be in one single file. (default: None)
-  --path_to_first_sequencing_summary TXT
-                        Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file of first sample. (default: None)
-  --path_to_sec_sequencing_summary TXT
+  -s1 TXT, --sequencing_summary_first_sample TXT
                         Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file of second sample. (default: None)
-  --calculate_data_density
+  -s2 TXT, --sequencing_summary_sec_sample TXT
+                        Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file of first sample. (default: None)
+  -d, --calculate_data_density
                         Will calculate data density after building the models. Will increase runtime! (default: False)
   -t THREADS, --threads THREADS
                         Number of threads to use (default: 1)
-  -f5, --fast5_out      Guppy generates FAST5 output (workspace folder) of Guppy (default: False)
   -fr, --force_rebuild  Run commands regardless if files are already present (default: False)
-  --strict              Do not write positions with a mutational context into .magnipore files (default: False)
-  -r2, --range2         Use range 2 instead of range 3 for the mutational context check (default: False)
   -mx {map-ont,splice,ava-ont}, --minimap2x {map-ont,splice,ava-ont}
                         -x parameter for minimap2 (default: map-ont)
   -mk MINIMAP2K, --minimap2k MINIMAP2K
                         -k parameter for minimap2 (default: 14)
   --timeit              Measure and print time used by submodules (default: False)
+  -rna                  Use when data is rna (default: False)
+  -r10                  Use when data is from R10.4.1 flowcell (default: False)
+  -km KMER_MODEL, --kmer_model KMER_MODEL
+                        custom kmer model file for f5c eventalign (default: None)
   -v, --version         show program's version number and exit
 ```
 </details>
@@ -199,8 +216,8 @@ use either the basecalling arguments or provide basecalls
     - guppy_model : Path to guppy model used for basecalling
     - (optional) guppy_device : Device used for basecalling (cpu or gpu cuda:0)
 - provided basecalls (FASTQ)
-    - path_to_first_basecalls : Path
-    - path_to_sec_basecalls : Path
+    - basecalls_first_sample : Path
+    - basecalls_sec_sample : Path
 
 For optional arguments see magnipore.py --help. Includes small number of mapping parameters and the option to skip basecalling.
 
@@ -234,36 +251,44 @@ same for second sample:
 
 <details><summary>Click here to see error codes:</summary>
 
+- 10: No pod5 module installed
 - 11: Concatenating both reference files failed
 - 12: Building mafft alignment failed
-- 13: Running nanosherlock for the first sample failed
-- 14: Running nanosherlock for the second sample failed
+- 13: Running nanosherlock of the first sample failed
+- 14: Running nanosherlock of the second sample failed
 ---
-- 121: Guppy basecalling failed in first sample
-- 122: minimap2 mapping failed in first sample
-- 123: Samtools indexing failed in first sample
-- 124: Nanopolish indexing failed in first sample
-- 125: Nanopolish eventalign failed in first sample
-- 126: Could not find provided fastq files for first sample
-- 127: Could not find provided sequencing summary file for first sample
+Errors of first sample:
+- 119: Cannot basecall other .slow5/.blow5 with guppy
+- 120: Could not find raw data or unknown file format
+- 121: Guppy basecalling failed
+- 122: minimap2 mapping failed
+- 123: Samtools indexing failed
+- 124: f5c index failed
+- 125: f5c eventalign failed
+- 126: Could not find provided fastq files
+- 127: Could not find provided sequencing summary file
 ---
-- 221: Guppy basecalling failed in second sample
-- 222: minimap2 mapping failed in second sample
-- 223: Samtools indexing failed in second sample
-- 224: Nanopolish indexing failed in second sample
-- 225: Nanopolish eventalign failed in second sample
-- 226: Could not find provided fastq files for second sample
-- 227: Could not find provided sequencing summary file for second sample
+Errors of second sample
+- 219: Cannot basecall other .slow5/.blow5 with guppy
+- 220: Could not find raw data or unknown file format
+- 221: Guppy basecalling failed
+- 222: minimap2 mapping failed
+- 223: Samtools indexing failed
+- 224: f5c index failed
+- 225: f5c eventalign failed
+- 226: Could not find provided fastq files
+- 227: Could not find provided sequencing summary file
 
 ### If Subscript Nanosherlock is Executed Separately
 
 The -e parameter of nanosherlock specifies the leading number of the error code. Default is 0.
-
-- 021: Guppy basecalling failed in sample
-- 022: minimap2 mapping failed in sample
-- 023: Samtools indexing failed in sample
-- 024: Nanopolish indexing failed in sample
-- 025: Nanopolish eventalign failed in sample
-- 026: Could not find provided fastq files for sample
-- 027: Could not find provided sequencing summary file for sample
+- 019: Cannot basecall other .slow5/.blow5 with guppy
+- 020: Could not find raw data or unknown file format 
+- 021: Guppy basecalling failed
+- 022: minimap2 mapping failed
+- 023: Samtools indexing failed
+- 024: f5c index failed
+- 025: f5c eventalign failed
+- 026: Could not find provided fastq files
+- 027: Could not find provided sequencing summary file
   </details>

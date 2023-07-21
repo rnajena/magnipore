@@ -237,7 +237,8 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
 
     LOGGER.printLog(f'Start comparing sequences position wise ...')
     seq1 = seq_dict[seqs_ids[0]].upper()
-    seq2 = seq_dict[seqs_ids[1]].upper()
+    # when providing the same reference for both samples seqs_ids is only length 1
+    seq2 = seq_dict[seqs_ids[1]].upper() if len(seqs_ids) > 1 else seq1
 
     # compare distributions of aligned positions
     for sidx, (pos1, (pos2, alip)) in enumerate(mapping.items()):

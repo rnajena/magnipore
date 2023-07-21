@@ -203,6 +203,9 @@ def readRedFile(red_file : str, seq_dict : dict):
 def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict, red1 : dict, red2 : dict, first_sample_label : str, sec_sample_label : str, working_dir : str) -> tuple:
 
     seqs_ids = list(seq_dict.keys())
+    # when providing the same reference for both samples seqs_ids is only length 1, add the same sequence id again
+    if len(seqs_ids) == 1:
+        seqs_ids.append(seqs_ids[0])
     working_dir = os.path.join(working_dir, 'magnipore', f'{first_sample_label}_{sec_sample_label}')
 
     if not os.path.exists(working_dir):
@@ -237,8 +240,7 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
 
     LOGGER.printLog(f'Start comparing sequences position wise ...')
     seq1 = seq_dict[seqs_ids[0]].upper()
-    # when providing the same reference for both samples seqs_ids is only length 1
-    seq2 = seq_dict[seqs_ids[1]].upper() if len(seqs_ids) > 1 else seq1
+    seq2 = seq_dict[seqs_ids[1]].upper()
 
     # compare distributions of aligned positions
     for sidx, (pos1, (pos2, alip)) in enumerate(mapping.items()):

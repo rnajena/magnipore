@@ -160,17 +160,17 @@ about:
     ```bash
     magnipore path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir --guppy_bin PATH --guppy_model PATH
     ```
-          ### Using a single sequencing run with demultiplexed FASTQs
+    ### Using a single sequencing run with demultiplexed FASTQs
 
-        - path_to_first_basecalls/path_to_sec_basecalls contains the FASTQs in format: <sample_label>.fastq and the sequencing summary!
+    - basecalls\_first\_sample/basecalls\_sec\_sample contains the FASTQs in format: *sample_label.fastq* and the sequencing summary!
     - FASTQs must be demultiplexed, meaning
-    - <first_sample_label>.fastq contains only those reads of the first condition
-    - <sec_sample_label>.fastq contains only those reads of the second condition
+      - *first\_sample\_label.fastq* contains only those reads of the first condition
+      - *sec\_sample\_label.fastq* contains only those reads of the second condition
 
     ```bash
     magnipore --path_to_first_basecalls path_to_first_basecalls --path_to_sec_basecalls path_to_sec_basecalls path_to_fast5_first_sample path_to_reference_first_sample first_sample_label path_to_fast5_sec_sample path_to_reference_sec_sample sec_sample_label working_dir
     ```
-        ### Using the same reference sequence
+    ### Using the same reference sequence
 
     Using the same reference sequence for both samples results in no reported mutations. Magnipore will only report potential modifications in this case. If you assume there are mutations between the samples, try to provide different reference sequences containing these mutations.
 
@@ -227,15 +227,17 @@ about:
                             custom kmer model file for f5c eventalign (default: None)
       -v, --version         show program's version number and exit
     ```
-        #### required arguments:
+    
+    #### required arguments:
     use either the basecalling arguments or provide basecalls
+
     - basecalling arguments:
-        - guppy_bin : Path to guppy binary
-        - guppy_model : Path to guppy model used for basecalling
+        - guppy\_bin : Path to guppy binary
+        - guppy\_model : Path to guppy model used for basecalling
         - (optional) guppy_device : Device used for basecalling (cpu or gpu cuda:0)
     - provided basecalls (FASTQ)
-        - path_to_first_basecalls : Path
-        - path_to_sec_basecalls : Path
+        - basecalls\_first\_sample : Path
+        - basecalls\_sec\_sample : Path
 
     For optional arguments see magnipore.py --help. Includes small number of mapping parameters and the option to skip basecalling.
 
@@ -264,7 +266,7 @@ about:
 
     - ref\_2, pos\_2, base\_2, motif\_2, signal\_mean\_2, signal\_std\_2, n\_datapoints\_2, contained\_datapoints\_2, n\_segments\_2, contained\_segments\_2, n\_reads\_2
     ## Error Codes Explanation
-    
+
     - 10: No pod5 module installed
     - 11: Concatenating both reference files failed
     - 12: Building mafft alignment failed

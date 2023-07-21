@@ -252,17 +252,17 @@ about:
     - pos_1 : position in contig of sample 1
     - base_1 : base at the position of sample 1
     - motif_1 : motif around the base at the position of sample 1
-    - signal_mean_1 : mean of the signal distribution at the position of sample 1
-    - signal_std_1 : standard deviation of the signal distribution at the position of sample 1
-    - n_datapoints_1 : number of data points that formed the signal distribution
-    - contained_datapoints_1 : number of data points withtin 3 standard deviations around the mean
-    - n_segments_1 : number of segments from nanopolish eventalign that formed the signal distribution
-    - contained_segments_1 : number of segments within 3 standard deviations around the mean
-    - n_reads_1 : number of reads (coverage) that formed the signal distribution
+    - signal\_mean_1 : mean of the signal distribution at the position of sample 1
+    - signal\_std_1 : standard deviation of the signal distribution at the position of sample 1
+    - n\_datapoints_1 : number of data points that formed the signal distribution
+    - contained\_datapoints_1 : number of data points withtin 3 standard deviations around the mean
+    - n\_segments_1 : number of segments from nanopolish eventalign that formed the signal distribution
+    - contained\_segments_1 : number of segments within 3 standard deviations around the mean
+    - n\_reads_1 : number of reads (coverage) that formed the signal distribution
 
     same for second sample:
 
-    - ref_2, pos_2, base_2, motif_2, signal_mean_2, signal_std_2, n_datapoints_2, contained_datapoints_2, n_segments_2, contained_segments_2, n_reads_2
+    - ref\_2, pos\_2, base\_2, motif\_2, signal\_mean\_2, signal\_std\_2, n\_datapoints\_2, contained\_datapoints\_2, n\_segments\_2, contained\_segments\_2, n\_reads\_2
     ## Error Codes Explanation
     
     - 10: No pod5 module installed
@@ -270,6 +270,7 @@ about:
     - 12: Building mafft alignment failed
     - 13: Running nanosherlock of the first sample failed
     - 14: Running nanosherlock of the second sample failed
+
     ---
     Errors of first sample:
 
@@ -282,6 +283,7 @@ about:
     - 125: f5c eventalign failed
     - 126: Could not find provided fastq files
     - 127: Could not find provided sequencing summary file
+
     ---
     Errors of second sample
 

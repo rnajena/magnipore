@@ -203,6 +203,10 @@ def readRedFile(red_file : str, seq_dict : dict):
 def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict, red1 : dict, red2 : dict, first_sample_label : str, sec_sample_label : str, working_dir : str) -> tuple:
 
     seqs_ids = list(seq_dict.keys())
+    # replace every nucleotide character with a dot
+    reformat = lambda seq : list(re.sub(r"[^-]", ".", seq))
+    magnipore_strings = list(map(reformat, aln_dict.values()))
+
     # when providing the same reference for both samples seqs_ids is only length 1, add the same sequence id again
     if len(seqs_ids) == 1:
         seqs_ids.append(seqs_ids[0])
@@ -219,10 +223,6 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
 
     # red: sequences are stored as {reference: {pos: {base: ('A'|'C'|'G'|'T'), mean: float, std: float}}}
     num_indels, sign_pos, nans = 0, 0, 0
-    # replace every nucleotide character with a dot
-    reformat = lambda seq : list(re.sub(r"[^-]", ".", seq))
-    # magnipore_strings = [list(re.sub(r"[^-]", ".", alignment_sequences[0])), list(re.sub(r"[^-]", ".", alignment_sequences[1]))]
-    magnipore_strings = list(map(reformat, aln_dict.values()))
 
     # TODO add some quality value
     plotting_data = pd.DataFrame(columns=['Mean Difference', 'Avg Stdev', 'Strand', 'Mutational Context', 'Significant', 'TD Score', 'KL Divergence'])
@@ -312,8 +312,8 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
             if significant:
                 num_muts += mut_context
                 # X == interesting position
-                magnipore_strings[0][alip] = 'X'
-                magnipore_strings[1][alip] = 'X'
+                for string in magnipore_strings: # string is a list of characters
+                    string[alip] = 'X'
                 sign_pos += 1
                 magnipore.write(outline)
 

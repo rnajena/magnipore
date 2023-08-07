@@ -117,7 +117,7 @@ If you are not using the conda package replace "magnipore" by "python3 magnipore
 ```bash
 magnipore raw_data_first_sample reference_first_sample label_first_sample raw_data_sec_sample reference_sec_sample label_sec_sample working_dir --basecalls_first_sample basecalls_first_sample --basecalls_sec_sample basecalls_sec_sample
 ```
-  </details>
+</details>
 
 ### With basecalling
 
@@ -126,15 +126,18 @@ magnipore raw_data_first_sample reference_first_sample label_first_sample raw_da
 ```bash
 magnipore raw_data_first_sample reference_first_sample label_first_sample raw_data_sec_sample reference_sec_sample label_sec_sample working_dir --guppy_bin PATH --guppy_model PATH
 ```
-  </details>
+</details>
 
 ### Using a single sequencing run with demultiplexed FASTQs
 
 <details><summary>Click here to see command:</summary>
-- basecalls_first_sample/basecalls_sec_sample contains the FASTQs in format: <sample_label>.fastq and the sequencing summary!
-- FASTQs must be demultiplexed, meaning
- - <label_first_sample>.fastq contains only those reads of the first condition
- - <label_sec_sample>.fastq contains only those reads of the second condition
+
+- basecalls_first_sample/basecalls_sec_sample containing the demultiplexed FASTQs
+ - *label_first_sample.fastq* contains only those reads of the first condition
+ - *label_sec_sample.fastq* contains only those reads of the second condition
+- be sure that the *sequencing_summary.txt* is next to your FASTQ files, otherwise provide them using
+ - -s1, --sequencing_summary_first_sample
+ - -s2, --sequencing_summary_sec_sample
 
 ```bash
 magnipore --basecalls_first_sample basecalls_first_sample --basecalls_sec_sample basecalls_sec_sample raw_data_first_sample reference_first_sample label_first_sample raw_data_sec_sample reference_sec_sample label_sec_sample working_dir
@@ -244,14 +247,14 @@ same for second sample:
 
 <details><summary>Click here to see error codes:</summary>
 
-- 10: No pod5 module installed
 - 11: Concatenating both reference files failed
 - 12: Building mafft alignment failed
 - 13: Running nanosherlock of the first sample failed
 - 14: Running nanosherlock of the second sample failed
+- 15: Number of provided reference sequences is not equal 1 or 2
 ---
 Errors of first sample:
-- 119: Cannot basecall other .slow5/.blow5 with guppy
+- 119: Cannot basecall .slow5/.blow5 with guppy
 - 120: Could not find raw data or unknown file format
 - 121: Guppy basecalling failed
 - 122: minimap2 mapping failed
@@ -262,7 +265,7 @@ Errors of first sample:
 - 127: Could not find provided sequencing summary file
 ---
 Errors of second sample
-- 219: Cannot basecall other .slow5/.blow5 with guppy
+- 219: Cannot basecall .slow5/.blow5 with guppy
 - 220: Could not find raw data or unknown file format
 - 221: Guppy basecalling failed
 - 222: minimap2 mapping failed
@@ -275,7 +278,7 @@ Errors of second sample
 ### If Subscript Nanosherlock is Executed Separately
 
 The -e parameter of nanosherlock specifies the leading number of the error code. Default is 0.
-- 019: Cannot basecall other .slow5/.blow5 with guppy
+- 019: Cannot basecall .slow5/.blow5 with guppy
 - 020: Could not find raw data or unknown file format 
 - 021: Guppy basecalling failed
 - 022: minimap2 mapping failed

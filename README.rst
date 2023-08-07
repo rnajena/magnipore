@@ -120,11 +120,12 @@ With basecalling
 Using a single sequencing run with demultiplexed FASTQs
 -------------------------------------------------------
 
--  basecalls_first_sample/basecalls_sec_sample contains the FASTQs in
-   format: *sample_label.fastq* and the sequencing summary!
--  FASTQs must be demultiplexed, meaning
-    -  *label_first_sample.fastq* contains only those reads of the first condition
-    -  *label_sec_sample.fastq* contains only those reads of the second condition
+- basecalls_first_sample/basecalls_sec_sample containing the demultiplexed FASTQs
+    - *label_first_sample.fastq* contains only those reads of the first condition
+    - *label_sec_sample.fastq* contains only those reads of the second condition
+- be sure that the *sequencing_summary.txt* is next to your FASTQ files, otherwise provide them using
+    - -s1, --sequencing_summary_first_sample
+    - -s2, --sequencing_summary_sec_sample
 
 .. code:: bash
 
@@ -246,11 +247,11 @@ same for second sample:
 Error Codes Explanation
 =======================
 
--  10: No pod5 module installed
 -  11: Concatenating both reference files failed
 -  12: Building mafft alignment failed
 -  13: Running nanosherlock of the first sample failed
 -  14: Running nanosherlock of the second sample failed
+- 15: Number of provided reference sequences is not equal 1 or 2
 
    Errors of first sample:
 

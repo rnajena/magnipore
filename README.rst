@@ -251,7 +251,7 @@ Error Codes Explanation
 -  12: Building mafft alignment failed
 -  13: Running nanosherlock of the first sample failed
 -  14: Running nanosherlock of the second sample failed
-- 15: Number of provided reference sequences is not equal 1 or 2
+-  15: Number of provided reference sequences is not equal 1 or 2
 
    Errors of first sample:
 

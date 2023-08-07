@@ -263,7 +263,6 @@ Error Codes Explanation
 -  124: f5c index failed
 -  125: f5c eventalign failed
 -  126: Could not find provided fastq files
--  127: Could not find provided sequencing summary file
 
    Errors of second sample
 
@@ -275,7 +274,6 @@ Error Codes Explanation
 -  224: f5c index failed
 -  225: f5c eventalign failed
 -  226: Could not find provided fastq files
--  227: Could not find provided sequencing summary file
 
 If Subscript Nanosherlock is Executed Separately
 ------------------------------------------------
@@ -291,4 +289,3 @@ error code. Default is 0.
 - 024: f5c index failed
 - 025: f5c eventalign failed 
 - 026: Could not find provided fastq files
-- 027: Could not find provided sequencing summary file

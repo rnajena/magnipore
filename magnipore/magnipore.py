@@ -84,9 +84,15 @@ def align(ref_first_sample : str, ref_sec_sample : str, first_sample_label : str
     if ret != 0:
         LOGGER.error(f'Error in concatenating both reference files with error code {ret}', error_type=11)
     
-    # LOGGER.printLog(f'Building alignment in {ref_alignment}')
-    command = f'mafft --auto --quiet --thread {threads} {ref_both_samples} > {ref_alignment}'
-    LOGGER.printLog(f'mafft command: {ANSI.GREEN}{command}{ANSI.END}')
+    # provided the same reference for both samples
+    if ref_first_sample == ref_sec_sample:
+        command = 'awk \'BEGIN{FS=" "}{if(!/>/){print tolower($0)}else{print $1}}\' ' + f'{ref_both_samples} > {ref_alignment}'
+        LOGGER.printLog(f'same reference for both samples: {ANSI.GREEN}{command}{ANSI.END}')
+
+    # difference references for each sample
+    else:
+        command = f'mafft --auto --quiet --thread {threads} {ref_both_samples} > {ref_alignment}'
+        LOGGER.printLog(f'mafft command: {ANSI.GREEN}{command}{ANSI.END}')
 
     if TIMEIT:
         start = perf_counter_ns()
@@ -103,6 +109,16 @@ def align(ref_first_sample : str, ref_sec_sample : str, first_sample_label : str
 def getMapping(alignment_path : str, outpath : str, first_label : str, second_label : str):
     '''
     Get base mapping from reference to reference, split indels and substitutions/matches
+    Only works on pairwise alignmend (max 2 sequences).
+
+    Returns
+    -------
+    aligned_positions : dict
+        {pos_1 : (pos_2, alignment_pos)}, stores a mapping between the bases of sequence 1 (pos_1) to the bases of sequence 2 (pos_2). Additionally stores the alignment position.
+    unaligned_positions : dict
+        {seq_id : [pos]}, stores a list of unaligned positions for each reference
+    sequences : dict
+        {seq_id : seq}, store the reference string for each reference
     '''
     fasta = SeqIO.parse(open(alignment_path), 'fasta')
     sequences = {}
@@ -112,12 +128,15 @@ def getMapping(alignment_path : str, outpath : str, first_label : str, second_la
 
     for seq in fasta:
         sequences[seq.id] = str(seq.seq)
-        
+    
     LOGGER.printLog(f'Found an alignment for sequences {list(sequences.keys())}')
     
     # {(pos_of_first_sample, base) : (pos_of_second_sample, base)}
     # different reference files for both samples
-    if len(sequences) == 2:
+    if not 0 < len(sequences) < 3:
+        LOGGER.error(f'Number of provided reference sequences is not equal 1 or 2: {len(sequences)}', 15)
+    
+    elif len(sequences) == 2:
         seq1_id, seq2_id = sequences.keys()
         seq1_seq, seq2_seq = sequences.values()
         i1 = i2 = 0

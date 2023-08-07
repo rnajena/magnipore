@@ -31,14 +31,21 @@ def initLogger(file = None) -> None:
     global LOGGER
     LOGGER = Logger(file)
 
-def mapFast5Files(raw_data_path : str, sequencing_summary : str = None) -> dict:
+def mapFast5Files(raw_data_path : str, seq_sum : str = None) -> dict:
     '''
     Returns a dictionary mapping the readid to the corresponding fast5 file containing the read.
+    
+    Parameters
+    ----------
+    raw_data_path : str
+        Path or directory containing the fast5 files
+    seq_sum : str = None:
+        Path to the sequencing summary file. Reduced time to index files.
     '''
     LOGGER.printLog(f'Loading readids from fast5 files in {raw_data_path} ... ')
     readid2file = {}
 
-    if sequencing_summary is None:
+    if seq_sum is None:
         # recursively loop over the fast5 files in the given path
         fast5list = Path(raw_data_path).rglob('*.fast5')
 
@@ -55,7 +62,7 @@ def mapFast5Files(raw_data_path : str, sequencing_summary : str = None) -> dict:
             fast5_h5.close()
 
     else:
-        with open(sequencing_summary, 'r') as seqsum:
+        with open(seq_sum, 'r') as seqsum:
             seqsum.readline()
 
             for ridx, line in enumerate(seqsum):
@@ -549,7 +556,7 @@ def setupLogger(working_dir : str, sample_label : str) -> None:
     LOGGER = Logger(open(log_file, 'w'))
     LOGGER.printLog(f'Starting magnipore pipeline. Writing log to {log_file}')
 
-def getBasecalls(file_format : str, basecalls : str, seq_sum : str, guppy_bin : str, guppy_model : str, guppy_device : str, raw_data : str, working_dir : str, sample_label : str, force_rebuild : bool):
+def getBasecalls(file_format : str, basecalls : str, guppy_bin : str, guppy_model : str, guppy_device : str, raw_data : str, working_dir : str, sample_label : str, force_rebuild : bool, seq_sum : str = None):
     '''
     Checks input for basecalls, file formats and start guppy basecalling if needed.
 
@@ -558,17 +565,15 @@ def getBasecalls(file_format : str, basecalls : str, seq_sum : str, guppy_bin : 
     basecalls : str
         Path to fastq file
     seq_sum : str
-        Path to sequencing_summary.txt file
+        Path to sequencing_summary.txt file. Can be None.
     force_rebuild : bool
         Flag if magnipore rebuilds already existing files
     '''
     if basecalls is not None:
-        if seq_sum is None:
-            seq_sum = os.path.join(os.path.dirname(basecalls), 'sequencing_summary.txt')
         if not os.path.exists(basecalls):
             LOGGER.error(f'{basecalls} NOT FOUND!', error_type=ERROR_PREFIX+'26')
-        if not os.path.exists(seq_sum):
-            LOGGER.error(f'{seq_sum} NOT FOUND!', error_type=ERROR_PREFIX+'27')
+        if seq_sum is None and os.path.exists(os.path.join(os.path.dirname(basecalls), 'sequencing_summary.txt')):
+            seq_sum = os.path.join(os.path.dirname(basecalls), 'sequencing_summary.txt')
         return basecalls, seq_sum, force_rebuild
     else:
         if file_format == '.slow5':
@@ -607,7 +612,7 @@ def main() -> None:
     setupLogger(working_dir, sample_label)
 
     file_format = getFileFormat(raw_data)
-    basecalls, seq_sum, force_rebuild = getBasecalls(file_format, basecalls, seq_sum, guppy_bin, guppy_model, guppy_device, raw_data, working_dir, sample_label, force_rebuild)
+    basecalls, seq_sum, force_rebuild = getBasecalls(file_format, basecalls, guppy_bin, guppy_model, guppy_device, raw_data, working_dir, sample_label, force_rebuild, seq_sum)
     # new alignment/mapping for segmentation with the corrected reference
     alignment_bam, force_rebuild = mapping(reference, basecalls, working_dir, sample_label, threads, force_rebuild, mx, mk)
     seg_summary_csv, seg_result_csv, force_rebuild = signalSegmentation(raw_data, file_format, basecalls, reference, alignment_bam, working_dir, sample_label, threads, force_rebuild, rna, r10, kmer_model)

@@ -394,6 +394,8 @@ def plotStatistics(plotting_data : pd.DataFrame, working_dir : str, first_sample
 
 def plotScores(dataframe : pd.DataFrame, working_dir : str, first_sample_label : str, sec_sample_label : str) -> None:
     
+    dataframe = dataframe[dataframe['TD Score']>=0] # otherwise logscale range is infinite with lower bound: -infinity
+
     colors = {
         'False, False':'wheat',
         'False, True':'darkorange',

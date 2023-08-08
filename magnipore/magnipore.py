@@ -394,8 +394,6 @@ def plotStatistics(plotting_data : pd.DataFrame, working_dir : str, first_sample
 
 def plotScores(dataframe : pd.DataFrame, working_dir : str, first_sample_label : str, sec_sample_label : str) -> None:
     
-    dataframe = dataframe[dataframe['TD Score']>0] # otherwise logscale range is infinite with lower bound: -infinity
-
     colors = {
         'False, False':'wheat',
         'False, True':'darkorange',
@@ -405,7 +403,8 @@ def plotScores(dataframe : pd.DataFrame, working_dir : str, first_sample_label :
 
     plt.figure(figsize = (12,8), dpi=300)
     plt.title(f'TD score for all positions\n{first_sample_label} vs. {sec_sample_label}')
-    sns.histplot(data=dataframe, x='TD Score', hue=dataframe['Mutation, Significance'], log_scale=(True, True), multiple="stack", palette=colors)
+    # otherwise logscale range is infinite with lower bound: -infinity
+    sns.histplot(data=dataframe[dataframe['TD Score']>0], x='TD Score', hue=dataframe['Mutation, Significance'], log_scale=(True, True), multiple="stack", palette=colors)
     plt.grid(True,  'both', 'both', alpha=0.6, linestyle='--')
     plt.tight_layout()
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_td_score.png'))
@@ -414,7 +413,8 @@ def plotScores(dataframe : pd.DataFrame, working_dir : str, first_sample_label :
 
     plt.figure(figsize = (12,8), dpi=300)
     plt.title(f'Kullback-Leibler divergence for all positions\n{first_sample_label} vs. {sec_sample_label}')
-    sns.histplot(data=dataframe, x='KL Divergence', hue=dataframe['Mutation, Significance'], log_scale=(True, True), multiple="stack", palette=colors)
+    # otherwise logscale range is infinite with lower bound: -infinity
+    sns.histplot(data=dataframe[dataframe['KL Divergence']>0], x='KL Divergence', hue=dataframe['Mutation, Significance'], log_scale=(True, True), multiple="stack", palette=colors)
     plt.grid(True,  'both', 'both', alpha=0.6, linestyle='--')
     plt.tight_layout()
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_kl_div.png'))

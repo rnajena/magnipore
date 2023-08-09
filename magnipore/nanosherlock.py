@@ -72,7 +72,7 @@ def mapFast5Files(raw_data_path : str, seq_sum : str = None) -> dict:
                 filename, read_id = line.strip().split('\t')[:2]
                 readid2file[read_id] = os.path.join(raw_data_path, filename)
     
-    LOGGER.printLog(f'Indexed {ridx + 1} reads')
+    LOGGER.printLog(f'Indexed {len(readid2file) + 1} reads')
     return readid2file
 
 def readSegSum(segSum : str):

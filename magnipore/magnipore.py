@@ -219,7 +219,7 @@ def readRedFile(red_file : str, seq_dict : dict):
     return red_sequences
 
 # TODO adjust seq_ids for multiple references? -> how to align multiple segments/chromosomes between two samples?
-def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict, red1 : dict, red2 : dict, first_sample_label : str, sec_sample_label : str, working_dir : str) -> tuple:
+def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict, red1 : dict, red2 : dict, first_sample_label : str, sec_sample_label : str, working_dir : str, pore_type : str) -> tuple:
 
     seqs_ids = list(seq_dict.keys())
     # replace every nucleotide character with a dot
@@ -241,10 +241,9 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
     all.write('\t'.join(MAGNIPORE_COLUMNS) + '\n')
 
     # red: sequences are stored as {reference: {pos: {base: ('A'|'C'|'G'|'T'), mean: float, std: float}}}
-    num_indels, sign_pos, nans = 0, 0, 0
+    num_indels, sign_pos, nans, low_cov_count = 0, 0, 0, 0
 
-    # TODO add some quality value
-    plotting_data = pd.DataFrame(columns=['Mean Distance', 'Avg Stdev', 'Strand', 'Mutational Context', 'Significant', 'TD Score', 'KL Divergence'])
+    plotting_data = pd.DataFrame(columns=['Mean Distance', 'Avg Stdev', 'Strand', 'Mutational Context', 'Significant', 'TD Score', 'KL Divergence', 'Low Coverage (<10)'])
     plotting_data = plotting_data.astype(
         {
             'Mean Distance': 'float32',
@@ -253,13 +252,21 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
             'Mutational Context': 'bool',
             'Significant': 'bool',
             'TD Score':'float32',
-            'KL Divergence':'float32'
+            'KL Divergence':'float32',
+            'Low Coverage (<10)': 'bool'
         })
     num_muts = 0
 
     LOGGER.printLog(f'Start comparing sequences position wise ...')
     seq1 = seq_dict[seqs_ids[0]].upper()
     seq2 = seq_dict[seqs_ids[1]].upper()
+
+    if pore_type == 'r9':
+        pore_range = 5
+    elif pore_type == 'r10':
+        pore_range = 9
+    else:
+        LOGGER.error('Unknown Pore Type', 16)
 
     # compare distributions of aligned positions
     for sidx, (pos1, (pos2, alip)) in enumerate(mapping.items()):
@@ -272,15 +279,13 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
         base1 = seq1[pos1]
         base2 = seq2[pos2]
         # no data for first and last two positions in red file, these positions should never be significant
-        # motifs can have different lengths, rare case in start and end of reference
-        if min(pos1, pos2) >= 3 and pos1+3 <= len(seq1) and pos2+3 < len(seq2):
-            r = 3
-        elif min(pos1, pos2) >= 2 and pos1+2 <= len(seq1) and pos2+2 < len(seq2):
-            r = 2
-        else:
+        # # motifs can have different lengths, rare case in start and end of reference
+        # if min(pos1, pos2) >= 3 and pos1+3 <= len(seq1) and pos2+3 < len(seq2):
+        #     r = 3
+        if not min(pos1, pos2) >= pore_range//2 and pos1+pore_range//2 <= len(seq1) and pos2+pore_range//2 < len(seq2):
             continue
-        motif1 = seq1[pos1-r:pos1+r+1]
-        motif2 = seq2[pos2-r:pos2+r+1]
+        motif1 = seq1[pos1-pore_range//2:pos1+pore_range//2+1]
+        motif2 = seq2[pos2-pore_range//2:pos2+pore_range//2+1]
         mut_context = motif1 != motif2
         
         for strand in [0, 1]:
@@ -292,6 +297,8 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
             # check if positions have a distribution -> stdev for both are non-0
             isnan = not s1 or not s2
             nans += isnan
+            low_cov = data_pos1[strand, REDENCODER['n_reads']] < 10 and data_pos2[strand, REDENCODER['n_reads']] < 10
+            low_cov_count += low_cov
 
             if strand == 1:
                 base1 = complement(base1)
@@ -315,7 +322,8 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
                             'Mutational Context' : [mut_context],
                             'Significant' : [significant],
                             'TD Score' : [td],
-                            'KL Divergence' : [kl_divergence]
+                            'KL Divergence' : [kl_divergence],
+                            'Low Coverage (<10)' : [low_cov]
                     })
                 plotting_data = pd.concat([plotting_data, new_entry], ignore_index=True)
             else:
@@ -351,13 +359,15 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
                f'Number of significant positions: {sign_pos}\n'\
                f'Number of significant positions with reference differences: {num_muts}\n'\
                f'Number of nans {nans}, at least one aligned position without information (no signals)\nCan be high if one strand has no information!\n'\
+               f'Number of positions with low coverage in at least one sample: {low_cov_count} - I recommend filtering out these positions in the .magnipore file.\n'\
                f'Wrote {magnipore_file}')
 
     with open(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}.txt'), 'w') as w:
         w.write(f'Number of indels: {num_indels}\n'\
-                f'Number of significant positions: {sign_pos}\n'\
-                f'Number of significant positions with reference differences: {num_muts}\n'\
-                f'Number of nans {nans}, at least one aligned position without information (no signals)\nCan be high if one strand has no information!\n')
+                f'Number of significant positions: {ANSI.GREEN}{sign_pos}{ANSI.END}\n'\
+                f'Number of significant positions with reference differences: {ANSI.GREEN}{num_muts}{ANSI.END}\n'\
+                f'Number of nans {ANSI.YELLOW}{nans}{ANSI.END}, at least one aligned position without information (no signals)\nCan be high if one strand has no information!\n'\
+                f'Number of positions with low coverage in at least one sample: {ANSI.YELLOW}{low_cov_count}{ANSI.END} - I recommend filtering out these positions in the .magnipore file.\n')
 
     LOGGER.printLog('Writing indels file')
     return plotting_data, magnipore_strings
@@ -391,8 +401,13 @@ def plotStatistics(plotting_data : pd.DataFrame, working_dir : str, first_sample
         LOGGER.printLog(f'The number of positions exceeds the threshold of {plotting_data} ({len(plotting_data.index)}). To prevent the kernel from killing the process, Magnipore will only plot a subset of {plotting_data} positions. Plots will not include the full data.')
         plotting_data = plotting_data.sample(plotting_threshold, replace=False)
     # Mean Dist vs Std Avg plot
-    LOGGER.printLog('Plotting Mean vs Stdev')
-    plotMeanDiffStdAvg(plotting_data, plot_dir, first_sample_label, sec_sample_label)
+    LOGGER.printLog(f'Plotting Mean vs Stdev of {len(plotting_data.index)} positions')
+    plotMeanDistAvgStd(plotting_data, plot_dir, first_sample_label, sec_sample_label)
+    LOGGER.printLog(f'Plotting Mean vs Stdev of {len(plotting_data.index)} positions excluding low coverage positions')
+    plotMeanDistAvgStd(plotting_data[plotting_data['Low Coverage (<10)'] == False], plot_dir, first_sample_label, sec_sample_label, suffix='c10')
+    # plot MeanDistStdAvg with coverage
+    LOGGER.printLog(f'Plotting Mean vs Stdev with coverage markers if {len(plotting_data.index)} positions')
+    plotMeanDistAvgStdCov(plotting_data, plot_dir, first_sample_label, sec_sample_label)
     # plot scores
     LOGGER.printLog(f'Plotting TD score and KL divergence')
     plotScores(plotting_data, plot_dir, first_sample_label, sec_sample_label)
@@ -426,7 +441,7 @@ def plotScores(dataframe : pd.DataFrame, working_dir : str, first_sample_label :
     plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_kl_div.pdf'))
     plt.close()
     
-def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample_label : str, sec_sample_label : str) -> None:
+def plotMeanDistAvgStd(dataframe : pd.DataFrame, working_dir : str, first_sample_label : str, sec_sample_label : str, suffix : str = None) -> None:
     
     marker = lambda mut_context: 'D' if mut_context else 'o'
     color = lambda mut_context: 'blue' if mut_context else '#d95f02' 
@@ -477,8 +492,49 @@ def plotMeanDiffStdAvg(dataframe : pd.DataFrame, working_dir : str, first_sample
     g.fig.tight_layout()
     g.fig.subplots_adjust(top=0.95)
 
-    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_meanDiffStdAvgDist.png'))
-    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_meanDiffStdAvgDist.pdf'))
+    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_{suffix + "_" if suffix is not None else ""}MeDAS.png'))
+    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_{suffix + "_" if suffix is not None else ""}MeDAS.pdf'))
+
+    plt.close()
+
+def plotMeanDistAvgStdCov(dataframe : pd.DataFrame, working_dir : str, first_sample_label : str, sec_sample_label : str) -> None:
+    ### Mean Dist vs Std Avg plot
+    plt.figure(figsize = (12,12), dpi=300)
+    plt.rcParams.update({
+        'font.size': FONTSIZE,
+        })
+    label1 = first_sample_label.replace("_", " ")
+    label2 = sec_sample_label.replace("_", " ")
+    g=sns.relplot(data = dataframe, x='Mean Distance', y='Avg Stdev', hue='Substitution', style='Low Coverage (<10)')
+    leg = g._legend
+    leg.set_bbox_to_anchor([1,0.7])  # if required you can set the loc
+    plt.title(f'{len(dataframe.index)} compared bases mean distance against\naverage standard deviation\n{label1} and {label2}', y=0.98)
+    plt.grid(True, 'both', 'both', alpha = 0.4, linestyle = '--', linewidth = 0.5)
+
+    lims = np.array([
+        [-.02, max(dataframe['Mean Distance']) + 0.1],
+        [-.02, max(dataframe['Avg Stdev']) + 0.1]
+    ])
+
+    y1 = np.arange(min(lims[:, 0]), max(lims[:, 1]) + 0.01, 0.01)
+    y2 = np.repeat(max(lims[:, 1]), len(y1))
+
+    plt.fill_between(y1, lims[1,0], y1, color = '#1b9e77', alpha = 0.15, label = 'significant, TD>=1')
+    plt.fill_between(y1, y1, y2, color = '#7570b3', alpha = 0.15, label = 'insignificant, TD<1')
+
+    plt.xlim(tuple(lims[0]))
+    plt.ylim(tuple(lims[1]))
+
+    plt.xlabel('Mean distance')
+    plt.ylabel('Average standard deviation')
+    plt.tight_layout()
+    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_MeDAS_coverage.png'))
+    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_MeDAS_coverage.pdf'))
+
+    plt.ylim(bottom = min(dataframe['Avg Stdev']))
+    plt.yscale('log')
+    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_MeDAS_coverage_log.png'))
+    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_MeDAS_coverage_log.pdf'))
 
     plt.close()
 
@@ -603,7 +659,7 @@ def main():
     
     if TIMEIT:
         start = perf_counter_ns()
-    plotting_data, magnipore_strings = magnipore(mapping, unaligned, seq_dict, aln_dict, red_first_sample, red_sec_sample, label_first_sample, label_sec_sample, working_dir)
+    plotting_data, magnipore_strings = magnipore(mapping, unaligned, seq_dict, aln_dict, red_first_sample, red_sec_sample, label_first_sample, label_sec_sample, working_dir, 'r10' if r10 else 'r9')
     plotStatistics(plotting_data, working_dir, label_first_sample, label_sec_sample)
     writeStockholm(magnipore_strings, alignment_path, label_first_sample, label_sec_sample, working_dir)
     if TIMEIT:

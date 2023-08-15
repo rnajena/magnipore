@@ -505,7 +505,7 @@ def plotMeanDistAvgStdCov(dataframe : pd.DataFrame, working_dir : str, first_sam
         })
     label1 = first_sample_label.replace("_", " ")
     label2 = sec_sample_label.replace("_", " ")
-    g=sns.relplot(data = dataframe, x='Mean Distance', y='Avg Stdev', hue='Substitution', style='Low Coverage (<10)')
+    g=sns.relplot(data = dataframe, x='Mean Distance', y='Avg Stdev', hue='Mutational Context', style='Low Coverage (<10)')
     leg = g._legend
     leg.set_bbox_to_anchor([1,0.7])  # if required you can set the loc
     plt.title(f'{len(dataframe.index)} compared bases mean distance against\naverage standard deviation\n{label1} and {label2}', y=0.98)

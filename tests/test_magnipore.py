@@ -32,8 +32,8 @@ tdscores = [1.0801634950514278, 1.998636430295431, 2.201571772538712, 1.91018368
 bayesian_ps = [0.58914066,0.31764056,0.27098986,0.33953125,0.00000178]
 classification = ['mut','mut','mut','mod', 'mod']
 strands = ['+','+','+','+','-']
-motifs_sample1 = ['ATCAA', 'TCAATTT', 'TTTGGAC', 'CCAACAC', 'GTGTTGG']
-motifs_sample2 = ['ACCAA', 'CCAAGGA', 'CAAGGAC', 'CCAACAC', 'GTGTTGG']
+motifs_sample1 = ['ATCAA', 'CAATT', 'TTGGA', 'CAACA', 'TGTTG']
+motifs_sample2 = ['ACCAA', 'CAAGG', 'AAGGA', 'CAACA', 'TGTTG']
 bases_sample1 = 'CAGAT'
 bases_sample2 = 'CAGAT'
 # ===================================
@@ -68,7 +68,7 @@ def test_mapping():
 
 def test_magnipore():
     seq_dict = {key:seq.replace('-', '') for key,seq in aln_dict.items()}
-    plotting_data, magnipore_strings = magnipore.magnipore(mapping_dict, unaligned_dict, seq_dict, aln_dict, red1_dict, red2_dict, lab1, lab2, this_file_dir)
+    plotting_data, magnipore_strings = magnipore.magnipore(mapping_dict, unaligned_dict, seq_dict, aln_dict, red1_dict, red2_dict, lab1, lab2, this_file_dir, 'r9')
     magn = pd.read_csv(os.path.join(this_file_dir, 'magnipore', 'sample1_sample2', 'sample1_sample2.magnipore'), sep='\t')
     for i, row in magn[magn['strand'] == 0].iterrows():
         assert np.isclose(row['td_score'], tdscores[i])
@@ -85,8 +85,10 @@ def test_magnipore():
     row = magn[magn['strand'] == '-']
     assert row['td_score'].item() == tdscores[-1]
     assert row['bayesian_p'].item() == bayesian_ps[-1]
-    assert row['motif_1'].item() == row['motif_2'].item() == motifs_sample1[-1]
-    assert row['base_1'].item() == row['base_2'].item() == bases_sample1[-1]
+    for item in row.items():
+        print(item)
+    assert row['motif_1'].item() == row['motif_2'].item() and row['motif_2'].item() == motifs_sample1[-1]
+    assert row['base_1'].item() == row['base_2'].item() and row['base_2'].item() == bases_sample1[-1]
     for l in magnipore_strings:
         assert l.count('X') == 4
         assert l.count('A') == 0

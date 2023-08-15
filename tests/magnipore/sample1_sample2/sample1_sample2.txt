@@ -1,5 +1,6 @@
 Number of indels: 6
-Number of significant positions: 5
-Number of significant positions with reference differences: 3
-Number of nans 0, at least one aligned position without information (no signals)
+Number of significant positions: [92m5[0m
+Number of significant positions with reference differences: [92m3[0m
+Number of nans [93m4[0m, at least one aligned position without information (no signals)
 Can be high if one strand has no information!
+Number of positions with low coverage in at least one sample: [93m2[0m - I recommend filtering out these positions in the .magnipore file.

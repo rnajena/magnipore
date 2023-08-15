@@ -33,6 +33,7 @@ test:
   commands:
     - magnipore --help
     - nanosherlock --help
+    - cov_filter --help
     - pytest -vv
 
 about:

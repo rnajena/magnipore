@@ -37,6 +37,7 @@ setup(
         'console_scripts':[
             'magnipore=magnipore.magnipore:main',
             'nanosherlock=magnipore.nanosherlock:main',
+            'cov_filter=magnipore.cov_filter:main',
         ]
     },
     install_requires=requirements,

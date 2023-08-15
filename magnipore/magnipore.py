@@ -282,7 +282,7 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
         # # motifs can have different lengths, rare case in start and end of reference
         # if min(pos1, pos2) >= 3 and pos1+3 <= len(seq1) and pos2+3 < len(seq2):
         #     r = 3
-        if not min(pos1, pos2) >= pore_range//2 and pos1+pore_range//2 <= len(seq1) and pos2+pore_range//2 < len(seq2):
+        if not min(pos1, pos2) >= pore_range//2 and pos1+pore_range//2+1 <= len(seq1) and pos2+pore_range//2+1 <= len(seq2):
             continue
         motif1 = seq1[pos1-pore_range//2:pos1+pore_range//2+1]
         motif2 = seq2[pos2-pore_range//2:pos2+pore_range//2+1]

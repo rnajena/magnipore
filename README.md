@@ -252,6 +252,7 @@ same for second sample:
 - 13: Running nanosherlock of the first sample failed
 - 14: Running nanosherlock of the second sample failed
 - 15: Number of provided reference sequences is not equal 1 or 2
+- 16: Unknown pore type
 ---
 Errors of first sample:
 - 119: Cannot basecall .slow5/.blow5 with guppy

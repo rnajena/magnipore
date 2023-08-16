@@ -239,9 +239,7 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
     magnipore.write('\t'.join(MAGNIPORE_COLUMNS) + '\n')
     all = open(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}.all'), 'w')
     all.write('\t'.join(MAGNIPORE_COLUMNS) + '\n')
-
-    # red: sequences are stored as {reference: {pos: {base: ('A'|'C'|'G'|'T'), mean: float, std: float}}}
-    num_indels, sign_pos, nans, low_cov_count = 0, 0, 0, 0
+    num_muts = num_indels = sign_pos = nans = low_cov_count = 0
 
     plotting_data = pd.DataFrame(columns=['Mean Distance', 'Avg Stdev', 'Strand', 'Mutational Context', 'Significant', 'TD Score', 'KL Divergence', 'Low Coverage (<10)'])
     plotting_data = plotting_data.astype(
@@ -255,7 +253,6 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
             'KL Divergence':'float32',
             'Low Coverage (<10)': 'bool'
         })
-    num_muts = 0
 
     LOGGER.printLog(f'Start comparing sequences position wise ...')
     seq1 = seq_dict[seqs_ids[0]].upper()
@@ -274,14 +271,12 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
         if (sidx + 1) % 1000 == 0:
             print(f'\t{sidx + 1}/{len(mapping)}', end='\r')
         
+        # red: sequences are stored as {reference: {pos: {base: ('A'|'C'|'G'|'T'), mean: float, std: float}}}
         data_pos1 = red1[seqs_ids[0]][pos1]
         data_pos2 = red2[seqs_ids[1]][pos2]
         base1 = seq1[pos1]
         base2 = seq2[pos2]
         # no data for first and last two positions in red file, these positions should never be significant
-        # # motifs can have different lengths, rare case in start and end of reference
-        # if min(pos1, pos2) >= 3 and pos1+3 <= len(seq1) and pos2+3 < len(seq2):
-        #     r = 3
         if not min(pos1, pos2) >= pore_range//2 and pos1+pore_range//2+1 <= len(seq1) and pos2+pore_range//2+1 <= len(seq2):
             continue
         motif1 = seq1[pos1-pore_range//2:pos1+pore_range//2+1]
@@ -355,17 +350,15 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
                 num_indels += 1
 
     print(f'\t{sidx + 1}/{len(mapping)}')
-    LOGGER.printLog(f'Number of indels: {num_indels}\n'\
-               f'Number of significant positions: {ANSI.GREEN}{sign_pos}{ANSI.END}\n'\
-               f'Classified as mutations: {ANSI.GREEN}{num_muts}{ANSI.END}\n'\
+    LOGGER.printLog(f'Number of indels: {ANSI.YELLOW}{num_indels}{ANSI.END}\n'\
+               f'Number of significant positions: {ANSI.YELLOW}{sign_pos}{ANSI.END} - Classified as mutations: {ANSI.YELLOW}{num_muts}{ANSI.END}\n'\
                f'Number of nans {ANSI.YELLOW}{nans}{ANSI.END}, at least one aligned position without information (no signals)\n'\
                f'Number of positions with low coverage in at least one sample: {ANSI.YELLOW}{low_cov_count}{ANSI.END} - I recommend filtering out these positions in the .magnipore file.\nNans and low coverage can be high if one strand has no aligned reads!\n'\
                f'Wrote {magnipore_file}')
 
     with open(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}.txt'), 'w') as w:
         w.write(f'Number of indels: {num_indels}\n'\
-                f'Number of significant positions: {sign_pos}\n'\
-                f'Classified as mutations: {num_muts}\n'\
+                f'Number of significant positions: {sign_pos} - Classified as mutations: {num_muts}\n'\
                 f'Number of nans {nans}, at least one aligned position without information (no signals)\n'\
                 f'Number of positions with low coverage in at least one sample: {low_cov_count} - I recommend filtering out these positions in the .magnipore file.\nNans and low coverage can be high if one strand has no aligned reads!\n')
 
@@ -471,10 +464,10 @@ def plotMeanDistAvgStd(dataframe : pd.DataFrame, working_dir : str, first_sample
     ])
     y1 = np.arange(min(lims[:, 0]), max(lims[:, 1]) + 0.01, 0.01)
     y2 = np.repeat(max(lims[:, 1]), len(y1))
-    g.ax_joint.fill_between(y1, lims[1,0], y1, color='#1b9e77', alpha=0.15, label='significant, TD$\ge$1')
-    g.ax_joint.fill_between(y1, y1, y2, color='#7570b3', alpha=0.15, label='insignificant, TD<1')
-    sign = mlines.Line2D([], [], color='#1b9e77', marker='s', linestyle='None', markersize=10, label='significant, TD$\ge$1')
-    insign = mlines.Line2D([], [], color='#7570b3', marker='s', linestyle='None', markersize=10, label='insignificant, TD<1')
+    g.ax_joint.fill_between(y1, lims[1,0], y1, color='#1b9e77', alpha=0.15)
+    g.ax_joint.fill_between(y1, y1, y2, color='#7570b3', alpha=0.15)
+    sign = mlines.Line2D([], [], color='#1b9e77', marker='s', linestyle='None', markersize=10, label=r'significant, TD$\geq$1')
+    insign = mlines.Line2D([], [], color='#7570b3', marker='s', linestyle='None', markersize=10, label=r'insignificant, TD$<$1')
 
     g.ax_joint.set_xlim(tuple(lims[0]))
     g.ax_joint.set_ylim(tuple(lims[1]))
@@ -499,8 +492,8 @@ def plotMeanDistAvgStdCov(dataframe : pd.DataFrame, working_dir : str, first_sam
         })
     label1 = first_sample_label.replace("_", " ")
     label2 = sec_sample_label.replace("_", " ")
-    g=sns.relplot(data = dataframe, x='Mean Distance', y='Avg Stdev', hue='Mutational Context', style='Low Coverage (<10)', palette=['#d95f02', 'blue'])
-    ax = g.axes
+    g : sns.FacetGrid = sns.relplot(data = dataframe, x='Mean Distance', y='Avg Stdev', hue='Mutational Context', style='Low Coverage (<10)', palette=['#d95f02', 'blue'])
+    ax = g.axes[0, 0]
     handles, _ = ax.get_legend_handles_labels()
     plt.title(f'{len(dataframe.index)} compared bases mean distance against\naverage standard deviation\n{label1} and {label2}', y=0.98)
     plt.grid(True, 'both', 'both', alpha = 0.4, linestyle = '--', linewidth = 0.5)
@@ -513,10 +506,10 @@ def plotMeanDistAvgStdCov(dataframe : pd.DataFrame, working_dir : str, first_sam
     y1 = np.arange(min(lims[:, 0]), max(lims[:, 1]) + 0.01, 0.01)
     y2 = np.repeat(max(lims[:, 1]), len(y1))
 
-    plt.fill_between(y1, lims[1,0], y1, color = '#1b9e77', alpha = 0.15, label = 'significant, TD$\ge$1')
-    plt.fill_between(y1, y1, y2, color = '#7570b3', alpha = 0.15, label = 'insignificant, TD<1')
-    handles.append(mlines.Line2D([], [], color='#1b9e77', marker='s', linestyle='None', markersize=10, label='significant, TD$\ge$1'))
-    handles.append(mlines.Line2D([], [], color='#7570b3', marker='s', linestyle='None', markersize=10, label='insignificant, TD<1'))
+    plt.fill_between(y1, lims[1,0], y1, color = '#1b9e77', alpha = 0.15)
+    plt.fill_between(y1, y1, y2, color = '#7570b3', alpha = 0.15)
+    handles.append(mlines.Line2D([], [], color='#1b9e77', marker='s', linestyle='None', markersize=10, label=r'significant, TD$\geq$1'))
+    handles.append(mlines.Line2D([], [], color='#7570b3', marker='s', linestyle='None', markersize=10, label=r'insignificant, TD$<$1'))
     ax.legend(handles=handles, bbox_to_anchor=(1, 0.7))
 
     plt.xlim(tuple(lims[0]))

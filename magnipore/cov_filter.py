@@ -16,7 +16,7 @@ def parse() -> Namespace:
         prog='Magnipore',
     )
     parser.add_argument('magnipore', type=str, help='.magnipore file to filter for a given coverage threshold')
-    parser.add_argument('coverage', type=int, help='Coverage threshold to filter for. Results, where at least one sample has a coverage below the given threshold are filtered out. Results, where both samples have a coverage equal or higher than the threshold remain.')
+    parser.add_argument('-c', '--coverage', type=int, default=10, help='Coverage threshold to filter for. Results, where at least one sample has a coverage below the given threshold are filtered out. Results, where both samples have a coverage equal or higher than the threshold remain.')
     parser.add_argument('-v', '--version', action='version', version='%(prog)s' + f' {__version__}')
     return parser.parse_args()
 

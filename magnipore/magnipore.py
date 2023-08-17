@@ -4,26 +4,36 @@
 # github: https://github.com/JannesSP
 # website: https://jannessp.github.io
 
-from magnipore.__init__ import __version__
-from magnipore.Helper import ANSI, MAGNIPORE_COLUMNS, REDENCODER, STRANDENCODER, STRANDDECODER, MUTDECODER, IUPAC, complement, rev_complement
-from magnipore.Logger import Logger
-import seaborn as sns
+import multiprocessing as mp
 import os
-from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
-import numpy as np
-from Bio import SeqIO, Seq
-from matplotlib import pyplot as plt
-from scipy.stats import ks_2samp
-import pandas as pd
-from statistics import NormalDist
 import re
-import matplotlib.lines as mlines
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
+from statistics import NormalDist
 from time import perf_counter_ns
 
+import numpy as np
+import pandas as pd
+from Bio import Seq, SeqIO
+from scipy.stats import ks_2samp
+
+from magnipore.__init__ import __version__
+from magnipore.Helper import (ANSI, IUPAC, MAGNIPORE_COLUMNS, MUTDECODER,
+                              REDENCODER, STRANDDECODER, STRANDENCODER,
+                              complement, rev_complement)
+from magnipore.Logger import Logger
+
 LOGGER : Logger = None
-FONTSIZE = 18
-TIMEIT = False
-SUBSCRIPT = 'nanosherlock'
+TIMEIT : bool = False
+# multiprocessing setup
+mp.set_start_method('fork')
+allQueue = mp.Manager().Queue()
+magnQueue = mp.Manager().Queue()
+alipQueue = mp.Manager().Queue()
+num_muts = mp.Value('I', 0)
+sign_pos = mp.Value('I', 0)
+no_data = mp.Value('I', 0)
+low_cov_count = mp.Value('I', 0)
+num_pos = mp.Value('I', 0)
 
 def initLogger(file = None) -> None:
     global LOGGER
@@ -218,43 +228,118 @@ def readRedFile(red_file : str, seq_dict : dict):
             red_sequences[ref_id][pos, STRANDENCODER[strand]] = [mean, std, data_density, n_datapoints, contained_datapoints, n_segments, contained_segments, n_reads, expected_model_density]
     return red_sequences
 
-# TODO adjust seq_ids for multiple references? -> how to align multiple segments/chromosomes between two samples?
-def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict, red1 : dict, red2 : dict, first_sample_label : str, sec_sample_label : str, working_dir : str, pore_type : str) -> tuple:
+def asyncCompareSignals(strand : int, base1 : str, base2 : str, motif1 : str, motif2 : str, alip : int, mut_context : bool, data_pos1 : np.ndarray, data_pos2 : np.ndarray, seqs_ids : tuple, pos1 : int, pos2 : int, sidx : int, max_sidx : int) -> None:
+    global num_muts, sign_pos, no_data, low_cov_count, allQueue, magnQueue, alipQueue
 
-    seqs_ids = list(seq_dict.keys())
-    # replace every nucleotide character with a dot
+    if (sidx + 1) % 1000 == 0:
+        print(f'\t{sidx + 1}/{max_sidx}', end='\r')
+
+    m1 = data_pos1[strand, REDENCODER['mean']]
+    s1 = data_pos1[strand, REDENCODER['std']]
+    m2 = data_pos2[strand, REDENCODER['mean']]
+    s2 = data_pos2[strand, REDENCODER['std']]
+    # check if positions have a distribution -> stdev for both are non-0
+    hasData = s1 and s2
+    low_cov = data_pos1[strand, REDENCODER['n_reads']] < 10 or data_pos2[strand, REDENCODER['n_reads']] < 10
+
+    if strand == 1:
+        base1 = complement(base1)
+        motif1 = rev_complement(motif1)
+        base2 = complement(base2)
+        motif2 = rev_complement(motif2)
+
+    bayesian_p = np.nan
+    kl_divergence = np.nan
+    td = np.nan
+    significant = False
+
+    if hasData:
+        dist1 = NormalDist(m1, s1)
+        dist2 = NormalDist(m2, s2)
+        mDiff = abs(m1 - m2)
+        sAvg = (s1 + s2)/2
+        bayesian_p = dist1.overlap(dist2)
+        kl_divergence = kullback_leibler_normal(m1, s1, m2, s2)
+        td = td_score(mDiff, sAvg)
+        significant = td>=1
+
+    outline = f'{STRANDDECODER[strand]}\t{td:.8f}\t{kl_divergence:.8f}\t{bayesian_p:.8f}\t{MUTDECODER[mut_context]}\t{seqs_ids[0]}\t{pos1}\t{base1}\t{motif1}\t{m1:.8f}\t{s1:.8f}\t{data_pos1[strand, REDENCODER["n_datapoints"]]:.0f}\t{data_pos1[strand, REDENCODER["contained_datapoints"]]:.0f}\t{data_pos1[strand, REDENCODER["n_segments"]]:.0f}\t{data_pos1[strand, REDENCODER["contained_segments"]]:.0f}\t{data_pos1[strand, REDENCODER["n_reads"]]:.0f}\t{seqs_ids[1]}\t{pos2}\t{base2}\t{motif2}\t{m2:.8f}\t{s2:.8f}\t{data_pos2[strand, REDENCODER["n_datapoints"]]:.0f}\t{data_pos2[strand, REDENCODER["contained_datapoints"]]:.0f}\t{data_pos2[strand, REDENCODER["n_segments"]]:.0f}\t{data_pos2[strand, REDENCODER["contained_segments"]]:.0f}\t{data_pos2[strand, REDENCODER["n_reads"]]:.0f}\n'
+
+    allQueue.put(outline)
+
+    if significant:
+        magnQueue.put(outline)
+        alipQueue.put(alip)
+        num_muts.value += mut_context
+        sign_pos.value += 1
+
+    no_data.value += 1 - (not hasData)
+    low_cov_count.value += low_cov
+    num_pos.value += 1
+
+def asyncWriter(file : str, q : mp.Queue) -> None:
+    with open(file, 'a') as f:
+        while 1:
+            line = q.get()
+            if line is None:
+                break
+            f.write(line)
+            f.flush()
+
+def asyncStockholmWriter(stkStrings : list, q : mp.Queue, alignment_path : str, first_sample_label : str, sec_sample_label : str, outdir : str) -> None:
+    while 1:
+        pos = q.get()
+        if pos is None:
+            break
+        for stk in stkStrings:
+            stk[pos] = 'X'
+    
+    LOGGER.printLog(f'Writing stockholm file containing magnipore results')
+    records = []
+    ids = []
+    # remove duplicate sequences (happens when both samples have the same reference fasta)
+    for record in SeqIO.parse(open(alignment_path), 'fasta'):
+        if record.id not in ids:
+            records.append(record)
+            ids.append(record.id)
+    records.extend([
+        SeqIO.SeqRecord(
+        Seq.Seq((''.join(seq)).upper()),
+        id ='magnipore_marked_' + str((first_sample_label, sec_sample_label)[i]),
+        name ='magnipore_' + str((first_sample_label, sec_sample_label)[i]),
+        description='X=significant signal change, .=not significant') for i, seq in enumerate(stkStrings)
+    ])
+    SeqIO.write(records, os.path.join(outdir, first_sample_label + '_' + sec_sample_label + '_marked.stk'), 'stockholm')
+
+def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict, alignment_path : str, red1 : dict, red2 : dict, first_sample_label : str, sec_sample_label : str, working_dir : str, pore_type : str, processes : int) -> None:
+    
+    working_dir = os.path.join(working_dir, 'magnipore', f'{first_sample_label}_{sec_sample_label}')
+    if not os.path.exists(working_dir):
+        os.makedirs(working_dir)
+    magnipore_sign_file = os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}.magnipore')
+    magnipore_all_file = os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}.all')
+    with open(magnipore_sign_file, 'w') as w:
+        w.write('\t'.join(MAGNIPORE_COLUMNS) + '\n')
+    with open(magnipore_all_file, 'w') as w:
+        w.write('\t'.join(MAGNIPORE_COLUMNS) + '\n')
+
+    # setup multiprocessing
+    global num_muts, sign_pos, no_data, low_cov_count, allQueue, magnQueue, alipQueue
+    processes = max(4, processes)
+    pool = mp.Pool(processes-3)
+    allWriter = mp.Process(target=asyncWriter, args=(magnipore_all_file, allQueue))
+    magnWriter = mp.Process(target=asyncWriter, args=(magnipore_sign_file, magnQueue))
     reformat = lambda seq : list(re.sub(r"[^-]", ".", seq))
     magnipore_strings = list(map(reformat, aln_dict.values()))
+    stockholmWriter = mp.Process(target=asyncStockholmWriter, args=(magnipore_strings, alipQueue, alignment_path, first_sample_label, sec_sample_label, working_dir))
+    allWriter.start()
+    magnWriter.start()
+    stockholmWriter.start()
 
+    seqs_ids = list(seq_dict.keys())
     # when providing the same reference for both samples seqs_ids is only length 1, add the same sequence id again
     if len(seqs_ids) == 1:
         seqs_ids.append(seqs_ids[0])
-    working_dir = os.path.join(working_dir, 'magnipore', f'{first_sample_label}_{sec_sample_label}')
-
-    if not os.path.exists(working_dir):
-        os.makedirs(working_dir)
-
-    magnipore_file = os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}.magnipore')
-    magnipore = open(magnipore_file, 'w')
-    magnipore.write('\t'.join(MAGNIPORE_COLUMNS) + '\n')
-    all = open(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}.all'), 'w')
-    all.write('\t'.join(MAGNIPORE_COLUMNS) + '\n')
-    num_muts = num_indels = sign_pos = nans = low_cov_count = 0
-
-    plotting_data = pd.DataFrame(columns=['Mean Distance', 'Avg Stdev', 'Strand', 'Mutational Context', 'Significant', 'TD Score', 'KL Divergence', 'Low Coverage (<10)'])
-    plotting_data = plotting_data.astype(
-        {
-            'Mean Distance': 'float32',
-            'Avg Stdev': 'float32',
-            'Strand': 'bool',
-            'Mutational Context': 'bool',
-            'Significant': 'bool',
-            'TD Score':'float32',
-            'KL Divergence':'float32',
-            'Low Coverage (<10)': 'bool'
-        })
-
-    LOGGER.printLog(f'Start comparing sequences position wise ...')
     seq1 = seq_dict[seqs_ids[0]].upper()
     seq2 = seq_dict[seqs_ids[1]].upper()
 
@@ -264,12 +349,11 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
         pore_range = 9
     else:
         LOGGER.error('Unknown Pore Type', 16)
-
+    num_indels = 0
+    
+    LOGGER.printLog(f'Start Signal comparison processes ({processes}) ...')
     # compare distributions of aligned positions
     for sidx, (pos1, (pos2, alip)) in enumerate(mapping.items()):
-        
-        if (sidx + 1) % 1000 == 0:
-            print(f'\t{sidx + 1}/{len(mapping)}', end='\r')
         
         # red: sequences are stored as {reference: {pos: {base: ('A'|'C'|'G'|'T'), mean: float, std: float}}}
         data_pos1 = red1[seqs_ids[0]][pos1]
@@ -284,249 +368,50 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
         mut_context = motif1 != motif2
         
         for strand in [0, 1]:
+            pool.apply_async(asyncCompareSignals, args=(strand, base1, base2, motif1, motif2, alip, mut_context, data_pos1, data_pos2, seqs_ids, pos1, pos2, sidx, len(mapping)), error_callback=callbackError)
 
-            m1 = data_pos1[strand, REDENCODER['mean']]
-            s1 = data_pos1[strand, REDENCODER['std']]
-            m2 = data_pos2[strand, REDENCODER['mean']]
-            s2 = data_pos2[strand, REDENCODER['std']]
-            # check if positions have a distribution -> stdev for both are non-0
-            isnan = not s1 or not s2
-            nans += isnan
-            low_cov = data_pos1[strand, REDENCODER['n_reads']] < 10 and data_pos2[strand, REDENCODER['n_reads']] < 10
-            low_cov_count += low_cov
+    LOGGER.printLog('Waiting for Signal comparison processes to finish ...')
+    pool.close()
+    pool.join()
+    # Send termination signal to queues and collect writers
+    allQueue.put(None)
+    magnQueue.put(None)
+    alipQueue.put(None)
+    allWriter.join()
+    magnWriter.join()
+    stockholmWriter.join()
+    # get counts
+    num_muts = num_muts.value
+    sign_pos = sign_pos.value
+    no_data = no_data.value
+    low_cov_count = low_cov_count.value
 
-            if strand == 1:
-                base1 = complement(base1)
-                motif1 = rev_complement(motif1)
-                base2 = complement(base2)
-                motif2 = rev_complement(motif2)
-
-            if not isnan:
-                dist1 = NormalDist(m1, s1)
-                dist2 = NormalDist(m2, s2)
-                mDiff = abs(m1 - m2)
-                sAvg = (s1 + s2)/2
-                bayesian_p = dist1.overlap(dist2)
-                kl_divergence = kullback_leibler_normal(m1, s1, m2, s2)
-                td = td_score(mDiff, sAvg)
-                significant = td>=1
-                new_entry = pd.DataFrame({
-                            'Mean Distance' : [mDiff],
-                            'Avg Stdev' : [sAvg],
-                            'Strand' : [strand],
-                            'Mutational Context' : [mut_context],
-                            'Significant' : [significant],
-                            'TD Score' : [td],
-                            'KL Divergence' : [kl_divergence],
-                            'Low Coverage (<10)' : [low_cov]
-                    })
-                plotting_data = pd.concat([plotting_data, new_entry], ignore_index=True)
-            else:
-                bayesian_p = np.nan
-                kl_divergence = np.nan
-                td = np.nan
-                significant = False
-
-            outline = f'{STRANDDECODER[strand]}\t{td:.8f}\t{kl_divergence:.8f}\t{bayesian_p:.8f}\t{MUTDECODER[mut_context]}\t{seqs_ids[0]}\t{pos1}\t{base1}\t{motif1}\t{m1:.8f}\t{s1:.8f}\t{data_pos1[strand, REDENCODER["n_datapoints"]]:.0f}\t{data_pos1[strand, REDENCODER["contained_datapoints"]]:.0f}\t{data_pos1[strand, REDENCODER["n_segments"]]:.0f}\t{data_pos1[strand, REDENCODER["contained_segments"]]:.0f}\t{data_pos1[strand, REDENCODER["n_reads"]]:.0f}\t{seqs_ids[1]}\t{pos2}\t{base2}\t{motif2}\t{m2:.8f}\t{s2:.8f}\t{data_pos2[strand, REDENCODER["n_datapoints"]]:.0f}\t{data_pos2[strand, REDENCODER["contained_datapoints"]]:.0f}\t{data_pos2[strand, REDENCODER["n_segments"]]:.0f}\t{data_pos2[strand, REDENCODER["contained_segments"]]:.0f}\t{data_pos2[strand, REDENCODER["n_reads"]]:.0f}\n'
-            all.write(outline)
-
-            # distance between both means is greater than the average std of both distributions
-            if significant:
-                num_muts += mut_context
-                # X == interesting position
-                for string in magnipore_strings: # string is a list of characters
-                    string[alip] = 'X'
-                sign_pos += 1
-                magnipore.write(outline)
-
-    all.close()
-    magnipore.close()
-
-    with open(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}.indels'), 'w') as indels:
-        indels.write(f'type\tstrand\tref\tpos\tbase\n')
+    LOGGER.printLog('Writing indels file')
+    indelFile = os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}.indels')
+    with open(indelFile, 'w') as f:
+        f.write('type\tstrand\tref\tpos\tbase\n')
         for seq in unaligned:
-            for position, base in unaligned[seq]:                
-                indels.write(f'insert\t+\t{seq}\t{position}\t{base}\n')
+            for position, base in unaligned[seq]:
+                f.write(f'insert\t+\t{seq}\t{position}\t{base}\n')
                 num_indels += 1
 
     print(f'\t{sidx + 1}/{len(mapping)}')
     LOGGER.printLog(f'Number of indels: {ANSI.YELLOW}{num_indels}{ANSI.END}\n'\
                f'Number of significant positions: {ANSI.YELLOW}{sign_pos}{ANSI.END} - Classified as mutations: {ANSI.YELLOW}{num_muts}{ANSI.END}\n'\
-               f'Number of nans {ANSI.YELLOW}{nans}{ANSI.END}, at least one aligned position without information (no signals)\n'\
-               f'Number of positions with low coverage in at least one sample: {ANSI.YELLOW}{low_cov_count}{ANSI.END} - I recommend filtering out these positions in the .magnipore file.\nNans and low coverage can be high if one strand has no aligned reads!\n'\
-               f'Wrote {magnipore_file}')
+               f'Positions with no data {ANSI.YELLOW}{no_data}{ANSI.END}, at least one aligned position without information (no signals)\n'\
+               f'Number of positions with low coverage in at least one sample: {ANSI.YELLOW}{low_cov_count}{ANSI.END} - I recommend filtering out these positions in the .magnipore file.\nPositions with now data or low coverage can be high if one strand has no aligned reads!\n'\
+               f'Wrote {magnipore_sign_file}')
 
     with open(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}.txt'), 'w') as w:
         w.write(f'Number of indels: {num_indels}\n'\
                 f'Number of significant positions: {sign_pos} - Classified as mutations: {num_muts}\n'\
-                f'Number of nans {nans}, at least one aligned position without information (no signals)\n'\
-                f'Number of positions with low coverage in at least one sample: {low_cov_count} - I recommend filtering out these positions in the .magnipore file.\nNans and low coverage can be high if one strand has no aligned reads!\n')
+                f'Positions with no data {no_data}, at least one aligned position without information (no signals)\n'\
+                f'Number of positions with low coverage in at least one sample: {low_cov_count} - I recommend filtering out these positions in the .magnipore file.\nPositions with now data or low coverage can be high if one strand has no aligned reads!\n')
 
-    LOGGER.printLog('Writing indels file')
-    return plotting_data, magnipore_strings
+    return magnipore_all_file
 
-def writeStockholm(magnipore_strings : list, alignment_path : str, first_sample_label : str, sec_sample_label : str, working_dir : str) -> None:
-    LOGGER.printLog(f'Writing stockholm with magnipore markers')
-    records = []
-    ids = []
-    # remove duplicate sequences (happens when both samples have the same reference fasta)
-    for record in SeqIO.parse(open(alignment_path), 'fasta'):
-        if record.id not in ids:
-            records.append(record)
-            ids.append(record.id)
-    records.extend([
-        SeqIO.SeqRecord(
-        Seq.Seq((''.join(seq)).upper()),
-        id ='magnipore_marked_' + str((first_sample_label, sec_sample_label)[i]),
-        name ='magnipore_' + str((first_sample_label, sec_sample_label)[i]),
-        description='X=significant signal change, .=not significant') for i, seq in enumerate(magnipore_strings)
-    ])
-    SeqIO.write(records, os.path.join(working_dir, 'magnipore', f'{first_sample_label}_{sec_sample_label}', first_sample_label + '_' + sec_sample_label + '_marked.stk'), 'stockholm')
-    LOGGER.printLog('Done with magnipore')
-
-def plotStatistics(plotting_data : pd.DataFrame, working_dir : str, first_sample_label : str, sec_sample_label : str) -> None:
-    plot_dir = os.path.join(working_dir, 'magnipore', f'{first_sample_label}_{sec_sample_label}', 'plots')
-    if not os.path.exists(plot_dir):
-        os.mkdir(plot_dir)
-    # reduce plotting_data, if it got too large too reduce runtime and prevent the kernel from killing the process
-    plotting_threshold = 1000000 # arbitrary threshold
-    if len(plotting_data.index) > plotting_threshold:
-        LOGGER.printLog(f'The number of positions exceeds the threshold of {plotting_data} ({len(plotting_data.index)}). To prevent the kernel from killing the process, Magnipore will only plot a subset of {plotting_data} positions. Plots will not include the full data.')
-        plotting_data = plotting_data.sample(plotting_threshold, replace=False)
-    # Mean Dist vs Std Avg plot
-    LOGGER.printLog(f'Plotting Mean vs Stdev of {len(plotting_data.index)} positions')
-    plotMeanDistAvgStd(plotting_data, plot_dir, first_sample_label, sec_sample_label)
-    LOGGER.printLog(f'Plotting Mean vs Stdev of {len(plotting_data.index)} positions excluding low coverage positions')
-    plotMeanDistAvgStd(plotting_data[plotting_data['Low Coverage (<10)'] == False], plot_dir, first_sample_label, sec_sample_label, suffix='c10')
-    # plot MeanDistStdAvg with coverage
-    LOGGER.printLog(f'Plotting Mean vs Stdev with coverage markers if {len(plotting_data.index)} positions')
-    plotMeanDistAvgStdCov(plotting_data, plot_dir, first_sample_label, sec_sample_label)
-    # plot scores
-    LOGGER.printLog(f'Plotting TD score and KL divergence')
-    plotScores(plotting_data, plot_dir, first_sample_label, sec_sample_label)
-
-def plotScores(dataframe : pd.DataFrame, working_dir : str, first_sample_label : str, sec_sample_label : str) -> None:
-    
-    colors = {
-        'False, False':'wheat',
-        'False, True':'darkorange',
-        'True, False':'skyblue',
-        'True, True':'darkblue'}
-    dataframe['Mutation, Significance'] =  pd.Series(dataframe.reindex(['Mutational Context', 'Significant'], axis='columns').astype('str').values.tolist()).str.join(', ')
-
-    plt.figure(figsize = (12,8), dpi=300)
-    plt.title(f'TD score for all positions\n{first_sample_label} vs. {sec_sample_label}')
-    # otherwise logscale range is infinite with lower bound: -infinity
-    sns.histplot(data=dataframe[dataframe['TD Score']>0], x='TD Score', hue=dataframe['Mutation, Significance'], log_scale=(True, True), multiple="stack", palette=colors)
-    plt.grid(True,  'both', 'both', alpha=0.6, linestyle='--')
-    plt.tight_layout()
-    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_td_score.png'))
-    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_td_score.pdf'))
-    plt.close()
-
-    plt.figure(figsize = (12,8), dpi=300)
-    plt.title(f'Kullback-Leibler divergence for all positions\n{first_sample_label} vs. {sec_sample_label}')
-    # otherwise logscale range is infinite with lower bound: -infinity
-    sns.histplot(data=dataframe[dataframe['KL Divergence']>0], x='KL Divergence', hue=dataframe['Mutation, Significance'], log_scale=(True, True), multiple="stack", palette=colors)
-    plt.grid(True,  'both', 'both', alpha=0.6, linestyle='--')
-    plt.tight_layout()
-    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_kl_div.png'))
-    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_kl_div.pdf'))
-    plt.close()
-    
-def plotMeanDistAvgStd(dataframe : pd.DataFrame, working_dir : str, first_sample_label : str, sec_sample_label : str, suffix : str = None) -> None:
-    
-    marker = lambda mut_context: 'D' if mut_context else 'o'
-    color = lambda mut_context: 'blue' if mut_context else '#d95f02' 
-
-    ### Mean Dist vs Std Avg plot
-    plt.figure(figsize = (12,12), dpi=300)
-    plt.rcParams.update({
-        'font.size': FONTSIZE,
-        })
-    label1 = first_sample_label.replace("_", " ")
-    label2 = sec_sample_label.replace("_", " ")
-
-    g = sns.JointGrid(x='Mean Distance', y='Avg Stdev', data=dataframe, hue='Mutational Context', marginal_ticks=True, palette=['blue', '#d95f02'], hue_order=[True, False], height = 10)
-    g.plot_joint(func=sns.scatterplot, s = 8)
-    g.ax_joint.cla()
-    for _, row in dataframe.iterrows():
-        g.ax_joint.plot(row['Mean Distance'], row['Avg Stdev'], color = color(row['Mutational Context']), marker = marker(row['Mutational Context']), markersize=3, alpha = 0.6)
-    g.fig.suptitle(f'{len(dataframe.index)} compared bases mean distance against\naverage standard deviation\n{label1} and {label2}', y=0.98)
-    g.ax_joint.grid(True, 'both', 'both', alpha = 0.4, linestyle = '--', linewidth = 0.5)
-    g.plot_marginals(sns.histplot, binwidth = 0.005, kde = True, linewidth = 0)
-    g.ax_marg_x.grid(True, 'both', 'both', alpha = 0.4, linestyle = '-', linewidth = 0.5)
-    g.ax_marg_y.grid(True, 'both', 'both', alpha = 0.4, linestyle = '-', linewidth = 0.5)
-
-    lims = np.array([
-        [-.02, max(dataframe['Mean Distance']) + 0.1],
-        [-.02, max(dataframe['Avg Stdev']) + 0.1]
-    ])
-    y1 = np.arange(min(lims[:, 0]), max(lims[:, 1]) + 0.01, 0.01)
-    y2 = np.repeat(max(lims[:, 1]), len(y1))
-    g.ax_joint.fill_between(y1, lims[1,0], y1, color='#1b9e77', alpha=0.15)
-    g.ax_joint.fill_between(y1, y1, y2, color='#7570b3', alpha=0.15)
-    sign = mlines.Line2D([], [], color='#1b9e77', marker='s', linestyle='None', markersize=10, label=r'significant, TD$\geq$1')
-    insign = mlines.Line2D([], [], color='#7570b3', marker='s', linestyle='None', markersize=10, label=r'insignificant, TD$<$1')
-
-    g.ax_joint.set_xlim(tuple(lims[0]))
-    g.ax_joint.set_ylim(tuple(lims[1]))
-    g.ax_joint.set_ylabel('Average standard deviation')
-    g.ax_joint.set_xlabel('Mean distance')
-    legend_mut = mlines.Line2D([], [], color='blue', marker='D', linestyle='None', markersize=10, label='mutation')
-    legend_mod = mlines.Line2D([], [], color='#d95f02', marker='o', linestyle='None', markersize=10, label='matching reference')
-    handles = [legend_mut, legend_mod, sign, insign]
-    g.ax_joint.legend(handles = handles, fontsize = 'small', framealpha = 0.3)
-    g.fig.subplots_adjust(top=0.95)
-
-    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_{suffix + "_" if suffix is not None else ""}MeDAS.png'))
-    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_{suffix + "_" if suffix is not None else ""}MeDAS.pdf'))
-
-    plt.close()
-
-def plotMeanDistAvgStdCov(dataframe : pd.DataFrame, working_dir : str, first_sample_label : str, sec_sample_label : str) -> None:
-    ### Mean Dist vs Std Avg plot
-    plt.figure(figsize = (24,24), dpi=300)
-    plt.rcParams.update({
-        'font.size': int(FONTSIZE*0.75),
-        })
-    label1 = first_sample_label.replace("_", " ")
-    label2 = sec_sample_label.replace("_", " ")
-    g : sns.FacetGrid = sns.relplot(data = dataframe, x='Mean Distance', y='Avg Stdev', hue='Mutational Context', style='Low Coverage (<10)', palette=['#d95f02', 'blue'])
-    ax = g.axes[0, 0]
-    handles, _ = ax.get_legend_handles_labels()
-    plt.title(f'{len(dataframe.index)} compared bases mean distance against\naverage standard deviation\n{label1} and {label2}', y=0.98)
-    plt.grid(True, 'both', 'both', alpha = 0.4, linestyle = '--', linewidth = 0.5)
-
-    lims = np.array([
-        [-.02, max(dataframe['Mean Distance']) + 0.1],
-        [-.02, max(dataframe['Avg Stdev']) + 0.1]
-    ])
-
-    y1 = np.arange(min(lims[:, 0]), max(lims[:, 1]) + 0.01, 0.01)
-    y2 = np.repeat(max(lims[:, 1]), len(y1))
-
-    plt.fill_between(y1, lims[1,0], y1, color = '#1b9e77', alpha = 0.15)
-    plt.fill_between(y1, y1, y2, color = '#7570b3', alpha = 0.15)
-    handles.append(mlines.Line2D([], [], color='#1b9e77', marker='s', linestyle='None', markersize=10, label=r'significant, TD$\geq$1'))
-    handles.append(mlines.Line2D([], [], color='#7570b3', marker='s', linestyle='None', markersize=10, label=r'insignificant, TD$<$1'))
-    ax.legend(handles=handles, bbox_to_anchor=(1, 0.7))
-
-    plt.xlim(tuple(lims[0]))
-    plt.ylim(tuple(lims[1]))
-
-    plt.xlabel('Mean distance')
-    plt.ylabel('Average standard deviation')
-    # plt.tight_layout()
-    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_MeDAS_coverage.png'))
-    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_MeDAS_coverage.pdf'))
-
-    plt.ylim(bottom = min(dataframe['Avg Stdev']))
-    plt.yscale('log')
-    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_MeDAS_coverage_log.png'))
-    plt.savefig(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}_MeDAS_coverage_log.pdf'))
-
-    plt.close()
+def callbackError(error):
+    Logger.error(f'Error in multiprocessing signal comparison: {error}', 17)
 
 def ks_test(dist1 : tuple, dist2 : tuple) -> tuple:
     data1 = np.random.normal(dist1[0], dist1[1], 100)
@@ -553,7 +438,7 @@ def callNanosherlock(working_dir : str, sample_label : str, reference_path : str
 
     red_file_path = os.path.join(working_dir, 'magnipore', sample_label, f'{sample_label}.red')
     if not os.path.exists(red_file_path) or not os.path.exists(reference_path) or force_rebuild:
-        command = f'{SUBSCRIPT} {fast5_path} {reference_path} {working_dir} {sample_label} -t {threads} -mx {mx} -mk {mk} -e 1'
+        command = f'nanosherlock {fast5_path} {reference_path} {working_dir} {sample_label} -t {threads} -mx {mx} -mk {mk} -e 1'
 
         if force_rebuild:
             command += ' --force_rebuild'
@@ -581,7 +466,7 @@ def callNanosherlock(working_dir : str, sample_label : str, reference_path : str
         if TIMEIT:
             end = perf_counter_ns()
         if ret != 0:
-            LOGGER.error(f'Error in {SUBSCRIPT} for sample {sample_label} with error code {ret}', error_type=13)
+            LOGGER.error(f'Error in nanosherlock for sample {sample_label} with error code {ret}', error_type=13)
         if TIMEIT:
             LOGGER.printLog(f'{ANSI.YELLOW}TIMED: Calculating distributions of sample {sample_label} took {pd.to_timedelta(end-start)}, {end-start} nanoseconds{ANSI.END}')
 
@@ -589,6 +474,24 @@ def callNanosherlock(working_dir : str, sample_label : str, reference_path : str
         LOGGER.printLog(f'{sample_label} RED file already exists:\n-\t{red_file_path}')
 
     return red_file_path
+
+def callMagniplot(magnipore_file : str, label_first_sample : str, label_sec_sample : str, threads : int) -> None:
+    plot_dir = os.path.join(os.path.dirname(magnipore_file), 'plots')
+    num_lines = num_pos.value + 1 # + header
+    command = f'magniplot {magnipore_file} {plot_dir} {label_first_sample} {label_sec_sample} -t {threads} -nl {num_lines}'
+    LOGGER.printLog(f'Creating plots from {magnipore_file}.')
+    LOGGER.printLog(f'cat command: {ANSI.GREEN}{command}{ANSI.END}')
+
+    if TIMEIT:
+        start = perf_counter_ns()
+    LOGGER.printLog(f'Pipeline command: {ANSI.GREEN}{command}{ANSI.END}')
+    ret = os.system(command)
+    if TIMEIT:
+        end = perf_counter_ns()
+    if ret != 0:
+        LOGGER.error(f'Error in magniplot with error code {ret}', 18)
+    if TIMEIT:
+        LOGGER.printLog(f'{ANSI.YELLOW}TIMED: Plotting took {pd.to_timedelta(end-start)}, {end-start} nanoseconds{ANSI.END}')
 
 def main():
     
@@ -649,12 +552,12 @@ def main():
     
     if TIMEIT:
         start = perf_counter_ns()
-    plotting_data, magnipore_strings = magnipore(mapping, unaligned, seq_dict, aln_dict, red_first_sample, red_sec_sample, label_first_sample, label_sec_sample, working_dir, 'r10' if r10 else 'r9')
-    plotStatistics(plotting_data, working_dir, label_first_sample, label_sec_sample)
-    writeStockholm(magnipore_strings, alignment_path, label_first_sample, label_sec_sample, working_dir)
+    magnipore_all_file = magnipore(mapping, unaligned, seq_dict, aln_dict, alignment_path, red_first_sample, red_sec_sample, label_first_sample, label_sec_sample, working_dir, 'r10' if r10 else 'r9', threads)
     if TIMEIT:
         end = perf_counter_ns()
         LOGGER.printLog(f'{ANSI.YELLOW}TIMED: Evaluating distributions took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
+    callMagniplot(magnipore_all_file, label_first_sample, label_sec_sample, threads)
+    LOGGER.printLog('Done')
 
 if __name__ == '__main__':
     main()

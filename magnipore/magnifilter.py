@@ -4,10 +4,13 @@
 # github: https://github.com/JannesSP
 # website: https://jannessp.github.io
 
-from magnipore.__init__ import __version__
-from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 import os
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
+
 import pandas as pd
+
+from magnipore.__init__ import __version__
+
 
 def parse() -> Namespace:
     parser = ArgumentParser(

@@ -1,12 +1,15 @@
-from magnipore.magnipore import readRedFile, align, getMapping
-from magnipore import magnipore
-from magnipore.Helper import REDENCODER
-from magnipore.nanosherlock import mapping, signalSegmentation, aggregate_events
-from magnipore import nanosherlock
-from Bio import SeqIO
 import os
+
 import numpy as np
 import pandas as pd
+from Bio import SeqIO
+
+from magnipore import nanosherlock
+from magnipore.Helper import REDENCODER
+from magnipore.magnipore import align, getMapping, readRedFile
+from magnipore import magnipore
+from magnipore.nanosherlock import (aggregate_events, mapping,
+                                    signalSegmentation)
 
 magnipore.initLogger(None)
 nanosherlock.initLogger(None)
@@ -22,6 +25,7 @@ red2DF = pd.read_csv(red2, sep='\t') # assuming pandas is tested and working cor
 seq_dict = {**SeqIO.to_dict(SeqIO.parse(ref1, format='fasta')), **SeqIO.to_dict(SeqIO.parse(ref2, format='fasta'))}
 # print(seq_dict)
 s=['+','-']
+processes = 8
 # ===================================
 alignment_path = align(ref1, ref2, lab1, lab2, this_file_dir, 1, False)
 mapping_dict, unaligned_dict, aln_dict = getMapping(alignment_path, this_file_dir, lab1, lab2)
@@ -68,7 +72,7 @@ def test_mapping():
 
 def test_magnipore():
     seq_dict = {key:seq.replace('-', '') for key,seq in aln_dict.items()}
-    plotting_data, magnipore_strings = magnipore.magnipore(mapping_dict, unaligned_dict, seq_dict, aln_dict, red1_dict, red2_dict, lab1, lab2, this_file_dir, 'r9')
+    magnipore.magnipore(mapping_dict, unaligned_dict, seq_dict, aln_dict, alignment_path, red1_dict, red2_dict, lab1, lab2, this_file_dir, 'r9', processes)
     magn = pd.read_csv(os.path.join(this_file_dir, 'magnipore', 'sample1_sample2', 'sample1_sample2.magnipore'), sep='\t')
     for i, row in magn[magn['strand'] == 0].iterrows():
         assert np.isclose(row['td_score'], tdscores[i])
@@ -89,21 +93,40 @@ def test_magnipore():
         print(item)
     assert row['motif_1'].item() == row['motif_2'].item() and row['motif_2'].item() == motifs_sample1[-1]
     assert row['base_1'].item() == row['base_2'].item() and row['base_2'].item() == bases_sample1[-1]
-    for l in magnipore_strings:
-        assert l.count('X') == 4
-        assert l.count('A') == 0
-        assert l.count('C') == 0
-        assert l.count('G') == 0
-        assert l.count('T') == 0
-        assert l.count('U') == 0
-        assert l.count('a') == 0
-        assert l.count('c') == 0
-        assert l.count('g') == 0
-        assert l.count('t') == 0
-        assert l.count('u') == 0
-    assert magnipore_strings[0].count('.') == 19
-    assert magnipore_strings[1].count('.') == 13
-    assert magnipore_strings[1].count('-') == 6
+
+def test_stockholm():
+    stk_file = os.path.join(this_file_dir, 'magnipore/sample1_sample2/sample1_sample2_marked.stk')
+    with open(stk_file, 'r') as r:
+        for line in r:
+            line = line.strip().split(' ')
+            if line[0] == 'magnipore_marked_sample1':
+                assert line[-1].count('X') == 4
+                assert line[-1].count('A') == 0
+                assert line[-1].count('C') == 0
+                assert line[-1].count('G') == 0
+                assert line[-1].count('T') == 0
+                assert line[-1].count('U') == 0
+                assert line[-1].count('a') == 0
+                assert line[-1].count('c') == 0
+                assert line[-1].count('g') == 0
+                assert line[-1].count('t') == 0
+                assert line[-1].count('u') == 0
+                assert line[-1].count('.') == 19
+                assert line[-1].count('-') == 0
+            if line[0] == 'magnipore_marked_sample2':
+                assert line[-1].count('X') == 4
+                assert line[-1].count('A') == 0
+                assert line[-1].count('C') == 0
+                assert line[-1].count('G') == 0
+                assert line[-1].count('T') == 0
+                assert line[-1].count('U') == 0
+                assert line[-1].count('a') == 0
+                assert line[-1].count('c') == 0
+                assert line[-1].count('g') == 0
+                assert line[-1].count('t') == 0
+                assert line[-1].count('u') == 0
+                assert line[-1].count('.') == 13
+                assert line[-1].count('-') == 6
     
 def test_event_aggregation_fast5():
     raw_data_path = os.path.join(this_file_dir, 'raw_data')

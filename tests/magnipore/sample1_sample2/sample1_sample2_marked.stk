@@ -1,0 +1,15 @@
+# STOCKHOLM 1.0
+#=GF SQ 4
+sample1 atcaatttttggaccaacacttt
+#=GS sample1 AC sample1
+#=GS sample1 DE sample1
+sample2 accaa-----ggaccaacactt-
+#=GS sample2 AC sample2
+#=GS sample2 DE sample2
+magnipore_marked_sample1 ..X.X.....X.....X......
+#=GS magnipore_marked_sample1 AC magnipore_marked_sample1
+#=GS magnipore_marked_sample1 DE X=significant signal change, .=not significant
+magnipore_marked_sample2 ..X.X-----X.....X.....-
+#=GS magnipore_marked_sample2 AC magnipore_marked_sample2
+#=GS magnipore_marked_sample2 DE X=significant signal change, .=not significant
+//

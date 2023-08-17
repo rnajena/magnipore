@@ -253,6 +253,8 @@ Error Codes Explanation
 -  14: Running nanosherlock of the second sample failed
 -  15: Number of provided reference sequences is not equal 1 or 2
 -  16: Unknown pore type
+-  17: Error in multiprocessing signal comparison
+-  18: Error in magniplot with error code
 
    Errors of first sample:
 

@@ -4,23 +4,24 @@
 # github: https://github.com/JannesSP
 # website: https://jannessp.github.io
 
-from magnipore.__init__ import __version__
-from magnipore.Logger import Logger
-from magnipore.Helper import ANSI, REDENCODER, STRANDDECODER, sizeof_fmt
-import magnipore.OnlineMeanVar as omv
 import datetime
 import os
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 from pathlib import Path
+from time import perf_counter_ns
+
 import h5py
 import numpy as np
-from scipy import stats
-from Bio import SeqIO
 import pandas as pd
-from time import perf_counter_ns
-import os
 import psutil
+from Bio import SeqIO
 from read5 import read
+from scipy import stats
+
+import magnipore.OnlineMeanVar as omv
+from magnipore.__init__ import __version__
+from magnipore.Helper import ANSI, REDENCODER, STRANDDECODER, sizeof_fmt
+from magnipore.Logger import Logger
 
 PROCESS = psutil.Process(os.getpid())
 LOGGER : Logger = None
@@ -550,7 +551,7 @@ def setupLogger(working_dir : str, sample_label : str) -> None:
         Logger object to write to log file, format console output and write error messages
     '''
     global LOGGER
-    log_file = os.path.join(working_dir, 'log', f'{sample_label}_magnipore_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log')
+    log_file = os.path.join(working_dir, 'log', f'{sample_label}_nanosherlock_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log')
     if not os.path.exists(os.path.join(working_dir, 'log')):
         os.makedirs(os.path.join(working_dir, 'log'))
     LOGGER = Logger(open(log_file, 'w'))

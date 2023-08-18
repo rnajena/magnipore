@@ -231,9 +231,6 @@ def readRedFile(red_file : str, seq_dict : dict):
 def asyncCompareSignals(strand : int, base1 : str, base2 : str, motif1 : str, motif2 : str, alip : int, mut_context : bool, data_pos1 : np.ndarray, data_pos2 : np.ndarray, seqs_ids : tuple, pos1 : int, pos2 : int, sidx : int, max_sidx : int) -> None:
     global num_muts, sign_pos, no_data, low_cov_count, allQueue, magnQueue, alipQueue
 
-    if (sidx + 1) % 1000 == 0:
-        print(f'\t{sidx + 1}/{max_sidx}', end='\r')
-
     m1 = data_pos1[strand, REDENCODER['mean']]
     s1 = data_pos1[strand, REDENCODER['std']]
     m2 = data_pos2[strand, REDENCODER['mean']]
@@ -265,7 +262,7 @@ def asyncCompareSignals(strand : int, base1 : str, base2 : str, motif1 : str, mo
 
     outline = f'{STRANDDECODER[strand]}\t{td:.8f}\t{kl_divergence:.8f}\t{bayesian_p:.8f}\t{MUTDECODER[mut_context]}\t{seqs_ids[0]}\t{pos1}\t{base1}\t{motif1}\t{m1:.8f}\t{s1:.8f}\t{data_pos1[strand, REDENCODER["n_datapoints"]]:.0f}\t{data_pos1[strand, REDENCODER["contained_datapoints"]]:.0f}\t{data_pos1[strand, REDENCODER["n_segments"]]:.0f}\t{data_pos1[strand, REDENCODER["contained_segments"]]:.0f}\t{data_pos1[strand, REDENCODER["n_reads"]]:.0f}\t{seqs_ids[1]}\t{pos2}\t{base2}\t{motif2}\t{m2:.8f}\t{s2:.8f}\t{data_pos2[strand, REDENCODER["n_datapoints"]]:.0f}\t{data_pos2[strand, REDENCODER["contained_datapoints"]]:.0f}\t{data_pos2[strand, REDENCODER["n_segments"]]:.0f}\t{data_pos2[strand, REDENCODER["contained_segments"]]:.0f}\t{data_pos2[strand, REDENCODER["n_reads"]]:.0f}\n'
 
-    allQueue.put(outline)
+    allQueue.put(sidx, max_sidx, outline)
 
     if significant:
         magnQueue.put(outline)
@@ -276,6 +273,17 @@ def asyncCompareSignals(strand : int, base1 : str, base2 : str, motif1 : str, mo
     no_data.value += 1 - (not hasData)
     low_cov_count.value += low_cov
     num_pos.value += 1
+
+def asyncWriter_withPrint(file : str, q : mp.Queue) -> None:
+    with open(file, 'a') as f:
+        while 1:
+            lidx, max_lidx, line = q.get()
+            if (lidx + 1) % 1000 == 0:
+                print(f'\t{lidx + 1}/{max_lidx}', end='\r')
+            if line is None:
+                break
+            f.write(line)
+            f.flush()
 
 def asyncWriter(file : str, q : mp.Queue) -> None:
     with open(file, 'a') as f:
@@ -327,7 +335,7 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
     global num_muts, sign_pos, no_data, low_cov_count, allQueue, magnQueue, alipQueue
     processes = max(4, processes)
     pool = mp.Pool(processes-3)
-    allWriter = mp.Process(target=asyncWriter, args=(magnipore_all_file, allQueue))
+    allWriter = mp.Process(target=asyncWriter_withPrint, args=(magnipore_all_file, allQueue))
     magnWriter = mp.Process(target=asyncWriter, args=(magnipore_sign_file, magnQueue))
     reformat = lambda seq : list(re.sub(r"[^-]", ".", seq))
     magnipore_strings = list(map(reformat, aln_dict.values()))
@@ -411,7 +419,7 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
     return magnipore_all_file
 
 def callbackError(error):
-    Logger.error(f'Error in multiprocessing signal comparison: {error}', 17)
+    LOGGER.error(f'Error in multiprocessing signal comparison: {error}', 17)
 
 def ks_test(dist1 : tuple, dist2 : tuple) -> tuple:
     data1 = np.random.normal(dist1[0], dist1[1], 100)

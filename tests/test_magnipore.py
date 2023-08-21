@@ -4,12 +4,8 @@ import numpy as np
 import pandas as pd
 from Bio import SeqIO
 
-from magnipore import nanosherlock
+from magnipore import magnipore, nanosherlock
 from magnipore.Helper import REDENCODER
-from magnipore.magnipore import align, getMapping, readRedFile
-from magnipore import magnipore
-from magnipore.nanosherlock import (aggregate_events, mapping,
-                                    signalSegmentation)
 
 magnipore.initLogger(None)
 nanosherlock.initLogger(None)
@@ -23,14 +19,13 @@ red2 = os.path.join(this_file_dir, 'sample2.red')
 red1DF = pd.read_csv(red1, sep='\t') # assuming pandas is tested and working correctly
 red2DF = pd.read_csv(red2, sep='\t') # assuming pandas is tested and working correctly
 seq_dict = {**SeqIO.to_dict(SeqIO.parse(ref1, format='fasta')), **SeqIO.to_dict(SeqIO.parse(ref2, format='fasta'))}
-# print(seq_dict)
 s=['+','-']
 processes = 8
 # ===================================
-alignment_path = align(ref1, ref2, lab1, lab2, this_file_dir, 1, False)
-mapping_dict, unaligned_dict, aln_dict = getMapping(alignment_path, this_file_dir, lab1, lab2)
-red1_dict = readRedFile(red1, seq_dict)
-red2_dict = readRedFile(red2, seq_dict)
+alignment_path = magnipore.align(ref1, ref2, lab1, lab2, this_file_dir, 1, False)
+mapping_dict, unaligned_dict, aln_dict = magnipore.getMapping(alignment_path, this_file_dir, lab1, lab2)
+red1_dict = magnipore.readRedFile(red1, seq_dict)
+red2_dict = magnipore.readRedFile(red2, seq_dict)
 sign_positions = [(2,2), (4,4), (10,5), (16,11)]
 tdscores = [1.0801634950514278, 1.998636430295431, 2.201571772538712, 1.9101836858234442, 9.5]
 bayesian_ps = [0.58914066,0.31764056,0.27098986,0.33953125,0.00000178]
@@ -44,8 +39,7 @@ bases_sample2 = 'CAGAT'
 targets = [38, 366]
 target_mean = [-0.2045173406607994, 2.584417871497208]
 target_std = [0.6050989516056662, 0.42849883560181956]
-def test_ReadREDFile():
-
+def test_ReadRedFile():
     for sequence in red1_dict:
         for i,pos in enumerate(red1_dict[sequence]):
             for j,strand in enumerate(pos):
@@ -62,7 +56,7 @@ def test_ReadREDFile():
                 assert strand[REDENCODER['contained_segments']] == red1DF['contained_segments'].iloc[[(2*i)+j]][red1DF['strand'] == s[j]].item()
                 assert strand[REDENCODER['n_reads']] == red1DF['n_reads'].iloc[[(2*i)+j]][red1DF['strand'] == s[j]].item()
 
-def test_mapping():
+def test_Mapping():
     alignment = {0: (0, 0), 1: (1, 1), 2: (2, 2), 3: (3, 3), 4: (4, 4), 10: (5, 10), 11: (6, 11), 12: (7, 12), 13: (8, 13), 14: (9, 14), 15: (10, 15), 16: (11, 16), 17: (12, 17), 18: (13, 18), 19: (14, 19), 20: (
 15, 20), 21: (16, 21)}
     assert mapping_dict == alignment
@@ -136,12 +130,12 @@ def test_event_aggregation_fast5():
     reference = os.path.join(this_file_dir, 'reference', 'test.fasta')
     segmentation = os.path.join(this_file_dir, 'segmentation', 'test', 'eventalign_result.csv')
     assert os.path.exists(basecalls)
-    mapping(reference, basecalls, this_file_dir, 'test', 1, True, 'splice', 14)
+    nanosherlock.mapping(reference, basecalls, this_file_dir, 'test', 1, True, 'splice', 14)
     assert os.path.exists(map_file)
-    summary, segmentation, _ = signalSegmentation(raw_data_path, '.fast5', basecalls, reference, map_file, this_file_dir, 'test_fast5', 1, True, True, False, None)
+    summary, segmentation, _ = nanosherlock.signalSegmentation(raw_data_path, '.fast5', basecalls, reference, map_file, this_file_dir, 'test_fast5', 1, True, True, False, None)
     assert os.path.exists(segmentation)
     assert os.path.exists(summary)
-    red_file = aggregate_events(segmentation, summary, raw_data_path, '.fast5', reference, this_file_dir, 'test_fast5', True, seq_sum, False, False, 1)
+    red_file = nanosherlock.aggregate_events(segmentation, summary, raw_data_path, '.fast5', reference, this_file_dir, 'test_fast5', True, seq_sum, False, False) #, processes)
     assert os.path.exists(red_file)
     # 38: 36 0 54767	54773   0008609d-0d3e-46e5-9b69-25f7ab4b194e
     # 38: 36 2 56368	56421   00425ffc-17d7-4ba0-87ae-9c01215661ca
@@ -159,12 +153,12 @@ def test_event_aggregation_slow5():
     reference = os.path.join(this_file_dir, 'reference', 'test.fasta')
     segmentation = os.path.join(this_file_dir, 'segmentation', 'test', 'eventalign_result.csv')
     assert os.path.exists(basecalls)
-    mapping(reference, basecalls, this_file_dir, 'test', 1, True, 'splice', 14)
+    nanosherlock.mapping(reference, basecalls, this_file_dir, 'test', 1, True, 'splice', 14)
     assert os.path.exists(map_file)
-    summary, segmentation, _ = signalSegmentation(raw_data_path, '.slow5', basecalls, reference, map_file, this_file_dir, 'test_slow5', 1, True, True, False, None)
+    summary, segmentation, _ = nanosherlock.signalSegmentation(raw_data_path, '.slow5', basecalls, reference, map_file, this_file_dir, 'test_slow5', 1, True, True, False, None)
     assert os.path.exists(segmentation)
     assert os.path.exists(summary)
-    red_file = aggregate_events(segmentation, summary, raw_data_path, '.slow5', reference, this_file_dir, 'test_slow5', True, seq_sum, False, False, 1)
+    red_file = nanosherlock.aggregate_events(segmentation, summary, raw_data_path, '.slow5', reference, this_file_dir, 'test_slow5', True, seq_sum, False, False) #, processes)
     assert os.path.exists(red_file)
     checkRed(red_file)
 
@@ -176,12 +170,12 @@ def test_event_aggregation_blow5():
     reference = os.path.join(this_file_dir, 'reference', 'test.fasta')
     segmentation = os.path.join(this_file_dir, 'segmentation', 'test', 'eventalign_result.csv')
     assert os.path.exists(basecalls)
-    mapping(reference, basecalls, this_file_dir, 'test', 1, True, 'splice', 14)
+    nanosherlock.mapping(reference, basecalls, this_file_dir, 'test', 1, True, 'splice', 14)
     assert os.path.exists(map_file)
-    summary, segmentation, _ = signalSegmentation(raw_data_path, '.slow5', basecalls, reference, map_file, this_file_dir, 'test_blow5', 1, True, True, False, None)
+    summary, segmentation, _ = nanosherlock.signalSegmentation(raw_data_path, '.slow5', basecalls, reference, map_file, this_file_dir, 'test_blow5', 1, True, True, False, None)
     assert os.path.exists(segmentation)
     assert os.path.exists(summary)
-    red_file = aggregate_events(segmentation, summary, raw_data_path, '.slow5', reference, this_file_dir, 'test_blow5', True, seq_sum, False, False, 1)
+    red_file = nanosherlock.aggregate_events(segmentation, summary, raw_data_path, '.slow5', reference, this_file_dir, 'test_blow5', True, seq_sum, False, False) #, processes)
     assert os.path.exists(red_file)
     checkRed(red_file)
 

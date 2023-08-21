@@ -165,7 +165,7 @@ def guppy_basecalling(guppy_bin : str, guppy_model : str,  guppy_device : str, r
     os.system(f'rm {os.path.join(basecalls_path, "*.fastq")}')
     os.system(f'mv {os.path.join(basecalls_path, "*.tmpfastq")} {basecalls}')
     # compress fastq.gz with level 3
-    os.system(f'gzip -3 {basecalls}')
+    os.system(f'gzip -f -3 {basecalls}')
         
     return basecalls+'.gz', seq_sum, force_rebuild
 

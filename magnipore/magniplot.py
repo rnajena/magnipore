@@ -31,10 +31,11 @@ def parse() -> Namespace:
     parser.add_argument('-f', '--fontsize', type=int, default=18, help='Fontsize for plots')
     parser.add_argument('-t', '--threads', type=int, default=1, help='Number of processes to use to create plots')
     parser.add_argument('-nl', '--num_lines', type=int, default=None, help='Providing the number of lines in file speeds up the process.')
+    parser.add_argument('-c', '--coverage', type=int, default=10, help='Coverage cutoff threshold for the plots.')
     parser.add_argument('-v', '--version', action='version', version='%(prog)s' + f' {__version__}')
     return parser.parse_args()
 
-def loadPandas(magnipore_file : str, num_lines : int = None) -> pd.DataFrame:
+def loadPandas(magnipore_file : str, num_lines : int, coverage : int) -> pd.DataFrame:
     # sample data for given size, if it got too large
     # reduces runtime and prevent the kernel from killing the process
     if num_lines is None:
@@ -48,7 +49,7 @@ def loadPandas(magnipore_file : str, num_lines : int = None) -> pd.DataFrame:
     data['Mean Distance'] = abs(data['signal_mean_1'] - data['signal_mean_2'])
     data['Avg Stdev'] = (data['signal_std_1'] + data['signal_std_2'])/2
     data['Significant'] = np.where(data['td_score'] >= 1.0, True, False)
-    data['Low Coverage (<10)'] = np.where((data['n_reads_1'] < 10) | (data['n_reads_2'] < 10), True, False)
+    data[f'Low Coverage (<{coverage})'] = np.where((data['n_reads_1'] < coverage) | (data['n_reads_2'] < coverage), True, False)
     data = data.rename(columns={'strand' : 'Strand', 'signal_type' : 'Sequence Context', 'td_score' : 'TD Score', 'kl_divergence' : 'KL Divergence'})
     data['Context, Significant'] = pd.Series(data.reindex(['Sequence Context', 'Significant'], axis='columns').astype('str').values.tolist()).str.join(', ')
     # remove unused columns
@@ -60,7 +61,7 @@ def loadPandas(magnipore_file : str, num_lines : int = None) -> pd.DataFrame:
 def callbackError(error):
     print(f'Error in multiprocessing signal comparison: {error}')
 
-def plotStatistics(data : pd.DataFrame, outdir : str, label_first_sample : str, label_sec_sample : str, threads : int, fontsize : int) -> None:
+def plotStatistics(data : pd.DataFrame, outdir : str, label_first_sample : str, label_sec_sample : str, threads : int, fontsize : int, coverage : int) -> None:
     pool = mp.Pool(threads)
     if not os.path.exists(outdir):
         os.mkdir(outdir)
@@ -69,11 +70,11 @@ def plotStatistics(data : pd.DataFrame, outdir : str, label_first_sample : str, 
     pool.apply_async(plotMeanDistAvgStd, args=(data, outdir, label_first_sample, label_sec_sample, fontsize), error_callback=callbackError)
 
     print(f'Plotting Mean vs Stdev of {len(data.index)} positions excluding low coverage positions')
-    pool.apply_async(plotMeanDistAvgStd, args=(data[data['Low Coverage (<10)'] == False], outdir, label_first_sample, label_sec_sample, fontsize, 'c10'), error_callback=callbackError)
+    pool.apply_async(plotMeanDistAvgStd, args=(data[data[f'Low Coverage (<{coverage})'] == False], outdir, label_first_sample, label_sec_sample, fontsize, f'c{coverage}'), error_callback=callbackError)
 
     # plot MeanDistStdAvg with coverage
     print(f'Plotting Mean vs Stdev with coverage markers if {len(data.index)} positions')
-    pool.apply_async(plotMeanDistAvgStdCov, args=(data, outdir, label_first_sample, label_sec_sample, fontsize), error_callback=callbackError)
+    pool.apply_async(plotMeanDistAvgStdCov, args=(data, outdir, label_first_sample, label_sec_sample, fontsize, coverage), error_callback=callbackError)
 
     # plot scores
     print(f'Plotting TD score and KL divergence')
@@ -160,7 +161,7 @@ def plotMeanDistAvgStd(data : pd.DataFrame, working_dir : str, label_first_sampl
 
     plt.close()
 
-def plotMeanDistAvgStdCov(data : pd.DataFrame, working_dir : str, label_first_sample : str, label_sec_sample : str, fontsize : int) -> None:
+def plotMeanDistAvgStdCov(data : pd.DataFrame, working_dir : str, label_first_sample : str, label_sec_sample : str, fontsize : int, coverage : int) -> None:
     ### Mean Dist vs Std Avg plot
     plt.figure(figsize = (12,12), dpi=300)
     plt.rcParams.update({
@@ -168,7 +169,7 @@ def plotMeanDistAvgStdCov(data : pd.DataFrame, working_dir : str, label_first_sa
         })
     label1 = label_first_sample.replace("_", " ")
     label2 = label_sec_sample.replace("_", " ")
-    sns.relplot(data = data, x='Mean Distance', y='Avg Stdev', hue='Sequence Context', style='Low Coverage (<10)', palette=['#d95f02', 'blue'], height=10)
+    sns.relplot(data = data, x='Mean Distance', y='Avg Stdev', hue='Sequence Context', style=f'Low Coverage (<{coverage})', palette=['#d95f02', 'blue'], height=10)
     plt.title(f'{len(data.index)} compared bases mean distance against\naverage standard deviation\n{label1} and {label2}', y=0.98)
     plt.grid(True, 'both', 'both', alpha = 0.4, linestyle = '--', linewidth = 0.5)
 
@@ -189,25 +190,26 @@ def plotMeanDistAvgStdCov(data : pd.DataFrame, working_dir : str, label_first_sa
     plt.xlabel('Mean distance')
     plt.ylabel('Average standard deviation')
     plt.tight_layout()
-    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_coverage.png'))
-    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_coverage.pdf'))
+    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_c{coverage}.png'))
+    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_c{coverage}.pdf'))
 
     plt.ylim(bottom = min(data['Avg Stdev']))
     plt.yscale('log')
-    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_coverage_log.png'))
-    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_coverage_log.pdf'))
+    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_c{coverage}_log.png'))
+    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_c{coverage}_log.pdf'))
 
     plt.close()
 
 def main() -> None:
     args = parse()
     plotStatistics(
-        loadPandas(args.magnipore, args.num_lines),
+        loadPandas(args.magnipore, args.num_lines, args.coverage),
         args.outdir,
         args.label_first_sample,
         args.label_sec_sample,
         args.threads,
-        args.fontsize
+        args.fontsize,
+        args.coverage
         )
 
 if __name__ == '__main__':

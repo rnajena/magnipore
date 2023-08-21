@@ -137,3 +137,4 @@ test.py
 test.txt
 magnipore/nanosherlock_mp.py
 magnipore/nanosherlock_old.py
+tests/segmentation/test_*/log.txt

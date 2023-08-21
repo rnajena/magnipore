@@ -141,7 +141,7 @@ def test_event_aggregation_fast5():
     summary, segmentation, _ = signalSegmentation(raw_data_path, '.fast5', basecalls, reference, map_file, this_file_dir, 'test_fast5', 1, True, True, False, None)
     assert os.path.exists(segmentation)
     assert os.path.exists(summary)
-    red_file = aggregate_events(segmentation, summary, raw_data_path, '.fast5', reference, this_file_dir, 'test_fast5', True, seq_sum, False, False)
+    red_file = aggregate_events(segmentation, summary, raw_data_path, '.fast5', reference, this_file_dir, 'test_fast5', True, seq_sum, False, False, 1)
     assert os.path.exists(red_file)
     # 38: 36 0 54767	54773   0008609d-0d3e-46e5-9b69-25f7ab4b194e
     # 38: 36 2 56368	56421   00425ffc-17d7-4ba0-87ae-9c01215661ca
@@ -164,7 +164,7 @@ def test_event_aggregation_slow5():
     summary, segmentation, _ = signalSegmentation(raw_data_path, '.slow5', basecalls, reference, map_file, this_file_dir, 'test_slow5', 1, True, True, False, None)
     assert os.path.exists(segmentation)
     assert os.path.exists(summary)
-    red_file = aggregate_events(segmentation, summary, raw_data_path, '.slow5', reference, this_file_dir, 'test_slow5', True, seq_sum, False, False)
+    red_file = aggregate_events(segmentation, summary, raw_data_path, '.slow5', reference, this_file_dir, 'test_slow5', True, seq_sum, False, False, 1)
     assert os.path.exists(red_file)
     checkRed(red_file)
 
@@ -181,7 +181,7 @@ def test_event_aggregation_blow5():
     summary, segmentation, _ = signalSegmentation(raw_data_path, '.slow5', basecalls, reference, map_file, this_file_dir, 'test_blow5', 1, True, True, False, None)
     assert os.path.exists(segmentation)
     assert os.path.exists(summary)
-    red_file = aggregate_events(segmentation, summary, raw_data_path, '.slow5', reference, this_file_dir, 'test_blow5', True, seq_sum, False, False)
+    red_file = aggregate_events(segmentation, summary, raw_data_path, '.slow5', reference, this_file_dir, 'test_blow5', True, seq_sum, False, False, 1)
     assert os.path.exists(red_file)
     checkRed(red_file)
 

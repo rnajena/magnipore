@@ -5,7 +5,6 @@
 # website: https://jannessp.github.io
 
 import datetime
-import multiprocessing as mp
 import os
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 from pathlib import Path
@@ -27,7 +26,6 @@ PROCESS = psutil.Process(os.getpid())
 LOGGER : Logger = None
 TIMEIT = False
 ERROR_PREFIX : str = '0'
-workerQueues = []
 
 def initLogger(file = None) -> None:
     global LOGGER
@@ -263,7 +261,7 @@ def signalSegmentation(raw_data : str, file_format : str, basecalls : str, refer
 
     return summary_csv, result_csv, force_rebuild
 
-def read_line(line : str, r10 : bool = False):
+def read_line(line : str, r10 : bool) -> dict:
     '''
     Fills the event dict with new data from given line.
     Offset for r9 is +2, offset for r10 is +4.
@@ -285,7 +283,7 @@ def read_line(line : str, r10 : bool = False):
     # offset = 2 for 5mer models in r9
     # offset = 4 for 9mer models in r10
     # position is 0-based
-    event['position'] = int(line[1]) + 4 if r10 else 2
+    event['position'] = int(line[1]) + 4 if r10 else int(line[1]) + 2
     event['ref_kmer'] = line[2]
     event['read_index'] = int(line[3])
     event['model_kmer'] = line[9]
@@ -293,7 +291,7 @@ def read_line(line : str, r10 : bool = False):
     event['end_idx'] = int(line[14])
     return event
 
-def aggregate_events(seg_result : str, seg_sum: str, raw_data : str, file_format : str, reference : str, working_dir : str, sample_label : str, force_rebuild : bool, seq_sum : str, calculate_data_density : bool, r10 : bool, threads : int, max_lines : int = None) -> str:
+def aggregate_events(seg_result : str, seg_sum: str, raw_data : str, file_format : str, reference : str, working_dir : str, sample_label : str, force_rebuild : bool, seq_sum : str, calculate_data_density : bool, r10 : bool, max_lines : int = None) -> str:
     '''
     Returns
     -------
@@ -317,7 +315,7 @@ def aggregate_events(seg_result : str, seg_sum: str, raw_data : str, file_format
 
     if TIMEIT:
         start = perf_counter_ns()
-    red_dict = buildModels(red_dict, omvs, idx2readid, readID2File, seg_result, calculate_data_density, r10, threads, max_lines)
+    buildModels(red_dict, omvs, idx2readid, readID2File, seg_result, calculate_data_density, r10, max_lines)
     del omvs # actively release memory
     if TIMEIT:
         end = perf_counter_ns()
@@ -380,55 +378,6 @@ def getFile(read2FileMap, readid : str) -> str:
     # .slow5 | .blow5
     return read2FileMap
 
-def asyncUpdater(red_dict : dict, omvs : dict, q : mp.Queue, conn, readID2File : dict) -> None:
-    r5 = None
-    current_read = ''
-    while 1:
-        entry = q.get()
-        if entry is None:
-            break
-
-        readid = entry['readid']
-        lidx = entry['lidx']
-        max_lines = entry['max_lines']
-        loop = entry['loop']
-        reference = entry['reference']
-        position = entry['position']
-
-        if readid != current_read:
-            strand = entry['ref_kmer'] != entry['model_kmer'] # 1 if true, 0 if false
-            r5 = getRead5Reader(readID2File, readid, r5)
-            norm_signal = r5.getZNormSignal(readid)
-            current_read = readid
-
-        if not (lidx + 1) % 10000: # true if == 0
-            print(f'Line {lidx + 1}{f"/{max_lines}" if max_lines is not None else ""}, {loop}', end = '\r')
-        red_pos = red_dict[reference][position, strand]
-        omv = omvs[reference][position, strand]
-        segment = norm_signal[entry['start_idx']:entry['end_idx']]
-
-        if loop == 'building models':
-            omv.append(segment)
-            red_pos[REDENCODER['n_datapoints']] += len(segment)
-            red_pos[REDENCODER['n_segments']] += 1
-            red_pos[REDENCODER['n_reads']] += 1
-            
-        elif loop =='checking data':
-            red_pos[REDENCODER['mean']], red_pos[REDENCODER['std']] = omv.meanStdev()
-
-            r = 3 * red_pos[REDENCODER['std']] # ~99% density of normal distribution
-            l = red_pos[REDENCODER['mean']] - r # lower bound
-            u = red_pos[REDENCODER['mean']] + r # upper bound
-
-            contained = ((l <= segment) & (segment <= u)).sum()
-            red_pos[REDENCODER['contained_segments']] += contained == len(segment) # +1 if true
-            red_pos[REDENCODER['contained_datapoints']] += contained
-            
-            if entry['density']:
-                red_pos[REDENCODER['data_density']] += np.mean(stats.norm.pdf(segment, loc = red_pos[REDENCODER['mean']], scale = red_pos[REDENCODER['std']]))
-
-    conn.send(red_dict)
-
 def getRead5Reader(read2FileMap, readid : str, r5):
     '''
     Parameters
@@ -457,56 +406,71 @@ def getRead5Reader(read2FileMap, readid : str, r5):
         r5.close()
     return read(file)
 
-def asyncDistribution() -> None:
-    pass
+def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readID2File : dict, segmentation_result_csv : str, calculate_data_density : bool, r10 : bool, max_lines : int = None):
 
-def buildModels(red_dict : dict, omvs : dict, idx2readid : dict, readID2File : dict, segmentation_csv : str, calculate_data_density : bool, r10 : bool, processes : int, max_lines : int = None) -> None:
-
-    # prepare data structures for multiprocessing
-    global workerQueues
-    workerQueues = [mp.Manager().Queue() for _ in range(processes)]
-    workerPipes = [mp.Pipe() for _ in range(processes)]
-    # omvs[seq.id] = np.zeros((seq_size, len(STRANDDECODER)), dtype=object)
-    # split OMVs according to mathematical ring created by the number of given queueSize
-    # each element contains a dictionary with the references and the corresponding positions
-    # for now, Magnipore just runs with one reference, so the dictionaries are theoretically not needed, but this way it can be easily upgraded in the future
-    # positions of the dictionary in the list corresponds to the positions within the dictionaries, they match the mathematical ring
-    omvSplit = [{reference:omvs[reference][p:len(omvs[reference]):processes] for reference in red_dict} for p in range(processes)]
-    # red_dict[seq.id] = np.zeros((seq_size, len(STRANDDECODER), len(REDENCODER)-1), dtype=float)
-    # same procedure
-    redSplit = [{reference:red_dict[reference][p:len(red_dict[reference]):processes] for reference in red_dict} for p in range(processes)]
-    # assign workers with the corresponding data, queue and pipe of the mathematical ring
-    workers = [mp.Process(target=asyncUpdater, args=(redSplit[p], omvSplit[p], workerQueues[p], workerPipes[p][1], readID2File)) for p in range(processes)]
-    for worker in workers: worker.start()
-
-    LOGGER.printLog(f'Start building models and reading {segmentation_csv}')
     for loop in ['building models', 'checking data']:
         max_mem = 0
+        current_read = ''
+        r5 = None
+        start = perf_counter_ns()
 
-        with open(segmentation_csv, 'r') as nano_result:
+        with open(segmentation_result_csv, 'r') as nano_result:
             # skip header
             nano_result.readline()
 
             for lidx, line in enumerate(nano_result):
-                max_mem = max(max_mem, PROCESS.memory_info().rss)
+
+                if (lidx + 1) % 100000 == 0:
+                    end = perf_counter_ns()
+                    max_mem = max(max_mem, PROCESS.memory_info().rss)
+                    print(f'Line {lidx + 1}{f"/{max_lines}" if max_lines is not None else ""}, {loop}, max memory usage: {sizeof_fmt(max_mem)}, {pd.to_timedelta(end-start)}', end = '\r')
+                    start = end
+                    if max_lines is not None and (lidx + 1) >= max_lines:
+                        break
+
                 event = read_line(line, r10) # read data from segmentation and store into event dictionary
                 if event['model_kmer'].count('N') == len(event['model_kmer']):
                     # maybe haplotypes end up here as NNNNN? -> actually mutations in the reads, segmentation has no clue what to do?
                     continue
                 
-                # pass the event to the corresponding queue to be processed by the corresponding worker using the modulo (remainer): position % processes
-                workerQueues[event['position'] % processes].put_nowait({'readid': idx2readid[event['read_index']], 'lidx':lidx, 'max_lines':max_lines, 'loop': loop, 'density':calculate_data_density, 'position': event['position']//processes, 'reference':event['contig'], 'start_idx':event['start_idx'], 'end_idx':event['end_idx'], 'reference':event['contig'], 'model_kmer':event['model_kmer'], 'ref_kmer':event['ref_kmer']})
+                # prepare signal data for new read
+                readid = nano2readid[event['read_index']]
+                # found new read, store last information
+                if readid != current_read:
+                    strand = int(event['ref_kmer'] != event['model_kmer'])
+                    r5 = getRead5Reader(readID2File, readid, r5)
+                    norm_signal = r5.getZNormSignal(readid)
+                    current_read = readid
 
-            max_lines = lidx
+                red_dict[event['contig']][event['position'], strand, REDENCODER['n_reads']] += 1
 
+                # extract segment signal from read
+                segment = norm_signal[event['start_idx']:event['end_idx']]
+                red = red_dict[event['contig']][event['position'], strand]
+                omv = omvs[event['contig']][event['position'], strand]
+
+                if loop == 'building models':
+                    # online bayesian updating
+                    omv.append(segment)
+                    red[REDENCODER['n_datapoints']] += len(segment)
+                    red[REDENCODER['n_segments']] += 1
+
+                elif loop =='checking data':
+                    red[REDENCODER['mean']], red[REDENCODER['std']] = omv.meanStdev()
+
+                    r = 3 * red[REDENCODER['std']] # ~99% density of normal distribution
+                    l = red[REDENCODER['mean']] - r # lower bound
+                    u = red[REDENCODER['mean']] + r # upper bound
+
+                    contained = ((l <= segment) & (segment <= u)).sum()
+                    if contained == len(segment):
+                        red[REDENCODER['contained_segments']] += 1
+                    red[REDENCODER['contained_datapoints']] += contained
+                    
+                    if calculate_data_density:
+                        red[REDENCODER['data_density']] += np.mean(stats.norm.pdf(segment, loc = red[REDENCODER['mean']], scale = red[REDENCODER['std']]))
+        
             LOGGER.printLog(f'Line {lidx + 1}, {loop}, max memory usage: {sizeof_fmt(max_mem)}\t\t', newline_after=True)
-
-    for worker in workers: worker.join()
-    for queue in workerQueues: queue.put(None)
-    # receive calculations from workers and merge them per reference
-    results = [pipe.recv() for pipe in workerPipes]
-    # maybe np.sort, but not necessary I think
-    for reference in red_dict: red_dict[reference] = np.concatenate([result[reference] for result in results])
 
     if calculate_data_density: 
         # normalize log density
@@ -516,8 +480,6 @@ def buildModels(red_dict : dict, omvs : dict, idx2readid : dict, readID2File : d
                     if red_dict[contig][positions, strand, REDENCODER['n_segments']] != 0:
                         # compare data density with the expected model density -> how good describes my model the data
                         red_dict[contig][positions, strand, REDENCODER['data_density']] = red_dict[contig][positions, strand, REDENCODER['data_density']] / red_dict[contig][positions, strand, REDENCODER['n_segments']]
-
-    return red_dict
 
 def writeOutput(red_file : str, red_dict : dict):
     nans = 0
@@ -643,7 +605,7 @@ def main() -> None:
     # new alignment/mapping for segmentation with the corrected reference
     alignment_bam, force_rebuild = mapping(reference, basecalls, working_dir, sample_label, threads, force_rebuild, mx, mk)
     seg_summary_csv, seg_result_csv, force_rebuild = signalSegmentation(raw_data, file_format, basecalls, reference, alignment_bam, working_dir, sample_label, threads, force_rebuild, rna, r10, kmer_model)
-    red_file = aggregate_events(seg_result_csv, seg_summary_csv, raw_data, file_format, reference, working_dir, sample_label, force_rebuild, seq_sum, calc_data_density, r10, threads, max_lines)
+    red_file = aggregate_events(seg_result_csv, seg_summary_csv, raw_data, file_format, reference, working_dir, sample_label, force_rebuild, seq_sum, calc_data_density, r10, max_lines)
     LOGGER.printLog(f'Aggregated reference event distributions for {sample_label} are stored in {red_file}')
 
 if __name__ == '__main__':

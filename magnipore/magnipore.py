@@ -262,7 +262,7 @@ def asyncCompareSignals(strand : int, base1 : str, base2 : str, motif1 : str, mo
 
     outline = f'{STRANDDECODER[strand]}\t{td:.8f}\t{kl_divergence:.8f}\t{bayesian_p:.8f}\t{MUTDECODER[mut_context]}\t{seqs_ids[0]}\t{pos1}\t{base1}\t{motif1}\t{m1:.8f}\t{s1:.8f}\t{data_pos1[strand, REDENCODER["n_datapoints"]]:.0f}\t{data_pos1[strand, REDENCODER["contained_datapoints"]]:.0f}\t{data_pos1[strand, REDENCODER["n_segments"]]:.0f}\t{data_pos1[strand, REDENCODER["contained_segments"]]:.0f}\t{data_pos1[strand, REDENCODER["n_reads"]]:.0f}\t{seqs_ids[1]}\t{pos2}\t{base2}\t{motif2}\t{m2:.8f}\t{s2:.8f}\t{data_pos2[strand, REDENCODER["n_datapoints"]]:.0f}\t{data_pos2[strand, REDENCODER["contained_datapoints"]]:.0f}\t{data_pos2[strand, REDENCODER["n_segments"]]:.0f}\t{data_pos2[strand, REDENCODER["contained_segments"]]:.0f}\t{data_pos2[strand, REDENCODER["n_reads"]]:.0f}\n'
 
-    allQueue.put(sidx, max_sidx, outline)
+    allQueue.put((sidx, max_sidx, outline))
 
     if significant:
         magnQueue.put(outline)
@@ -277,11 +277,12 @@ def asyncCompareSignals(strand : int, base1 : str, base2 : str, motif1 : str, mo
 def asyncWriter_withPrint(file : str, q : mp.Queue) -> None:
     with open(file, 'a') as f:
         while 1:
-            lidx, max_lidx, line = q.get()
+            entry = q.get()
+            if entry is None:
+                break
+            lidx, max_lidx, line = entry
             if (lidx + 1) % 1000 == 0:
                 print(f'\t{lidx + 1}/{max_lidx}', end='\r')
-            if line is None:
-                break
             f.write(line)
             f.flush()
 
@@ -446,7 +447,7 @@ def callNanosherlock(working_dir : str, sample_label : str, reference_path : str
 
     red_file_path = os.path.join(working_dir, 'magnipore', sample_label, f'{sample_label}.red')
     if not os.path.exists(red_file_path) or not os.path.exists(reference_path) or force_rebuild:
-        command = f'nanosherlock {fast5_path} {reference_path} {working_dir} {sample_label} -t {threads} -mx {mx} -mk {mk} -e 1'
+        command = f'python -m magnipore.nanosherlock {fast5_path} {reference_path} {working_dir} {sample_label} -t {threads} -mx {mx} -mk {mk} -e 1'
 
         if force_rebuild:
             command += ' --force_rebuild'

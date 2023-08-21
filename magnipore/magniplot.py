@@ -189,7 +189,7 @@ def plotMeanDistAvgStdCov(data : pd.DataFrame, working_dir : str, label_first_sa
 
     plt.xlabel('Mean distance')
     plt.ylabel('Average standard deviation')
-    plt.tight_layout()
+    # plt.tight_layout()
     plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_c{coverage}.png'))
     plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_c{coverage}.pdf'))
 

@@ -489,11 +489,10 @@ def callMagniplot(magnipore_file : str, label_first_sample : str, label_sec_samp
     num_lines = num_pos.value + 1 # + header
     command = f'magniplot {magnipore_file} {plot_dir} {label_first_sample} {label_sec_sample} -t {threads} -nl {num_lines}'
     LOGGER.printLog(f'Creating plots from {magnipore_file}.')
-    LOGGER.printLog(f'cat command: {ANSI.GREEN}{command}{ANSI.END}')
 
     if TIMEIT:
         start = perf_counter_ns()
-    LOGGER.printLog(f'Pipeline command: {ANSI.GREEN}{command}{ANSI.END}')
+    LOGGER.printLog(f'Magniplot command: {ANSI.GREEN}{command}{ANSI.END}')
     ret = os.system(command)
     if TIMEIT:
         end = perf_counter_ns()

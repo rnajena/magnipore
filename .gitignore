@@ -135,5 +135,5 @@ readme.md
 local_test.sh
 test.py
 test.txt
-magnipore/old_slow_nanosherlock.py
-magnipore/nanosherlock_2.py
+magnipore/nanosherlock_mp.py
+magnipore/nanosherlock_old.py

@@ -37,21 +37,22 @@ def parse() -> Namespace:
     parser.add_argument('-v', '--version', action='version', version='%(prog)s' + f' {__version__}')
     return parser.parse_args()
 
-def loadPandas(magnipore_file : str, num_lines : int, coverage : int, seed = int) -> tuple:
+def loadPandas(magnipore_file : str, lines_in_file : int, coverage : int, seed = int) -> tuple:
     # sample data for given size, if it got too large
     # reduces runtime and prevent the kernel from killing the process
-    if num_lines is None:
+    if lines_in_file is None:
         with open(magnipore_file, "rb") as f:
-            num_lines = sum(1 for _ in f)
+            lines_in_file = sum(1 for _ in f)
     skip = []
-    s = num_lines
-    if num_lines > 1000000:
-        s = min(1000000, num_lines) - 1 # -1 because we substract the header line
+    plot_size = lines_in_file
+    if lines_in_file > 1000000: # >= because of file header
+        plot_size = min(1000000, lines_in_file)
         if seed is None:
             seed = random.randrange(sys.maxsize)
         random.seed(seed)
-        skip = sorted(random.sample(range(1, num_lines), num_lines-s))
-    print(f'Loading {s} {"random " if num_lines > 1000000 else ""}entries from {magnipore_file}')
+        skipsize = (lines_in_file - 1) - plot_size # -1 because we keep the header line
+        skip = sorted(random.sample(range(1, lines_in_file), skipsize))
+    print(f'Loading {plot_size} {"random " if lines_in_file > 1000000 else ""}entries by skipping {len(skip)} from {magnipore_file}')
     columns = ['strand', 'td_score', 'kl_divergence', 'signal_type', 'signal_mean_1', 'signal_std_1', 'n_reads_1', 'signal_mean_2', 'signal_std_2', 'n_reads_2']
     data = pd.read_csv(magnipore_file, sep='\t', usecols=columns, header=0, skiprows=skip)
     # prepare columns for plots
@@ -142,7 +143,7 @@ def plotMeanDistAvgStd(data : pd.DataFrame, working_dir : str, label_first_sampl
     g.ax_joint.cla()
     for _, row in data.iterrows():
         g.ax_joint.plot(row['Mean Distance'], row['Avg Stdev'], color = color(row['Sequence Context']), marker = marker(row['Sequence Context']), markersize=3, alpha = 0.6)
-    g.fig.suptitle(f'{len(data.index)} compared bases: {label1} and {label2}', y=0.98)
+    g.fig.suptitle(f'{len(data.index)} compared bases:\n{label1} and {label2}', y=0.98, fontsize=fontsize-3)
     g.ax_joint.grid(True, 'both', 'both', alpha = 0.4, linestyle = '--', linewidth = 0.5)
     g.plot_marginals(sns.histplot, binwidth = 0.005, kde = True, linewidth = 0)
     g.ax_marg_x.grid(True, 'both', 'both', alpha = 0.4, linestyle = '-', linewidth = 0.5)

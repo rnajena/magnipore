@@ -22,7 +22,7 @@ from magnipore.__init__ import __version__
 def parse() -> Namespace:
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsHelpFormatter,
-        description='Creating plots (MeDAS, etc) for a given .magnipore file.',
+        description='Creating plots (MeDAS, etc) for a given .magnipore file.\nIf the number of entries in the .magnipore file exceeds `max_lines`, this script will randomly sample from the .magnipore file to create the plot.',
         prog='Magnipore',
     )
     parser.add_argument('magnipore', type=str, help='Magnipore-style output')
@@ -32,12 +32,13 @@ def parse() -> Namespace:
     parser.add_argument('-f', '--fontsize', type=int, default=18, help='Fontsize for plots')
     parser.add_argument('-t', '--threads', type=int, default=1, help='Number of processes to use to create plots')
     parser.add_argument('-nl', '--num_lines', type=int, default=None, help='Providing the number of lines in file speeds up the process.')
+    parser.add_argument('-ml', '--max_lines', type=int, default=2500000, help='Plot max this number of entries. Do not set this score too high, as it increases runtime and memory usage. If you have data with a low coverage, many entries/lines in the .magnipore file could be NANs. These are filtered out. Increase this number have more get more entries with data.')
     parser.add_argument('-c', '--coverage', type=int, default=10, help='Coverage cutoff threshold for the plots.')
     parser.add_argument('-s', '--seed', type=int, default=None, help='Set a random seed to reproduce the same image.')
     parser.add_argument('-v', '--version', action='version', version='%(prog)s' + f' {__version__}')
     return parser.parse_args()
 
-def loadPandas(magnipore_file : str, lines_in_file : int, coverage : int, seed = int, max_entries : int = 5000000) -> tuple:
+def loadPandas(magnipore_file : str, lines_in_file : int, coverage : int, seed : int, max_lines : int) -> tuple:
     # sample data for given size, if it got too large
     # reduces runtime and prevent the kernel from killing the process
     if lines_in_file is None:
@@ -46,14 +47,14 @@ def loadPandas(magnipore_file : str, lines_in_file : int, coverage : int, seed =
     print(f'Found {lines_in_file} lines in {magnipore_file}')
     skip = []
     plot_size = lines_in_file
-    if lines_in_file > max_entries: # >= because of file header
-        plot_size = min(max_entries, lines_in_file)
+    if lines_in_file > max_lines: # >= because of file header
+        plot_size = min(max_lines, lines_in_file)
         if seed is None:
             seed = random.randrange(sys.maxsize)
         random.seed(seed)
         skipsize = (lines_in_file - 1) - plot_size # -1 because we keep the header line
         skip = sorted(random.sample(range(1, lines_in_file), skipsize))
-    print(f'Loading {plot_size} {"random " if lines_in_file > max_entries else ""}entries by skipping {len(skip)} from {magnipore_file}')
+    print(f'Loading {plot_size} {"random " if lines_in_file > max_lines else ""}entries by skipping {len(skip)} from {magnipore_file}')
     columns = ['strand', 'td_score', 'kl_divergence', 'signal_type', 'signal_mean_1', 'signal_std_1', 'n_reads_1', 'signal_mean_2', 'signal_std_2', 'n_reads_2']
     data = pd.read_csv(magnipore_file, sep='\t', usecols=columns, header=0, skiprows=skip)
     # prepare columns for plots
@@ -220,7 +221,7 @@ def plotMeanDistAvgStdCov(data : pd.DataFrame, working_dir : str, label_first_sa
 
 def main() -> None:
     args = parse()
-    data, seed = loadPandas(args.magnipore, args.num_lines, args.coverage, args.seed)
+    data, seed = loadPandas(args.magnipore, args.num_lines, args.coverage, args.seed, args.max_lines)
     plotStatistics(
         data,
         seed,

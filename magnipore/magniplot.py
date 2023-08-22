@@ -37,22 +37,23 @@ def parse() -> Namespace:
     parser.add_argument('-v', '--version', action='version', version='%(prog)s' + f' {__version__}')
     return parser.parse_args()
 
-def loadPandas(magnipore_file : str, lines_in_file : int, coverage : int, seed = int) -> tuple:
+def loadPandas(magnipore_file : str, lines_in_file : int, coverage : int, seed = int, max_entries : int = 5000000) -> tuple:
     # sample data for given size, if it got too large
     # reduces runtime and prevent the kernel from killing the process
     if lines_in_file is None:
         with open(magnipore_file, "rb") as f:
             lines_in_file = sum(1 for _ in f)
+    print(f'Found {lines_in_file} lines in {magnipore_file}')
     skip = []
     plot_size = lines_in_file
-    if lines_in_file > 1000000: # >= because of file header
-        plot_size = min(1000000, lines_in_file)
+    if lines_in_file > max_entries: # >= because of file header
+        plot_size = min(max_entries, lines_in_file)
         if seed is None:
             seed = random.randrange(sys.maxsize)
         random.seed(seed)
         skipsize = (lines_in_file - 1) - plot_size # -1 because we keep the header line
         skip = sorted(random.sample(range(1, lines_in_file), skipsize))
-    print(f'Loading {plot_size} {"random " if lines_in_file > 1000000 else ""}entries by skipping {len(skip)} from {magnipore_file}')
+    print(f'Loading {plot_size} {"random " if lines_in_file > max_entries else ""}entries by skipping {len(skip)} from {magnipore_file}')
     columns = ['strand', 'td_score', 'kl_divergence', 'signal_type', 'signal_mean_1', 'signal_std_1', 'n_reads_1', 'signal_mean_2', 'signal_std_2', 'n_reads_2']
     data = pd.read_csv(magnipore_file, sep='\t', usecols=columns, header=0, skiprows=skip)
     # prepare columns for plots
@@ -63,9 +64,11 @@ def loadPandas(magnipore_file : str, lines_in_file : int, coverage : int, seed =
     data = data.rename(columns={'strand' : 'Strand', 'signal_type' : 'Sequence Context', 'td_score' : 'TD Score', 'kl_divergence' : 'KL Divergence'})
     data['Context, Significant'] = pd.Series(data.reindex(['Sequence Context', 'Significant'], axis='columns').astype('str').values.tolist()).str.join(', ')
     # remove unused columns
+    print(f'{len(data.index)} entries loaded')
     data.drop(columns=['signal_mean_1', 'signal_std_1', 'n_reads_1', 'signal_mean_2', 'signal_std_2', 'n_reads_2'], inplace=True)
     # drop NANs
     data.dropna(how='any', inplace=True, ignore_index = True) # ignore_index essential for plots in method `plotScores`
+    print(f'{len(data.index)} entries left after removing NANs')
     return data, seed
 
 def callbackError(error):
@@ -111,8 +114,8 @@ def plotScores(data : pd.DataFrame, working_dir : str, label_first_sample : str,
     sns.histplot(data=data[data['TD Score']>0], x='TD Score', hue=data['Context, Significant'], log_scale=(True, True), multiple="stack", palette=colors)
     plt.grid(True,  'both', 'both', alpha=0.6, linestyle='--')
     plt.tight_layout()
-    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_td_score{"_"+str(seed) if seed is not None else ""}.png'))
-    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_td_score{"_"+str(seed) if seed is not None else ""}.pdf'))
+    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_td_score{"_seed"+str(seed) if seed is not None else ""}.png'))
+    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_td_score{"_seed"+str(seed) if seed is not None else ""}.pdf'))
     plt.close()
 
     plt.figure(figsize = (12,8), dpi=300)
@@ -121,8 +124,8 @@ def plotScores(data : pd.DataFrame, working_dir : str, label_first_sample : str,
     sns.histplot(data=data[data['KL Divergence']>0], x='KL Divergence', hue=data['Context, Significant'], log_scale=(True, True), multiple="stack", palette=colors)
     plt.grid(True,  'both', 'both', alpha=0.6, linestyle='--')
     plt.tight_layout()
-    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_kl_div{"_"+str(seed) if seed is not None else ""}.png'))
-    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_kl_div{"_"+str(seed) if seed is not None else ""}.pdf'))
+    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_kl_div{"_seed"+str(seed) if seed is not None else ""}.png'))
+    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_kl_div{"_seed"+str(seed) if seed is not None else ""}.pdf'))
     plt.close()
     
 def plotMeanDistAvgStd(data : pd.DataFrame, working_dir : str, label_first_sample : str, label_sec_sample : str, fontsize : int, seed : int, suffix : str = None) -> None:
@@ -143,7 +146,7 @@ def plotMeanDistAvgStd(data : pd.DataFrame, working_dir : str, label_first_sampl
     g.ax_joint.cla()
     for _, row in data.iterrows():
         g.ax_joint.plot(row['Mean Distance'], row['Avg Stdev'], color = color(row['Sequence Context']), marker = marker(row['Sequence Context']), markersize=3, alpha = 0.6)
-    g.fig.suptitle(f'{len(data.index)} compared bases:\n{label1} and {label2}', y=0.98, fontsize=fontsize-3)
+    g.fig.suptitle(f'{len(data.index)} compared bases:\n{label1} and {label2}', y=0.98, fontsize=fontsize-1)
     g.ax_joint.grid(True, 'both', 'both', alpha = 0.4, linestyle = '--', linewidth = 0.5)
     g.plot_marginals(sns.histplot, binwidth = 0.005, kde = True, linewidth = 0)
     g.ax_marg_x.grid(True, 'both', 'both', alpha = 0.4, linestyle = '-', linewidth = 0.5)
@@ -170,8 +173,8 @@ def plotMeanDistAvgStd(data : pd.DataFrame, working_dir : str, label_first_sampl
     g.ax_joint.legend(handles = handles, fontsize = 'small', framealpha = 0.3)
     g.fig.subplots_adjust(top=0.95)
 
-    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_{suffix + "_" if suffix is not None else ""}MeDAS{"_"+str(seed) if seed is not None else ""}.png'))
-    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_{suffix + "_" if suffix is not None else ""}MeDAS{"_"+str(seed) if seed is not None else ""}.pdf'))
+    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_{suffix + "_" if suffix is not None else ""}MeDAS{"_seed"+str(seed) if seed is not None else ""}.png'))
+    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_{suffix + "_" if suffix is not None else ""}MeDAS{"_seed"+str(seed) if seed is not None else ""}.pdf'))
 
     plt.close()
 
@@ -184,7 +187,7 @@ def plotMeanDistAvgStdCov(data : pd.DataFrame, working_dir : str, label_first_sa
     label1 = label_first_sample.replace("_", " ")
     label2 = label_sec_sample.replace("_", " ")
     g = sns.relplot(data = data, x='Mean Distance', y='Avg Stdev', hue='Sequence Context', style=f'Low Coverage (<{coverage})', palette=['#d95f02', 'blue'], height=10)
-    sns.move_legend(g, loc='right', bbox_to_anchor=(0.55, 0.55, 0.45, 0.3), fontsize = fontsize-3)
+    sns.move_legend(g, loc='right', bbox_to_anchor=(0.55, 0.55, 0.45, 0.3), fontsize = fontsize-1)
     plt.title(f'{len(data.index)} compared bases: {label1} and {label2}', y=0.98)
     plt.grid(True, 'both', 'both', alpha = 0.4, linestyle = '--', linewidth = 0.5)
 
@@ -205,13 +208,13 @@ def plotMeanDistAvgStdCov(data : pd.DataFrame, working_dir : str, label_first_sa
     plt.xlabel('Mean distance')
     plt.ylabel('Average standard deviation')
     plt.tight_layout()
-    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_c{coverage}{"_"+str(seed) if seed is not None else ""}.png'))
-    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_c{coverage}{"_"+str(seed) if seed is not None else ""}.pdf'))
+    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_c{coverage}{"_seed"+str(seed) if seed is not None else ""}.png'))
+    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_c{coverage}{"_seed"+str(seed) if seed is not None else ""}.pdf'))
 
     plt.ylim(bottom = min(data['Avg Stdev']))
     plt.yscale('log')
-    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_c{coverage}_log{"_"+str(seed) if seed is not None else ""}.png'))
-    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_c{coverage}_log{"_"+str(seed) if seed is not None else ""}.pdf'))
+    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_c{coverage}_log{"_seed"+str(seed) if seed is not None else ""}.png'))
+    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_MeDAS_c{coverage}_log{"_seed"+str(seed) if seed is not None else ""}.pdf'))
 
     plt.close()
 

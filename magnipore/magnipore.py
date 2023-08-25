@@ -270,7 +270,7 @@ def asyncCompareSignals(strand : int, base1 : str, base2 : str, motif1 : str, mo
         num_muts.value += mut_context
         sign_pos.value += 1
 
-    no_data.value += 1 - (not hasData)
+    no_data.value += 1 - int(hasData)
     low_cov_count.value += low_cov
     num_pos.value += 1
 

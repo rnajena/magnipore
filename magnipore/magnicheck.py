@@ -38,9 +38,9 @@ def main() -> None:
     magnipore_pos = magnipore_pos[(magnipore_pos['n_reads_1'] >= args.coverage) & (magnipore_pos['n_reads_2'] >= args.coverage)]
     
     if args.pore == 'r9':
-        r = 2
+        r = 5
     elif args.pore == 'r10':
-        r = 3
+        r = 7
     
     with open(args.outfile, 'w') as w:
         w.write('strand,found_positions\n')
@@ -55,7 +55,7 @@ def main() -> None:
 
             magniporeRange = []
             for pos in called_pos:
-                for i in range(pos-r, pos+r+1):
+                for i in range(pos-r//2, pos+r//2+1):
                     magniporeRange.append(i)
             magniporeRange = np.unique(magniporeRange)
 

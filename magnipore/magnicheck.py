@@ -36,32 +36,34 @@ def main() -> None:
     eval_pos = eval[eval[args.refcol] == args.refid][args.poscol].to_numpy()
     magnipore_pos = pd.read_csv(args.magnipore, sep='\t')
     magnipore_pos = magnipore_pos[(magnipore_pos['n_reads_1'] >= args.coverage) & (magnipore_pos['n_reads_2'] >= args.coverage)]
-    magnipore_pos = magnipore_pos[args.magnipore_poscol].to_numpy()
-    found_pos = np.intersect1d(eval_pos, magnipore_pos, assume_unique=True)
-
-    print(f'found positions: {len(found_pos)}/{len(eval_pos)}')
-    print('fraction:', len(found_pos)/len(eval_pos))
-
+    
     if args.pore == 'r9':
         r = 2
     elif args.pore == 'r10':
         r = 3
+    
+    for strand in '+-':
+        called_pos = magnipore_pos['strand' == strand][args.magnipore_poscol].to_numpy()
 
-    magniporeRange = []
-    for pos in magnipore_pos:
-        for i in range(pos-r, pos+r+1):
-            magniporeRange.append(i)
-    magniporeRange = np.unique(magniporeRange)
+    # found_pos = np.intersect1d(eval_pos, magnipore_pos, assume_unique=True)
+    # print(f'directly found positions: {len(found_pos)}/{len(eval_pos)}')
+    # print('fraction:', len(found_pos)/len(eval_pos))
 
-    within_kmer = np.intersect1d(eval_pos, magniporeRange, assume_unique=True)
+        magniporeRange = []
+        for pos in called_pos:
+            for i in range(pos-r, pos+r+1):
+                magniporeRange.append(i)
+        magniporeRange = np.unique(magniporeRange)
 
-    print('found positions:', len(within_kmer))
-    print('fraction:', len(within_kmer)/len(eval_pos))
+        within_kmer = np.intersect1d(eval_pos, magniporeRange, assume_unique=True)
 
-    with open(args.outfile, 'w') as w:
-        w.write('found_positions\n')
-        for pos in found_pos:
-            w.write(f'{pos}\n')
+        print(f'found positions within {r}mer range {len(within_kmer)}/{len(eval_pos)} for strand: {strand}')
+        print('fraction:', len(within_kmer)/len(eval_pos))
+
+        with open(args.outfile, 'w') as w:
+            w.write('strand,found_positions\n')
+            for pos in within_kmer:
+                w.write(f'{strand},{pos}\n')
 
     print('Done')
 

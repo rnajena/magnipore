@@ -16,12 +16,12 @@ def parse() -> Namespace:
         description='A small script that compares the Magnipore output file with a given validationset in form of a table in a CSV file. Your table should contain the reference id/name, that was also used during the Magnipore analysis, and the validation positions on the given reference. The script will then check, if Magnipore found significant positions in a kmer range of the positions in the validation table (CSV). The kmer range depends on the used pore during sequencing. You can specify the used pore with the --pore parameter. You should also think about the coverage threshold. This script will by default filter out positions from the Magnipore output, where at least one sample has a coverage less than 10 reads.',
         prog='Magnipore',
     )
+    parser.add_argument('magnipore', type=str, help='Magnipore file with called differential modifications.')
+    parser.add_argument('magnipore_poscol', type=str, help='Which position to validate from the Magnipore output.')
+    parser.add_argument('refid', type=str, help='Reference id or name - This id must match between the magnipore file and the your validation table (CSV).')
     parser.add_argument('eval_csv', type=str, help='CSV file containing the validation table. The table contains the reference id and position of validated (ground truth) modifications.')
     parser.add_argument('refcol', type=str, help='Column containing the reference ids.')
     parser.add_argument('poscol', type=str, help='Column containing the validated positions.')
-    parser.add_argument('refid', type=str, help='Reference id or name - This id must match between the magnipore file and the your validation table (CSV).')
-    parser.add_argument('magnipore', type=str, help='Magnipore file with called differential modifications.')
-    parser.add_argument('magnipore_poscol', type=str, help='Which position to validate from the Magnipore output.')
     parser.add_argument('outfile', type=str, help='Name of the output file.')
     parser.add_argument('--coverage', type=int, default=10, help='Coverage filter to apply to the Magnipore output.')
     parser.add_argument('--valid_sep', type=str, default=',', help='Separation character in your CSV file.')

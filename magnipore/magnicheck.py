@@ -33,13 +33,13 @@ def main() -> None:
     args = parse()
 
     eval = pd.read_csv(args.eval_csv, sep=args.valid_sep)
-    eval_pos = eval.loc[eval[args.refcol] == args.refid][args.poscol].to_numpy()
+    eval_pos = eval[eval[args.refcol] == args.refid][args.poscol].to_numpy()
     magnipore_pos = pd.read_csv(args.magnipore, sep='\t')
-    magnipore_pos = magnipore_pos.loc[(magnipore_pos['n_reads_1'] >= args.coverage) & (magnipore_pos['n_reads_2'] >= args.coverage)]
+    magnipore_pos = magnipore_pos[(magnipore_pos['n_reads_1'] >= args.coverage) & (magnipore_pos['n_reads_2'] >= args.coverage)]
     magnipore_pos = magnipore_pos[args.magnipore_poscol].to_numpy()
     found_pos = np.intersect1d(eval_pos, magnipore_pos, assume_unique=True)
 
-    print('found positions:', len(found_pos))
+    print(f'found positions: {len(found_pos)}/{len(eval_pos)}')
     print('fraction:', len(found_pos)/len(eval_pos))
 
     if args.pore == 'r9':

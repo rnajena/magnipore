@@ -41,7 +41,10 @@ def main() -> None:
         r = 5
     elif args.pore == 'r10':
         r = 7
-    
+
+    m = 0
+    f = 0
+
     with open(args.outfile, 'w') as w:
         w.write('strand,found_positions\n')
 
@@ -64,10 +67,14 @@ def main() -> None:
             print(f'found positions within {r}mer range {len(within_kmer)}/{len(eval_pos)} for strand: {strand}')
             print('fraction:', len(within_kmer)/len(eval_pos))
 
+            f += len(within_kmer)
+            m += len(eval_pos)
+
             for pos in within_kmer:
                 w.write(f'{strand},{pos}\n')
 
-    print('Done')
+    print('Overall')
+    print(f'found positions within {r}mer range {f}/{m}')
 
 if __name__ == '__main__':
     main()

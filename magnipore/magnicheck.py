@@ -33,7 +33,7 @@ def main() -> None:
     args = parse()
 
     eval = pd.read_csv(args.eval_csv, sep=args.valid_sep)
-    eval_pos = eval[eval[args.refcol] == args.refid][args.poscol].to_numpy()
+    eval = eval[eval[args.refcol] == args.refid]
     magnipore_pos = pd.read_csv(args.magnipore, sep='\t')
     magnipore_pos = magnipore_pos[(magnipore_pos['n_reads_1'] >= args.coverage) & (magnipore_pos['n_reads_2'] >= args.coverage)]
     
@@ -46,6 +46,7 @@ def main() -> None:
         w.write('strand,found_positions\n')
 
         for strand in '+-':
+            eval_pos = eval[eval['strand'] == strand][args.poscol].to_numpy()
             called_pos = magnipore_pos[magnipore_pos['strand'] == strand][args.magnipore_poscol].to_numpy()
 
         # found_pos = np.intersect1d(eval_pos, magnipore_pos, assume_unique=True)

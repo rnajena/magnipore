@@ -35,7 +35,9 @@ def main() -> None:
     eval = pd.read_csv(args.eval_csv, sep=args.valid_sep)
     eval = eval[eval[args.refcol] == args.refid]
     magnipore_pos = pd.read_csv(args.magnipore, sep='\t')
+    print(f'Number of called positions by magnipore: {len(magnipore_pos.index)}')
     magnipore_pos = magnipore_pos[(magnipore_pos['n_reads_1'] >= args.coverage) & (magnipore_pos['n_reads_2'] >= args.coverage)]
+    print(f'Number of called positions after coverage filtering with {args.coverage} by magnipore: {len(magnipore_pos.index)}')
     
     if args.pore == 'r9':
         r = 5
@@ -64,8 +66,8 @@ def main() -> None:
 
             within_kmer = np.intersect1d(eval_pos, magniporeRange, assume_unique=True)
 
-            print(f'found positions within {r}mer range {len(within_kmer)}/{len(eval_pos)} for strand: {strand}')
-            print('fraction:', len(within_kmer)/len(eval_pos))
+            print(f'Found positions within {r}mer range {len(within_kmer)}/{len(eval_pos)} for strand: {strand}')
+            print('Fraction:', len(within_kmer)/len(eval_pos))
 
             f += len(within_kmer)
             m += len(eval_pos)
@@ -74,7 +76,7 @@ def main() -> None:
                 w.write(f'{strand},{pos}\n')
 
     print('Overall')
-    print(f'found positions within {r}mer range {f}/{m}')
+    print(f'Found positions within {r}mer range {f}/{m}')
 
 if __name__ == '__main__':
     main()

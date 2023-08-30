@@ -35,6 +35,7 @@ test:
     - nanosherlock --help
     - magnifilter --help
     - magniplot --help
+    - magnicheck --help
     - pytest -vv
 
 about:

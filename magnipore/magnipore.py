@@ -267,12 +267,12 @@ def asyncCompareSignals(strand : int, base1 : str, base2 : str, motif1 : str, mo
     if significant:
         magnQueue.put(outline)
         alipQueue.put(alip)
-        num_muts.value += mut_context
-        sign_pos.value += 1
+        with num_muts.get_lock(): num_muts.value += mut_context
+        with sign_pos.get_lock(): sign_pos.value += 1
 
-    no_data.value += 1 - int(hasData)
-    low_cov_count.value += low_cov
-    num_pos.value += 1
+    with no_data.get_lock(): no_data.value += 1 - int(hasData)
+    with low_cov_count.get_lock(): low_cov_count.value += low_cov
+    with num_pos.get_lock(): num_pos.value += 1
 
 def asyncWriter_withPrint(file : str, q : mp.Queue) -> None:
     with open(file, 'a') as f:

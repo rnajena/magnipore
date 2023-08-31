@@ -236,7 +236,7 @@ def asyncCompareSignals(strand : int, base1 : str, base2 : str, motif1 : str, mo
     m2 = data_pos2[strand, REDENCODER['mean']]
     s2 = data_pos2[strand, REDENCODER['std']]
     # check if positions have a distribution -> stdev for both are non-0
-    hasData = s1 and s2
+    hasData = bool(s1 and s2)
     low_cov = data_pos1[strand, REDENCODER['n_reads']] < 10 or data_pos2[strand, REDENCODER['n_reads']] < 10
 
     if strand == 1:
@@ -270,7 +270,7 @@ def asyncCompareSignals(strand : int, base1 : str, base2 : str, motif1 : str, mo
         with num_muts.get_lock(): num_muts.value += mut_context
         with sign_pos.get_lock(): sign_pos.value += 1
 
-    with no_data.get_lock(): no_data.value += 1 - int(hasData)
+    with no_data.get_lock(): no_data.value += 1 - hasData
     with low_cov_count.get_lock(): low_cov_count.value += low_cov
     with num_pos.get_lock(): num_pos.value += 1
 

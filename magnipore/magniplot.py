@@ -32,7 +32,7 @@ def parse() -> Namespace:
     parser.add_argument('-f', '--fontsize', type=int, default=18, help='Fontsize for plots')
     parser.add_argument('-t', '--threads', type=int, default=1, help='Number of processes to use to create plots')
     parser.add_argument('-nl', '--num_lines', type=int, default=None, help='Providing the number of lines in file speeds up the process.')
-    parser.add_argument('-ml', '--max_lines', type=int, default=2500000, help='Plot max this number of entries. Do not set this score too high, as it increases runtime and memory usage. If you have data with a low coverage, many entries/lines in the .magnipore file could be NANs. These are filtered out. Increase this number have more get more entries with data.')
+    parser.add_argument('-ml', '--max_lines', type=int, default=1500000, help='Plot max this number of entries. Do not set this score too high, as it increases runtime and memory usage. If you have data with a low coverage, many entries/lines in the .magnipore file could be NANs. These are filtered out. Increase this number have more get more entries with data.')
     parser.add_argument('-c', '--coverage', type=int, default=10, help='Coverage cutoff threshold for the plots.')
     parser.add_argument('-s', '--seed', type=int, default=None, help='Set a random seed to reproduce the same image.')
     parser.add_argument('-v', '--version', action='version', version='%(prog)s' + f' {__version__}')

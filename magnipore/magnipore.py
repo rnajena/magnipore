@@ -390,10 +390,10 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
     magnWriter.join()
     stockholmWriter.join()
     # get counts
-    num_muts = num_muts.value
-    sign_pos = sign_pos.value
-    no_data = no_data.value
-    low_cov_count = low_cov_count.value
+    with num_muts.get_lock(): num_muts_val = num_muts.value
+    with sign_pos.get_lock(): sign_pos_val = sign_pos.value
+    with no_data.get_lock(): no_data_val = no_data.value
+    with low_cov_count.get_lock(): low_cov_count_val = low_cov_count.value
 
     LOGGER.printLog('Writing indels file')
     indelFile = os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}.indels')
@@ -406,16 +406,16 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
 
     print(f'\t{sidx + 1}/{len(mapping)}')
     LOGGER.printLog(f'Number of indels: {ANSI.YELLOW}{num_indels}{ANSI.END}\n'\
-               f'Number of significant positions: {ANSI.YELLOW}{sign_pos}{ANSI.END} - Classified as mutations: {ANSI.YELLOW}{num_muts}{ANSI.END}\n'\
-               f'Positions with no data {ANSI.YELLOW}{no_data}{ANSI.END}, at least one aligned position without information (no signals)\n'\
-               f'Number of positions with low coverage in at least one sample: {ANSI.YELLOW}{low_cov_count}{ANSI.END} - I recommend filtering out these positions in the .magnipore file.\nPositions with now data or low coverage can be high if one strand has no aligned reads!\n'\
+               f'Number of significant positions: {ANSI.YELLOW}{sign_pos_val}{ANSI.END} - Classified as mutations: {ANSI.YELLOW}{num_muts_val}{ANSI.END}\n'\
+               f'Positions with no data {ANSI.YELLOW}{no_data_val}{ANSI.END}, at least one aligned position without information (no signals)\n'\
+               f'Number of positions with low coverage in at least one sample: {ANSI.YELLOW}{low_cov_count_val}{ANSI.END} - I recommend filtering out these positions in the .magnipore file.\nPositions with now data or low coverage can be high if one strand has no aligned reads!\n'\
                f'Wrote {magnipore_sign_file}')
 
     with open(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}.txt'), 'w') as w:
         w.write(f'Number of indels: {num_indels}\n'\
-                f'Number of significant positions: {sign_pos} - Classified as mutations: {num_muts}\n'\
-                f'Positions with no data {no_data}, at least one aligned position without information (no signals)\n'\
-                f'Number of positions with low coverage in at least one sample: {low_cov_count} - I recommend filtering out these positions in the .magnipore file.\nPositions with now data or low coverage can be high if one strand has no aligned reads!\n')
+                f'Number of significant positions: {sign_pos_val} - Classified as mutations: {num_muts_val}\n'\
+                f'Positions with no data {no_data_val}, at least one aligned position without information (no signals)\n'\
+                f'Number of positions with low coverage in at least one sample: {low_cov_count_val} - I recommend filtering out these positions in the .magnipore file.\nPositions with now data or low coverage can be high if one strand has no aligned reads!\n')
 
     return magnipore_all_file
 

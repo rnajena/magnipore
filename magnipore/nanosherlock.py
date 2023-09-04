@@ -229,7 +229,7 @@ def signalSegmentation(raw_data : str, file_format : str, basecalls : str, refer
 
     # segmentation indexing
     if not os.path.exists(basecalls + '.index') or force_rebuild:
-        command = f'f5c index {"--slow5" if file_format == ".slow5" else "-d"} {raw_data} -t {threads} {basecalls} --iop {max(1, threads//2)} '
+        command = f'f5c index {"--slow5" if file_format == ".slow5" else "-d"} {raw_data} {basecalls} -t {threads} --iop {max(1, threads//2)} '
         LOGGER.printLog(f'segmentation indexing command: {ANSI.GREEN}{command}{ANSI.END}')
         if TIMEIT:
             start = perf_counter_ns()

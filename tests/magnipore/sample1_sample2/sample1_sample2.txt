@@ -1,5 +1,5 @@
 Number of indels: 6
 Number of significant positions: 5 - Classified as mutations: 3
-Positions with no data 26, at least one aligned position without information (no signals)
+Positions with no data 4, at least one aligned position without information (no signals)
 Number of positions with low coverage in at least one sample: 4 - I recommend filtering out these positions in the .magnipore file.
 Positions with now data or low coverage can be high if one strand has no aligned reads!

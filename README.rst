@@ -139,63 +139,13 @@ reported mutations. Magnipore will only report potential modifications
 in this case. If you assume there are mutations between the samples, try
 to provide different reference sequences containing these mutations.
 
-Help Message
-------------
+Help Messages
+-------------
 
-.. code:: bash
+`Complete help messages can be found here! <help/help_messages.md>`__
 
-   usage: Magnipore [-h] [--guppy_bin GUPPY_BIN] [--guppy_model GUPPY_MODEL] [--guppy_device GUPPY_DEVICE] [-b1 FASTQ] [-b2 FASTQ] [-s1 TXT] [-s2 TXT] [-d] [-t THREADS] [-fr]
-                    [-mx {map-ont,splice,ava-ont}] [-mk MINIMAP2K] [--timeit] [--rna] [-v]
-                    raw_data_first_sample reference_first_sample label_first_sample raw_data_sec_sample reference_sec_sample label_sec_sample working_dir
-
-   Required tools: see github https://github.com/JannesSP/magnipore
-
-   positional arguments:
-     raw_data_first_sample
-                           Parent directory of FAST5 files of first sample, can also be a single SLOW5 or BLOW5 file of first sample, that contains all reads, if FASTQs are
-                           provided
-     reference_first_sample
-                           reference FASTA file of first sample, POSITIVE (+) or FORWARD strand, ATTENTION: can only contain a single sequence
-     label_first_sample    Name of the sample or pipeline run
-     raw_data_sec_sample   Parent directory of FAST5 files of second sample, can also be SLOW5 or BLOW5 file of second sample, that contains all reads, if FASTQs are provided
-     reference_sec_sample  reference FASTA file of second sample, POSITIVE (+) or FORWARD strand, ATTENTION: can only contain a single sequence
-     label_sec_sample      Name of the sample or pipeline run
-     working_dir           Path to write all output files
-
-   optional arguments:
-     -h, --help            show this help message and exit
-     --guppy_bin GUPPY_BIN
-                           Guppy binary (default: None)
-     --guppy_model GUPPY_MODEL
-                           Guppy model used for basecalling (default: None)
-     --guppy_device GUPPY_DEVICE
-                           Use the GPU to basecall "cuda:0" to use the GPU with ID 0 (default: cuda:0)
-     -b1 FASTQ, --basecalls_first_sample FASTQ
-                           Path to existing basecalls of first sample. Basecalls must be in one single file. (default: None)
-     -b2 FASTQ, --basecalls_sec_sample FASTQ
-                           Path to existing basecalls of second sample. Basecalls must be in one single file. (default: None)
-     -s1 TXT, --sequencing_summary_first_sample TXT
-                           Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file of second sample. (default: None)
-     -s2 TXT, --sequencing_summary_sec_sample TXT
-                           Use, when sequencing summary is not next to your FASTQ file. Path to existing sequencing summary file of first sample. (default: None)
-     -d, --calculate_data_density
-                           Will calculate data density after building the models. Will increase runtime! (default: False)
-     -t THREADS, --threads THREADS
-                           Number of threads to use (default: 1)
-     -fr, --force_rebuild  Run commands regardless if files are already present (default: False)
-     -mx {map-ont,splice,ava-ont}, --minimap2x {map-ont,splice,ava-ont}
-                           -x parameter for minimap2 (default: map-ont)
-     -mk MINIMAP2K, --minimap2k MINIMAP2K
-                           -k parameter for minimap2 (default: 14)
-     --timeit              Measure and print time used by submodules (default: False)
-     -rna                  Use when data is rna (default: False)
-     -r10                  Use when data is from R10.4.1 flowcell (default: False)
-     -km KMER_MODEL, --kmer_model KMER_MODEL
-                           custom kmer model file for f5c eventalign (default: None)
-     -v, --version         show program's version number and exit
-
-required arguments:
-~~~~~~~~~~~~~~~~~~~
+required arguments for magnipore:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 use either the basecalling arguments or provide basecalls
 
@@ -206,9 +156,6 @@ use either the basecalling arguments or provide basecalls
 - provided basecalls (FASTQ)
     - basecalls_first_sample : Path
     - basecalls_sec_sample : Path
-
-For optional arguments see magnipore.py –help. Includes small number of
-mapping parameters and the option to skip basecalling.
 
 Output File Description
 =======================
@@ -254,7 +201,7 @@ Error Codes Explanation
 -  15: Number of provided reference sequences is not equal 1 or 2
 -  16: Unknown pore type
 -  17: Error in multiprocessing signal comparison
--  18: Error in magniplot with error code
+-  18: Error in magniplot
 
    Errors of first sample:
 

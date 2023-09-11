@@ -8,6 +8,7 @@ import multiprocessing as mp
 import os
 import random
 import sys
+import warnings
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 
 import matplotlib.lines as mlines
@@ -15,8 +16,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-
-import warnings
 
 from magnipore.__init__ import __version__
 

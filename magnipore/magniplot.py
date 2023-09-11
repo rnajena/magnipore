@@ -25,7 +25,7 @@ def parse() -> Namespace:
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsHelpFormatter,
         description='Creating plots (MeDAS, etc) for a given .magnipore file.\nIf the number of entries in the .magnipore file exceeds `max_lines`, this script will randomly sample from the .magnipore file to create the plot.',
-        prog='Magnipore',
+        prog='magniplot',
     )
     parser.add_argument('magnipore', type=str, help='Magnipore-style output')
     parser.add_argument('outdir', type=str, help='Path to write plots.')

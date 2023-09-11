@@ -14,7 +14,7 @@ def parse() -> Namespace:
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsHelpFormatter,
         description='A small script that compares the Magnipore output file with a given validationset in form of a table in a CSV file. Your table should contain the reference id/name, that was also used during the Magnipore analysis, and the validation positions on the given reference. The script will then check, if Magnipore found significant positions in a kmer range of the positions in the validation table (CSV). The kmer range depends on the used pore during sequencing. You can specify the used pore with the --pore parameter. You should also think about the coverage threshold. This script will by default filter out positions from the Magnipore output, where at least one sample has a coverage less than 10 reads.',
-        prog='Magnipore',
+        prog='magnicheck',
     )
     parser.add_argument('magnipore', type=str, help='Magnipore file with called differential modifications.')
     parser.add_argument('magnipore_poscol', type=str, help='Which position to validate from the Magnipore output.')

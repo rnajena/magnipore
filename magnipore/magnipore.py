@@ -43,7 +43,7 @@ def parse() -> Namespace:
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsHelpFormatter,
         description='Required tools: see github https://github.com/JannesSP/magnipore',
-        prog='Magnipore',
+        prog='magnipore',
         )
     parser.add_argument("raw_data_first_sample", type = str, help='Parent directory of FAST5 files of first sample, can also be a single SLOW5 or BLOW5 file of first sample, that contains all reads, if FASTQs are provided')
     parser.add_argument("reference_first_sample", type = str, help='reference FASTA file of first sample, POSITIVE (+) or FORWARD strand, ATTENTION: can only contain a single sequence')

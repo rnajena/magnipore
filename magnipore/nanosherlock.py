@@ -98,7 +98,7 @@ def parse() -> Namespace:
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsHelpFormatter,
         description='Required tools: see github https://github.com/JannesSP/magnipore',
-        prog='Nanosherlock',
+        prog='nanosherlock',
         ) 
     
     parser.add_argument('raw_data', type = str, help='Parent directory of FAST5 files, can also be a direct path to a single SLOW5 or BLOW5 file, that contains all reads, if FASTQs are provided')

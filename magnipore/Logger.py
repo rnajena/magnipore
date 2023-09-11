@@ -7,7 +7,9 @@
 import datetime
 import sys
 from io import TextIOWrapper
+
 from magnipore.Helper import ANSI
+
 
 class Logger():
     '''

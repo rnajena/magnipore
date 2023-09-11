@@ -4,23 +4,23 @@
 # github: https://github.com/JannesSP
 # website: https://jannessp.github.io
 
-from magnipore.__init__ import __version__
-from magnipore.Logger import Logger
-from magnipore.Helper import ANSI, REDENCODER, STRANDDECODER, sizeof_fmt
-import magnipore.OnlineMeanVar as omv
 import datetime
 import os
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 from pathlib import Path
-import h5py
-import numpy as np
-from scipy import stats
-from Bio import SeqIO
-import pandas as pd
 from time import perf_counter_ns
-import os
+
+import numpy as np
+import pandas as pd
 import psutil
+from Bio import SeqIO
 from read5 import read
+from scipy import stats
+
+import magnipore.OnlineMeanVar as omv
+from magnipore.__init__ import __version__
+from magnipore.Helper import ANSI, REDENCODER, STRANDDECODER, sizeof_fmt
+from magnipore.Logger import Logger
 
 PROCESS = psutil.Process(os.getpid())
 LOGGER : Logger = None
@@ -48,27 +48,20 @@ def mapFast5Files(raw_data_path : str, seq_sum : str = None) -> dict:
     if seq_sum is None:
         # recursively loop over the fast5 files in the given path
         fast5list = Path(raw_data_path).rglob('*.fast5')
-
         for fidx, fast5 in enumerate(fast5list):
             LOGGER.printLog(f'Indexing fast5 file {fidx + 1}\r', newline_after=False)
-
             # because path is object not string
-            fast5 = str(fast5)
-            fast5_h5 = h5py.File(fast5, 'r')
-
-            for readid in fast5_h5:
-                readid = readid.split('read_')[1]
-                readid2file[readid] = fast5
-            fast5_h5.close()
+            f5 = read(str(fast5))
+            for readid in f5.getReads():
+                readid2file[readid] = str(fast5)
+            f5.close()
 
     else:
         with open(seq_sum, 'r') as seqsum:
             seqsum.readline()
-
             for ridx, line in enumerate(seqsum):
                 if (ridx + 1) % 10000 == 0:
                     LOGGER.printLog(f'Indexing read {ridx + 1}\r', newline_after=False)
-            
                 filename, read_id = line.strip().split('\t')[:2]
                 readid2file[read_id] = os.path.join(raw_data_path, filename)
     
@@ -105,7 +98,7 @@ def parse() -> Namespace:
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsHelpFormatter,
         description='Required tools: see github https://github.com/JannesSP/magnipore',
-        prog='Nanosherlock',
+        prog='nanosherlock',
         ) 
     
     parser.add_argument('raw_data', type = str, help='Parent directory of FAST5 files, can also be a direct path to a single SLOW5 or BLOW5 file, that contains all reads, if FASTQs are provided')
@@ -172,7 +165,7 @@ def guppy_basecalling(guppy_bin : str, guppy_model : str,  guppy_device : str, r
     os.system(f'rm {os.path.join(basecalls_path, "*.fastq")}')
     os.system(f'mv {os.path.join(basecalls_path, "*.tmpfastq")} {basecalls}')
     # compress fastq.gz with level 3
-    os.system(f'gzip -3 {basecalls}')
+    os.system(f'gzip -f -3 {basecalls}')
         
     return basecalls+'.gz', seq_sum, force_rebuild
 
@@ -236,7 +229,7 @@ def signalSegmentation(raw_data : str, file_format : str, basecalls : str, refer
 
     # segmentation indexing
     if not os.path.exists(basecalls + '.index') or force_rebuild:
-        command = f'f5c index {"--slow5" if file_format == ".slow5" else "-d"} {raw_data} -t {threads} {basecalls} --iop {max(1, threads//2)} '
+        command = f'f5c index {"--slow5" if file_format == ".slow5" else "-d"} {raw_data} {basecalls} -t {threads} --iop {max(1, threads//2)} '
         LOGGER.printLog(f'segmentation indexing command: {ANSI.GREEN}{command}{ANSI.END}')
         if TIMEIT:
             start = perf_counter_ns()
@@ -268,7 +261,7 @@ def signalSegmentation(raw_data : str, file_format : str, basecalls : str, refer
 
     return summary_csv, result_csv, force_rebuild
 
-def read_line(line : str, event : dict, r10 : bool = False):
+def read_line(line : str, r10 : bool) -> dict:
     '''
     Fills the event dict with new data from given line.
     Offset for r9 is +2, offset for r10 is +4.
@@ -283,19 +276,20 @@ def read_line(line : str, event : dict, r10 : bool = False):
         flag to switch between kmer-position offset
     '''
     line = line.strip().split()
+    event = {}
     event['contig'] = line[0]
     # add offset to position to collect the signals for the middle base of the 5mer event
     # position describes the first base of the event kmer in the reference
     # offset = 2 for 5mer models in r9
     # offset = 4 for 9mer models in r10
     # position is 0-based
-    event['position'] = int(line[1])
-    event['position'] += 4 if r10 else 2
+    event['position'] = int(line[1]) + 4 if r10 else int(line[1]) + 2
     event['ref_kmer'] = line[2]
     event['read_index'] = int(line[3])
     event['model_kmer'] = line[9]
     event['start_idx'] = int(line[13])
     event['end_idx'] = int(line[14])
+    return event
 
 def aggregate_events(seg_result : str, seg_sum: str, raw_data : str, file_format : str, reference : str, working_dir : str, sample_label : str, force_rebuild : bool, seq_sum : str, calculate_data_density : bool, r10 : bool, max_lines : int = None) -> str:
     '''
@@ -313,7 +307,7 @@ def aggregate_events(seg_result : str, seg_sum: str, raw_data : str, file_format
         return red_file
 
     readID2File = mapFast5Files(raw_data, seq_sum) if file_format == '.fast5' else raw_data
-    nano2readid = readSegSum(seg_sum)
+    idx2readid = readSegSum(seg_sum)
     ref_seqs = SeqIO.parse(open(reference), 'fasta')
     red_dict, omvs = createREDDict(ref_seqs)
     
@@ -321,7 +315,7 @@ def aggregate_events(seg_result : str, seg_sum: str, raw_data : str, file_format
 
     if TIMEIT:
         start = perf_counter_ns()
-    buildModels(red_dict, omvs, nano2readid, readID2File, seg_result, calculate_data_density, r10, max_lines)
+    buildModels(red_dict, omvs, idx2readid, readID2File, seg_result, calculate_data_density, r10, max_lines)
     del omvs # actively release memory
     if TIMEIT:
         end = perf_counter_ns()
@@ -373,6 +367,10 @@ def getFile(read2FileMap, readid : str) -> str:
         dict in case of .fast5 files, str in case of .slow5 or blow5 files
     readid : str
         current readid
+
+    Returns
+    -------
+    Path to file containing read with given readid
     '''
     if type(read2FileMap) is dict:
         # .fast5
@@ -412,41 +410,39 @@ def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readID2File : 
 
     for loop in ['building models', 'checking data']:
         max_mem = 0
+        current_read = ''
+        r5 = None
+        start = perf_counter_ns()
 
         with open(segmentation_result_csv, 'r') as nano_result:
             # skip header
             nano_result.readline()
-            current_read = ''
-            r5 = None
-            last_position = None
-            last_contig = None
-            event = {}
-            strand = 0
 
             for lidx, line in enumerate(nano_result):
 
                 if (lidx + 1) % 100000 == 0:
+                    end = perf_counter_ns()
                     max_mem = max(max_mem, PROCESS.memory_info().rss)
-                    print(f'Line {lidx + 1}{f"/{max_lines}" if max_lines is not None else ""}, {loop}, max memory usage: {sizeof_fmt(max_mem)}\t\t', end = '\r')
-                    if max_lines is not None and lidx >= max_lines:
+                    print(f'Line {lidx + 1}{f"/{max_lines}" if max_lines is not None else ""}, {loop}, max memory usage: {sizeof_fmt(max_mem)}, {pd.to_timedelta(end-start)}', end = '\r')
+                    start = end
+                    if max_lines is not None and (lidx + 1) >= max_lines:
                         break
 
-                read_line(line, event) # read data from segmentation and store into event dictionary
-                if event['model_kmer'] == 'NNNNN': # maybe haplotypes end up here as NNNNN? -> actually mutations in the reads, segmentation has no clue what to do?
+                event = read_line(line, r10) # read data from segmentation and store into event dictionary
+                if event['model_kmer'].count('N') == len(event['model_kmer']):
+                    # maybe haplotypes end up here as NNNNN? -> actually mutations in the reads, segmentation has no clue what to do?
                     continue
                 
                 # prepare signal data for new read
                 readid = nano2readid[event['read_index']]
                 # found new read, store last information
                 if readid != current_read:
-                    # new read -> count last position of previous read on previous contig (if not first read)
-                    if last_position is not None:
-                        red_dict[last_contig][last_position, strand, REDENCODER['n_reads']] += 1
-                        last_position = None
-                    strand = 0 if event['ref_kmer'] == event['model_kmer'] else 1
+                    strand = int(event['ref_kmer'] != event['model_kmer'])
                     r5 = getRead5Reader(readID2File, readid, r5)
                     norm_signal = r5.getZNormSignal(readid)
                     current_read = readid
+
+                red_dict[event['contig']][event['position'], strand, REDENCODER['n_reads']] += 1
 
                 # extract segment signal from read
                 segment = norm_signal[event['start_idx']:event['end_idx']]
@@ -458,13 +454,6 @@ def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readID2File : 
                     omv.append(segment)
                     red[REDENCODER['n_datapoints']] += len(segment)
                     red[REDENCODER['n_segments']] += 1
-
-                    # see a new position within a previously opened read: add 1 to n_reads counter
-                    if event['position'] != last_position:
-                        if last_position is not None:
-                            red_dict[last_contig][last_position, strand, REDENCODER['n_reads']] += 1
-                        last_position = event['position']
-                        last_contig = event['contig']
 
                 elif loop =='checking data':
                     red[REDENCODER['mean']], red[REDENCODER['std']] = omv.meanStdev()
@@ -550,7 +539,7 @@ def setupLogger(working_dir : str, sample_label : str) -> None:
         Logger object to write to log file, format console output and write error messages
     '''
     global LOGGER
-    log_file = os.path.join(working_dir, 'log', f'{sample_label}_magnipore_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log')
+    log_file = os.path.join(working_dir, 'log', f'{sample_label}_nanosherlock_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log')
     if not os.path.exists(os.path.join(working_dir, 'log')):
         os.makedirs(os.path.join(working_dir, 'log'))
     LOGGER = Logger(open(log_file, 'w'))

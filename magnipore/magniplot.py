@@ -16,8 +16,11 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+import warnings
+
 from magnipore.__init__ import __version__
 
+warnings.simplefilter('ignore', category=UserWarning)
 
 def parse() -> Namespace:
     parser = ArgumentParser(

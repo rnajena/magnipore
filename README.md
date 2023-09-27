@@ -31,14 +31,6 @@ mamba create -n magnipore -c jannessp magnipore
 conda activate magnipore
 ```
 
-*Alternatively you can create a conda environment using the [conda_env.yml](conda.recipe/conda_env.yml) and mamba.*
-```bash
-conda install mamba
-mamba env create -f conda/conda_env.yml
-conda activate magnipore
-git clone https://github.com/JannesSP/magnipore.git
-```
-
 If you want to basecall your ONT data you also need a Guppy version from [Oxford Nanopore Technologies](https://community.nanoporetech.com).
 
 ---
@@ -67,7 +59,7 @@ Conda Dependencies
 - matplotlib>=3.6.2
 - numpy>=1.23
 - scipy>=1.9
-- minimap2>=2.24
+- winnowmap>=2.0
 - pandas>=1.5
 - seaborn>=0.12
 - psutil>=5.9
@@ -205,7 +197,7 @@ Errors of first sample:
 - 119: Cannot basecall .slow5/.blow5 with guppy
 - 120: Could not find raw data or unknown file format
 - 121: Guppy basecalling failed
-- 122: minimap2 mapping failed
+- 122: mapping failed
 - 123: Samtools indexing failed
 - 124: f5c index failed
 - 125: f5c eventalign failed
@@ -215,7 +207,7 @@ Errors of second sample
 - 219: Cannot basecall .slow5/.blow5 with guppy
 - 220: Could not find raw data or unknown file format
 - 221: Guppy basecalling failed
-- 222: minimap2 mapping failed
+- 222: mapping failed
 - 223: Samtools indexing failed
 - 224: f5c index failed
 - 225: f5c eventalign failed
@@ -227,7 +219,7 @@ The -e parameter of nanosherlock specifies the leading number of the error code.
 - 019: Cannot basecall .slow5/.blow5 with guppy
 - 020: Could not find raw data or unknown file format 
 - 021: Guppy basecalling failed
-- 022: minimap2 mapping failed
+- 022: mapping failed
 - 023: Samtools indexing failed
 - 024: f5c index failed
 - 025: f5c eventalign failed

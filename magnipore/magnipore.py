@@ -62,8 +62,9 @@ def parse() -> Namespace:
     parser.add_argument('-d', '--calculate_data_density', action = 'store_true', default = False, help = 'Will calculate data density after building the models. Will increase runtime!')
     parser.add_argument('-t', "--threads", type=int, default=1, help='Number of threads to use')
     parser.add_argument('-fr', '--force_rebuild', action = 'store_true', help='Run commands regardless if files are already present')
-    parser.add_argument('-mx', '--minimap2x', default = 'map-ont', choices = ['map-ont', 'splice', 'ava-ont'], help = '-x parameter for minimap2')
-    parser.add_argument('-mk', '--minimap2k', default = 14, help = '-k parameter for minimap2')
+    parser.add_argument('-wx', '--winnowmapx', default = 'map-ont', choices = ['map-ont', 'splice', 'ava-ont'], help = '-x parameter for winnowmap')
+    parser.add_argument('-wk', '--winnowmapk', default = 14, help = '-k parameter for winnowmap')
+    parser.add_argument('-ww', '--winnowmapw', default = 50, help = '-w parameter for winnowmap')
     parser.add_argument('--timeit', default = False, action = 'store_true', help = 'Measure and print time used by submodules')
     parser.add_argument('-rna', '--rna', default=False, action='store_true', help='Use when data is rna')
     parser.add_argument('-r10', '--r10', default=False, action='store_true', help='Use when data is from R10.4.1 flowcell')
@@ -443,11 +444,11 @@ def kullback_leibler_normal(m0 : float, s0 : float, m1 : float, s1 : float) -> f
         return np.nan
     return (np.square(s0/s1) + np.square(m1-m0)/np.square(s1) - 1 + np.log(np.square(s1)/np.square(s0))) / 2
 
-def callNanosherlock(working_dir : str, sample_label : str, reference_path : str, fast5_path : str, basecalls_path : str, seq_sum_path : str, threads : int, mx : int, mk : int, guppy_bin : str, guppy_model : str, guppy_device : str, calculate_data_density : bool, rna : bool, r10 : bool, kmer_model : str, force_rebuild : bool) -> str:
+def callNanosherlock(working_dir : str, sample_label : str, reference_path : str, fast5_path : str, basecalls_path : str, seq_sum_path : str, threads : int, wx : int, wk : int, ww : int, guppy_bin : str, guppy_model : str, guppy_device : str, calculate_data_density : bool, rna : bool, r10 : bool, kmer_model : str, force_rebuild : bool) -> str:
 
     red_file_path = os.path.join(working_dir, 'magnipore', sample_label, f'{sample_label}.red')
     if not os.path.exists(red_file_path) or not os.path.exists(reference_path) or force_rebuild:
-        command = f'python -m magnipore.nanosherlock {fast5_path} {reference_path} {working_dir} {sample_label} -t {threads} -mx {mx} -mk {mk} -e 1'
+        command = f'python -m magnipore.nanosherlock {fast5_path} {reference_path} {working_dir} {sample_label} -t {threads} -wx {wx} -wk {wk} -ww {ww} -e 1'
 
         if force_rebuild:
             command += ' --force_rebuild'
@@ -529,8 +530,9 @@ def main():
     rna = args.rna
     r10 = args.r10
 
-    mx = args.minimap2x
-    mk = args.minimap2k
+    wx = args.winnowmapx
+    wk = args.winnowmapk
+    ww = args.winnowmapw
 
     kmer_model = args.kmer_model
 
@@ -544,10 +546,10 @@ def main():
     LOGGER = Logger(open(log_file, 'w'))
     
     # first sample
-    red_first_sample = callNanosherlock(working_dir, label_first_sample, ref_first_sample, raw_data_first_sample, basecalls_first_sample, seqsum_first_sample, threads, mx, mk, guppy_bin, guppy_model, guppy_device, calculate_data_density, rna, r10, kmer_model, force_rebuild)
+    red_first_sample = callNanosherlock(working_dir, label_first_sample, ref_first_sample, raw_data_first_sample, basecalls_first_sample, seqsum_first_sample, threads, wx, wk, ww, guppy_bin, guppy_model, guppy_device, calculate_data_density, rna, r10, kmer_model, force_rebuild)
 
     # second sample
-    red_sec_sample = callNanosherlock(working_dir, label_sec_sample, ref_sec_sample, raw_data_sec_sample, basecalls_sec_sample, seqsum_sec_sample, threads, mx, mk, guppy_bin, guppy_model, guppy_device, calculate_data_density, rna, r10, kmer_model, force_rebuild)
+    red_sec_sample = callNanosherlock(working_dir, label_sec_sample, ref_sec_sample, raw_data_sec_sample, basecalls_sec_sample, seqsum_sec_sample, threads, wx, wk, ww,guppy_bin, guppy_model, guppy_device, calculate_data_density, rna, r10, kmer_model, force_rebuild)
 
     # mafft alignment
     alignment_path = align(ref_first_sample, ref_sec_sample, label_first_sample, label_sec_sample, working_dir, threads, force_rebuild)

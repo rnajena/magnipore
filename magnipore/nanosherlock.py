@@ -439,7 +439,10 @@ def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readID2File : 
                 # found new read, store last information
                 if readid != current_read:
                     strand = int(event['ref_kmer'] != event['model_kmer'])
-                    r5 = getRead5Reader(readID2File, readid, r5)
+                    try:
+                        r5 = getRead5Reader(readID2File, readid, r5)
+                    except FileNotFoundError as e:
+                        LOGGER.error(f'{e}\nError while loading file, please check your raw data path!', error_type=ERROR_PREFIX+'20')
                     norm_signal = r5.getZNormSignal(readid)
                     current_read = readid
 

@@ -208,8 +208,6 @@ def signalSegmentation(raw_data : str, file_format : str, basecalls : str, refer
     if os.path.exists(summary_csv) and os.path.exists(result_csv) and not force_rebuild:
         LOGGER.printLog(f'segmentation files already exist:\n-\t{summary_csv}\n-\t{result_csv}')
         return summary_csv, result_csv, force_rebuild
-    else:
-        force_rebuild = True
 
     if not os.path.exists(segmentation_path):
         os.makedirs(segmentation_path)
@@ -436,6 +434,10 @@ def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readID2File : 
                     # maybe haplotypes end up here as NNNNN? -> actually mutations in the reads, segmentation has no clue what to do?
                     continue
                 
+                # case: mapping file got replaced by a custom one with additional contigs
+                if event['contig'] not in red_dict:
+                    continue
+
                 # prepare signal data for new read
                 readid = nano2readid[event['read_index']]
                 # found new read, store last information

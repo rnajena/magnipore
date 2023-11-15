@@ -165,7 +165,7 @@ The .magnipore file is a TSV containing the following columns.
 - bayesian_p : p-value for the signal comparison
 - signal_type : classification into "mod" for modification and "mut" for mutation
 - ref_1 : contig name of sample 1
-- pos_1 : position in contig of sample 1
+- pos_1 : position in contig of sample 1 (0-based)
 - base_1 : base at the position of sample 1
 - motif_1 : motif around the base at the position of sample 1
 - signal_mean_1 : mean of the signal distribution at the position of sample 1
@@ -202,6 +202,7 @@ Errors of first sample:
 - 124: f5c index failed
 - 125: f5c eventalign failed
 - 126: Could not find provided fastq files
+- 127: f5c eventalign file is empty
 ---
 Errors of second sample
 - 219: Cannot basecall .slow5/.blow5 with guppy
@@ -212,6 +213,7 @@ Errors of second sample
 - 224: f5c index failed
 - 225: f5c eventalign failed
 - 226: Could not find provided fastq files
+- 227: f5c eventalign file is empty
 
 ### If Subscript Nanosherlock is Executed Separately
 
@@ -224,4 +226,5 @@ The -e parameter of nanosherlock specifies the leading number of the error code.
 - 024: f5c index failed
 - 025: f5c eventalign failed
 - 026: Could not find provided fastq files
+- 027: f5c eventalign file is empty
   </details>

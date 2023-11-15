@@ -57,6 +57,7 @@ def mapFast5Files(raw_data_path : str, seq_sum : str = None) -> dict:
             f5.close()
 
     else:
+        # TODO maybe change this, so sequencing summaries before basecalling could be used? - they have a different order of columns, maybe also to be future proof
         with open(seq_sum, 'r') as seqsum:
             seqsum.readline()
             for ridx, line in enumerate(seqsum):
@@ -116,8 +117,8 @@ def parse() -> Namespace:
     parser.add_argument('-t', '--threads', type=int, help='Number of threads to use')
     parser.add_argument('-fr', '--force_rebuild', action = 'store_true', help='Run commands regardless if files are already present')
     parser.add_argument('-wx', '--winnowmapx', default = 'map-ont', choices = ['map-ont', 'splice', 'ava-ont'], help = '-x parameter for winnowmap')
-    parser.add_argument('-wk', '--winnowmapk', default = 14, help = '-k parameter for winnowmap')
-    parser.add_argument('-ww', '--winnowmapw', default = 50, help = '-w parameter for winnowmap')
+    parser.add_argument('-wk', '--winnowmapk', default = 15, help = '-k parameter for winnowmap')
+    parser.add_argument('-ww', '--winnowmapw', default = 10, help = '-w parameter for winnowmap')
     parser.add_argument('--timeit', default = False, action = 'store_true', help = 'Measure and print time used by submodules')
     parser.add_argument('--max_lines', default=None, type=int, help='Only process first given number of lines from segmentation eventalign')
     parser.add_argument('-rna', default=False, action='store_true', help='Use when data is rna')
@@ -184,7 +185,7 @@ def mapping(reference : str, basecalls : str, working_dir : str, sample_label : 
     if not os.path.exists(mapping_path):
         os.makedirs(mapping_path)
         
-    command = f'winnowmap -a -x {wx} -k {wk} -w {ww} -t {threads} {reference} {basecalls} | samtools view -hbF4 | samtools sort > {bam_path}'
+    command = f'winnowmap -a -x {wx} -k {wk} -w {ww} -t {threads} -F 0 {reference} {basecalls} | samtools view -hbF4 | samtools sort > {bam_path}'
     LOGGER.printLog(f'winnowmap command: {ANSI.GREEN}{command}{ANSI.END}')
     
     if TIMEIT:
@@ -419,6 +420,7 @@ def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readID2File : 
             # skip header
             nano_result.readline()
 
+            lidx = -1
             for lidx, line in enumerate(nano_result):
 
                 if (lidx + 1) % 100000 == 0:
@@ -446,14 +448,13 @@ def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readID2File : 
                     norm_signal = r5.getZNormSignal(readid)
                     current_read = readid
 
-                red_dict[event['contig']][event['position'], strand, REDENCODER['n_reads']] += 1
-
                 # extract segment signal from read
                 segment = norm_signal[event['start_idx']:event['end_idx']]
                 red = red_dict[event['contig']][event['position'], strand]
                 omv = omvs[event['contig']][event['position'], strand]
 
                 if loop == 'building models':
+                    red_dict[event['contig']][event['position'], strand, REDENCODER['n_reads']] += 1
                     # online bayesian updating
                     omv.append(segment)
                     red[REDENCODER['n_datapoints']] += len(segment)
@@ -474,7 +475,10 @@ def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readID2File : 
                     if calculate_data_density:
                         red[REDENCODER['data_density']] += np.mean(stats.norm.pdf(segment, loc = red[REDENCODER['mean']], scale = red[REDENCODER['std']]))
         
-            LOGGER.printLog(f'Line {lidx + 1}, {loop}, max memory usage: {sizeof_fmt(max_mem)}\t\t', newline_after=True)
+            if lidx != -1:
+                LOGGER.printLog(f'Line {lidx + 1}, {loop}, max memory usage: {sizeof_fmt(max_mem)}\t\t', newline_after=True)
+            else:
+                LOGGER.error('Segmentation file is empty!', error_type=ERROR_PREFIX+'27')
 
     if calculate_data_density: 
         # normalize log density
@@ -515,7 +519,12 @@ def getFileFormat(raw_data : str) -> str:
         LOGGER.error(f'{raw_data} not found', error_type=ERROR_PREFIX+'20')
 
     file_format = None
-    if not (raw_data.endswith('.slow5') or raw_data.endswith('.blow5')):
+    if raw_data.endswith('.slow5') or raw_data.endswith('.blow5'):
+        file_format = '.slow5'
+    # TODO add pod5 in the future, if segmentation can work with pod5 format
+    # elif raw_data.endswith('.pod5'):
+    #     file_format = '.pod5'
+    else:
         files = [f for f in os.listdir(raw_data) if os.path.isfile(os.path.join(raw_data, f))]
         contains_fast5 = False
         for file in files:
@@ -524,11 +533,6 @@ def getFileFormat(raw_data : str) -> str:
                 file_format = '.fast5'
         if not contains_fast5:
             LOGGER.error(f'Unknown file format or no .fast5 files in {raw_data}', error_type=ERROR_PREFIX+'20')
-    else:
-        if raw_data.endswith('.slow5') or raw_data.endswith('.blow5'):
-            file_format = '.slow5'
-        elif raw_data.endswith('.pod5'):
-            file_format = '.pod5'
 
     LOGGER.writeLog(f'Found raw data in {file_format} format.')
     return file_format

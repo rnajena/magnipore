@@ -34,6 +34,7 @@ sign_pos = mp.Value('I', 0)
 no_data = mp.Value('I', 0)
 low_cov_count = mp.Value('I', 0)
 num_pos = mp.Value('I', 0)
+cov_threshold = 10
 
 def initLogger(file = None) -> None:
     global LOGGER
@@ -63,8 +64,8 @@ def parse() -> Namespace:
     parser.add_argument('-t', "--threads", type=int, default=1, help='Number of threads to use')
     parser.add_argument('-fr', '--force_rebuild', action = 'store_true', help='Run commands regardless if files are already present')
     parser.add_argument('-wx', '--winnowmapx', default = 'map-ont', choices = ['map-ont', 'splice', 'ava-ont'], help = '-x parameter for winnowmap')
-    parser.add_argument('-wk', '--winnowmapk', default = 14, help = '-k parameter for winnowmap')
-    parser.add_argument('-ww', '--winnowmapw', default = 50, help = '-w parameter for winnowmap')
+    parser.add_argument('-wk', '--winnowmapk', default = 15, help = '-k parameter for winnowmap')
+    parser.add_argument('-ww', '--winnowmapw', default = 10, help = '-w parameter for winnowmap')
     parser.add_argument('--timeit', default = False, action = 'store_true', help = 'Measure and print time used by submodules')
     parser.add_argument('-rna', '--rna', default=False, action='store_true', help='Use when data is rna')
     parser.add_argument('-r10', '--r10', default=False, action='store_true', help='Use when data is from R10.4.1 flowcell')
@@ -238,7 +239,7 @@ def asyncCompareSignals(strand : int, base1 : str, base2 : str, motif1 : str, mo
     s2 = data_pos2[strand, REDENCODER['std']]
     # check if positions have a distribution -> stdev for both are non-0
     hasData = bool(s1 and s2)
-    low_cov = data_pos1[strand, REDENCODER['n_reads']] < 10 or data_pos2[strand, REDENCODER['n_reads']] < 10
+    low_cov = data_pos1[strand, REDENCODER['n_reads']] < cov_threshold or data_pos2[strand, REDENCODER['n_reads']] < cov_threshold
 
     if strand == 1:
         base1 = complement(base1)
@@ -361,7 +362,7 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
         LOGGER.error('Unknown Pore Type', 16)
     num_indels = 0
     
-    LOGGER.printLog(f'Start Signal comparison processes ({processes}) ...')
+    LOGGER.printLog(f'Start {processes} signal comparison processes')
     # compare distributions of aligned positions
     for sidx, (pos1, (pos2, alip)) in enumerate(mapping.items()):
         
@@ -380,7 +381,7 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
         for strand in [0, 1]:
             pool.apply_async(asyncCompareSignals, args=(strand, base1, base2, motif1, motif2, alip, mut_context, data_pos1, data_pos2, seqs_ids, pos1, pos2, sidx, len(mapping)), error_callback=callbackError)
 
-    LOGGER.printLog('Waiting for Signal comparison processes to finish ...')
+    LOGGER.printLog('Waiting for signal comparison processes to finish ...')
     pool.close()
     pool.join()
     # Send termination signal to queues and collect writers
@@ -406,17 +407,23 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
                 num_indels += 1
 
     print(f'\t{sidx + 1}/{len(mapping)}')
-    LOGGER.printLog(f'Number of indels: {ANSI.YELLOW}{num_indels}{ANSI.END}\n'\
-               f'Number of significant positions: {ANSI.YELLOW}{sign_pos_val}{ANSI.END} - Classified as mutations: {ANSI.YELLOW}{num_muts_val}{ANSI.END}\n'\
-               f'Positions with no data {ANSI.YELLOW}{no_data_val}{ANSI.END}, at least one aligned position without information (no signals)\n'\
-               f'Number of positions with low coverage in at least one sample: {ANSI.YELLOW}{low_cov_count_val}{ANSI.END} - I recommend filtering out these positions in the .magnipore file.\nPositions with now data or low coverage can be high if one strand has no aligned reads!\n'\
-               f'Wrote {magnipore_sign_file}')
+    LOGGER.printLog(f'Total alignment positions: {len(mapping)*2}\n'\
+                    f'Indels: {ANSI.YELLOW}{num_indels}{ANSI.END}\n'\
+                    f'Significant positions: {ANSI.YELLOW}{sign_pos_val}{ANSI.END}\n'\
+                    f'Classified as mutations: {ANSI.YELLOW}{num_muts_val}{ANSI.END}\n'\
+                    f'Positions with no data {ANSI.YELLOW}{no_data_val}{ANSI.END}, at least one sample at aligned position has no data\n'\
+                    f'Positions with coverage < {cov_threshold} in at least one sample: {ANSI.YELLOW}{low_cov_count_val}{ANSI.END} - filtering recommended.\n'\
+                     'Positions with no data or low coverage can be high if one strand has no aligned reads!\n'\
+                    f'Wrote {magnipore_sign_file}')
 
     with open(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}.txt'), 'w') as w:
-        w.write(f'Number of indels: {num_indels}\n'\
-                f'Number of significant positions: {sign_pos_val} - Classified as mutations: {num_muts_val}\n'\
-                f'Positions with no data {no_data_val}, at least one aligned position without information (no signals)\n'\
-                f'Number of positions with low coverage in at least one sample: {low_cov_count_val} - I recommend filtering out these positions in the .magnipore file.\nPositions with now data or low coverage can be high if one strand has no aligned reads!\n')
+        w.write(f'Total alignment positions: {len(mapping)*2}\n'\
+                f'Indels: {ANSI.YELLOW}{num_indels}{ANSI.END}\n'\
+                f'Significant positions: {ANSI.YELLOW}{sign_pos_val}{ANSI.END}\n'\
+                f'Classified as mutations: {ANSI.YELLOW}{num_muts_val}{ANSI.END}\n'\
+                f'Positions with no data {ANSI.YELLOW}{no_data_val}{ANSI.END}, at least one sample at aligned position has no data\n'\
+                f'Positions with coverage < {cov_threshold} in at least one sample: {ANSI.YELLOW}{low_cov_count_val}{ANSI.END} - filtering recommended.\n'\
+                 'Positions with no data or low coverage can be high if one strand has no aligned reads!\n')
 
     return magnipore_all_file
 
@@ -495,6 +502,9 @@ def callMagniplot(magnipore_file : str, label_first_sample : str, label_sec_samp
         start = perf_counter_ns()
     LOGGER.printLog(f'Magniplot command: {ANSI.GREEN}{command}{ANSI.END}')
     ret = os.system(command)
+    # if ret != 0:
+    #     command = f'python -m magnipore.magniplot {magnipore_file} {plot_dir} {label_first_sample} {label_sec_sample} -t {threads} -nl {num_lines}'
+    #     ret = os.system(command)
     if TIMEIT:
         end = perf_counter_ns()
     if ret != 0:

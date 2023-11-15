@@ -34,6 +34,7 @@ sign_pos = mp.Value('I', 0)
 no_data = mp.Value('I', 0)
 low_cov_count = mp.Value('I', 0)
 num_pos = mp.Value('I', 0)
+cov_threshold = 10
 
 def initLogger(file = None) -> None:
     global LOGGER
@@ -62,8 +63,9 @@ def parse() -> Namespace:
     parser.add_argument('-d', '--calculate_data_density', action = 'store_true', default = False, help = 'Will calculate data density after building the models. Will increase runtime!')
     parser.add_argument('-t', "--threads", type=int, default=1, help='Number of threads to use')
     parser.add_argument('-fr', '--force_rebuild', action = 'store_true', help='Run commands regardless if files are already present')
-    parser.add_argument('-mx', '--minimap2x', default = 'map-ont', choices = ['map-ont', 'splice', 'ava-ont'], help = '-x parameter for minimap2')
-    parser.add_argument('-mk', '--minimap2k', default = 14, help = '-k parameter for minimap2')
+    parser.add_argument('-wx', '--winnowmapx', default = 'map-ont', choices = ['map-ont', 'splice', 'ava-ont'], help = '-x parameter for winnowmap')
+    parser.add_argument('-wk', '--winnowmapk', default = 15, help = '-k parameter for winnowmap')
+    parser.add_argument('-ww', '--winnowmapw', default = 10, help = '-w parameter for winnowmap')
     parser.add_argument('--timeit', default = False, action = 'store_true', help = 'Measure and print time used by submodules')
     parser.add_argument('-rna', '--rna', default=False, action='store_true', help='Use when data is rna')
     parser.add_argument('-r10', '--r10', default=False, action='store_true', help='Use when data is from R10.4.1 flowcell')
@@ -237,7 +239,7 @@ def asyncCompareSignals(strand : int, base1 : str, base2 : str, motif1 : str, mo
     s2 = data_pos2[strand, REDENCODER['std']]
     # check if positions have a distribution -> stdev for both are non-0
     hasData = bool(s1 and s2)
-    low_cov = data_pos1[strand, REDENCODER['n_reads']] < 10 or data_pos2[strand, REDENCODER['n_reads']] < 10
+    low_cov = data_pos1[strand, REDENCODER['n_reads']] < cov_threshold or data_pos2[strand, REDENCODER['n_reads']] < cov_threshold
 
     if strand == 1:
         base1 = complement(base1)
@@ -360,7 +362,7 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
         LOGGER.error('Unknown Pore Type', 16)
     num_indels = 0
     
-    LOGGER.printLog(f'Start Signal comparison processes ({processes}) ...')
+    LOGGER.printLog(f'Start {processes} signal comparison processes')
     # compare distributions of aligned positions
     for sidx, (pos1, (pos2, alip)) in enumerate(mapping.items()):
         
@@ -379,7 +381,7 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
         for strand in [0, 1]:
             pool.apply_async(asyncCompareSignals, args=(strand, base1, base2, motif1, motif2, alip, mut_context, data_pos1, data_pos2, seqs_ids, pos1, pos2, sidx, len(mapping)), error_callback=callbackError)
 
-    LOGGER.printLog('Waiting for Signal comparison processes to finish ...')
+    LOGGER.printLog('Waiting for signal comparison processes to finish ...')
     pool.close()
     pool.join()
     # Send termination signal to queues and collect writers
@@ -405,17 +407,23 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
                 num_indels += 1
 
     print(f'\t{sidx + 1}/{len(mapping)}')
-    LOGGER.printLog(f'Number of indels: {ANSI.YELLOW}{num_indels}{ANSI.END}\n'\
-               f'Number of significant positions: {ANSI.YELLOW}{sign_pos_val}{ANSI.END} - Classified as mutations: {ANSI.YELLOW}{num_muts_val}{ANSI.END}\n'\
-               f'Positions with no data {ANSI.YELLOW}{no_data_val}{ANSI.END}, at least one aligned position without information (no signals)\n'\
-               f'Number of positions with low coverage in at least one sample: {ANSI.YELLOW}{low_cov_count_val}{ANSI.END} - I recommend filtering out these positions in the .magnipore file.\nPositions with now data or low coverage can be high if one strand has no aligned reads!\n'\
-               f'Wrote {magnipore_sign_file}')
+    LOGGER.printLog(f'Total alignment positions: {len(mapping)*2}\n'\
+                    f'Indels: {ANSI.YELLOW}{num_indels}{ANSI.END}\n'\
+                    f'Significant positions: {ANSI.YELLOW}{sign_pos_val}{ANSI.END}\n'\
+                    f'Classified as mutations: {ANSI.YELLOW}{num_muts_val}{ANSI.END}\n'\
+                    f'Positions with no data {ANSI.YELLOW}{no_data_val}{ANSI.END}, at least one sample at aligned position has no data\n'\
+                    f'Positions with coverage < {cov_threshold} in at least one sample: {ANSI.YELLOW}{low_cov_count_val}{ANSI.END} - filtering recommended.\n'\
+                     'Positions with no data or low coverage can be high if one strand has no aligned reads!\n'\
+                    f'Wrote {magnipore_sign_file}')
 
     with open(os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}.txt'), 'w') as w:
-        w.write(f'Number of indels: {num_indels}\n'\
-                f'Number of significant positions: {sign_pos_val} - Classified as mutations: {num_muts_val}\n'\
-                f'Positions with no data {no_data_val}, at least one aligned position without information (no signals)\n'\
-                f'Number of positions with low coverage in at least one sample: {low_cov_count_val} - I recommend filtering out these positions in the .magnipore file.\nPositions with now data or low coverage can be high if one strand has no aligned reads!\n')
+        w.write(f'Total alignment positions: {len(mapping)*2}\n'\
+                f'Indels: {ANSI.YELLOW}{num_indels}{ANSI.END}\n'\
+                f'Significant positions: {ANSI.YELLOW}{sign_pos_val}{ANSI.END}\n'\
+                f'Classified as mutations: {ANSI.YELLOW}{num_muts_val}{ANSI.END}\n'\
+                f'Positions with no data {ANSI.YELLOW}{no_data_val}{ANSI.END}, at least one sample at aligned position has no data\n'\
+                f'Positions with coverage < {cov_threshold} in at least one sample: {ANSI.YELLOW}{low_cov_count_val}{ANSI.END} - filtering recommended.\n'\
+                 'Positions with no data or low coverage can be high if one strand has no aligned reads!\n')
 
     return magnipore_all_file
 
@@ -443,11 +451,11 @@ def kullback_leibler_normal(m0 : float, s0 : float, m1 : float, s1 : float) -> f
         return np.nan
     return (np.square(s0/s1) + np.square(m1-m0)/np.square(s1) - 1 + np.log(np.square(s1)/np.square(s0))) / 2
 
-def callNanosherlock(working_dir : str, sample_label : str, reference_path : str, fast5_path : str, basecalls_path : str, seq_sum_path : str, threads : int, mx : int, mk : int, guppy_bin : str, guppy_model : str, guppy_device : str, calculate_data_density : bool, rna : bool, r10 : bool, kmer_model : str, force_rebuild : bool) -> str:
+def callNanosherlock(working_dir : str, sample_label : str, reference_path : str, fast5_path : str, basecalls_path : str, seq_sum_path : str, threads : int, wx : int, wk : int, ww : int, guppy_bin : str, guppy_model : str, guppy_device : str, calculate_data_density : bool, rna : bool, r10 : bool, kmer_model : str, force_rebuild : bool) -> str:
 
     red_file_path = os.path.join(working_dir, 'magnipore', sample_label, f'{sample_label}.red')
     if not os.path.exists(red_file_path) or not os.path.exists(reference_path) or force_rebuild:
-        command = f'python -m magnipore.nanosherlock {fast5_path} {reference_path} {working_dir} {sample_label} -t {threads} -mx {mx} -mk {mk} -e 1'
+        command = f'python -m magnipore.nanosherlock {fast5_path} {reference_path} {working_dir} {sample_label} -t {threads} -wx {wx} -wk {wk} -ww {ww} -e 1'
 
         if force_rebuild:
             command += ' --force_rebuild'
@@ -494,6 +502,9 @@ def callMagniplot(magnipore_file : str, label_first_sample : str, label_sec_samp
         start = perf_counter_ns()
     LOGGER.printLog(f'Magniplot command: {ANSI.GREEN}{command}{ANSI.END}')
     ret = os.system(command)
+    # if ret != 0:
+    #     command = f'python -m magnipore.magniplot {magnipore_file} {plot_dir} {label_first_sample} {label_sec_sample} -t {threads} -nl {num_lines}'
+    #     ret = os.system(command)
     if TIMEIT:
         end = perf_counter_ns()
     if ret != 0:
@@ -529,8 +540,9 @@ def main():
     rna = args.rna
     r10 = args.r10
 
-    mx = args.minimap2x
-    mk = args.minimap2k
+    wx = args.winnowmapx
+    wk = args.winnowmapk
+    ww = args.winnowmapw
 
     kmer_model = args.kmer_model
 
@@ -544,10 +556,10 @@ def main():
     LOGGER = Logger(open(log_file, 'w'))
     
     # first sample
-    red_first_sample = callNanosherlock(working_dir, label_first_sample, ref_first_sample, raw_data_first_sample, basecalls_first_sample, seqsum_first_sample, threads, mx, mk, guppy_bin, guppy_model, guppy_device, calculate_data_density, rna, r10, kmer_model, force_rebuild)
+    red_first_sample = callNanosherlock(working_dir, label_first_sample, ref_first_sample, raw_data_first_sample, basecalls_first_sample, seqsum_first_sample, threads, wx, wk, ww, guppy_bin, guppy_model, guppy_device, calculate_data_density, rna, r10, kmer_model, force_rebuild)
 
     # second sample
-    red_sec_sample = callNanosherlock(working_dir, label_sec_sample, ref_sec_sample, raw_data_sec_sample, basecalls_sec_sample, seqsum_sec_sample, threads, mx, mk, guppy_bin, guppy_model, guppy_device, calculate_data_density, rna, r10, kmer_model, force_rebuild)
+    red_sec_sample = callNanosherlock(working_dir, label_sec_sample, ref_sec_sample, raw_data_sec_sample, basecalls_sec_sample, seqsum_sec_sample, threads, wx, wk, ww,guppy_bin, guppy_model, guppy_device, calculate_data_density, rna, r10, kmer_model, force_rebuild)
 
     # mafft alignment
     alignment_path = align(ref_first_sample, ref_sec_sample, label_first_sample, label_sec_sample, working_dir, threads, force_rebuild)

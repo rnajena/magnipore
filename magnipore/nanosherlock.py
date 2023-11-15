@@ -57,6 +57,7 @@ def mapFast5Files(raw_data_path : str, seq_sum : str = None) -> dict:
             f5.close()
 
     else:
+        # TODO maybe change this, so sequencing summaries before basecalling could be used? - they have a different order of columns, maybe also to be future proof
         with open(seq_sum, 'r') as seqsum:
             seqsum.readline()
             for ridx, line in enumerate(seqsum):
@@ -115,8 +116,9 @@ def parse() -> Namespace:
     parser.add_argument('--calculate_data_density', action = 'store_true', default = False, help = 'Will calculate data density after building the models. Will increase runtime!')
     parser.add_argument('-t', '--threads', type=int, help='Number of threads to use')
     parser.add_argument('-fr', '--force_rebuild', action = 'store_true', help='Run commands regardless if files are already present')
-    parser.add_argument('-mx', '--minimap2x', default = 'map-ont', choices = ['map-ont', 'splice', 'ava-ont'], help = '-x parameter for minimap2')
-    parser.add_argument('-mk', '--minimap2k', default = 14, type = int, help = '-k parameter for minimap2')
+    parser.add_argument('-wx', '--winnowmapx', default = 'map-ont', choices = ['map-ont', 'splice', 'ava-ont'], help = '-x parameter for winnowmap')
+    parser.add_argument('-wk', '--winnowmapk', default = 15, help = '-k parameter for winnowmap')
+    parser.add_argument('-ww', '--winnowmapw', default = 10, help = '-w parameter for winnowmap')
     parser.add_argument('--timeit', default = False, action = 'store_true', help = 'Measure and print time used by submodules')
     parser.add_argument('--max_lines', default=None, type=int, help='Only process first given number of lines from segmentation eventalign')
     parser.add_argument('-rna', default=False, action='store_true', help='Use when data is rna')
@@ -169,7 +171,7 @@ def guppy_basecalling(guppy_bin : str, guppy_model : str,  guppy_device : str, r
         
     return basecalls+'.gz', seq_sum, force_rebuild
 
-def mapping(reference : str, basecalls : str, working_dir : str, sample_label : str, threads : int, force_rebuild : bool, mx : str, mk : int) -> str:
+def mapping(reference : str, basecalls : str, working_dir : str, sample_label : str, threads : int, force_rebuild : bool, wx : str, wk : int, ww : int) -> str:
     
     mapping_path = os.path.join(working_dir, 'mapping', sample_label)
     bam_path = os.path.join(mapping_path, sample_label) + '.bam'
@@ -183,17 +185,17 @@ def mapping(reference : str, basecalls : str, working_dir : str, sample_label : 
     if not os.path.exists(mapping_path):
         os.makedirs(mapping_path)
         
-    command = f'minimap2 -a -x {mx} -k{mk} -t {threads} {reference} {basecalls} | samtools view -hbF4 | samtools sort > {bam_path}'
-    LOGGER.printLog(f'minimap2 command: {ANSI.GREEN}{command}{ANSI.END}')
+    command = f'winnowmap -a -x {wx} -k {wk} -w {ww} -t {threads} -F 0 {reference} {basecalls} | samtools view -hbF4 | samtools sort > {bam_path}'
+    LOGGER.printLog(f'winnowmap command: {ANSI.GREEN}{command}{ANSI.END}')
     
     if TIMEIT:
         start = perf_counter_ns()
     ret = os.system(command)
     if ret != 0:
-        LOGGER.error(f'Error in minimap2 run with error code {ret}', error_type=ERROR_PREFIX+'22')
+        LOGGER.error(f'Error in winnowmap run with error code {ret}', error_type=ERROR_PREFIX+'22')
     if TIMEIT:
         end = perf_counter_ns()
-        LOGGER.printLog(f'{ANSI.YELLOW}TIMED: minimap2 took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
+        LOGGER.printLog(f'{ANSI.YELLOW}TIMED: winnowmap took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
 
     return bam_path, force_rebuild
 
@@ -418,6 +420,7 @@ def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readID2File : 
             # skip header
             nano_result.readline()
 
+            lidx = -1
             for lidx, line in enumerate(nano_result):
 
                 if (lidx + 1) % 100000 == 0:
@@ -438,11 +441,12 @@ def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readID2File : 
                 # found new read, store last information
                 if readid != current_read:
                     strand = int(event['ref_kmer'] != event['model_kmer'])
-                    r5 = getRead5Reader(readID2File, readid, r5)
+                    try:
+                        r5 = getRead5Reader(readID2File, readid, r5)
+                    except FileNotFoundError as e:
+                        LOGGER.error(f'{e}\nError while loading file, please check your raw data path!', error_type=ERROR_PREFIX+'20')
                     norm_signal = r5.getZNormSignal(readid)
                     current_read = readid
-
-                red_dict[event['contig']][event['position'], strand, REDENCODER['n_reads']] += 1
 
                 # extract segment signal from read
                 segment = norm_signal[event['start_idx']:event['end_idx']]
@@ -450,6 +454,7 @@ def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readID2File : 
                 omv = omvs[event['contig']][event['position'], strand]
 
                 if loop == 'building models':
+                    red_dict[event['contig']][event['position'], strand, REDENCODER['n_reads']] += 1
                     # online bayesian updating
                     omv.append(segment)
                     red[REDENCODER['n_datapoints']] += len(segment)
@@ -470,7 +475,10 @@ def buildModels(red_dict : dict, omvs : dict, nano2readid : dict, readID2File : 
                     if calculate_data_density:
                         red[REDENCODER['data_density']] += np.mean(stats.norm.pdf(segment, loc = red[REDENCODER['mean']], scale = red[REDENCODER['std']]))
         
-            LOGGER.printLog(f'Line {lidx + 1}, {loop}, max memory usage: {sizeof_fmt(max_mem)}\t\t', newline_after=True)
+            if lidx != -1:
+                LOGGER.printLog(f'Line {lidx + 1}, {loop}, max memory usage: {sizeof_fmt(max_mem)}\t\t', newline_after=True)
+            else:
+                LOGGER.error('Segmentation file is empty!', error_type=ERROR_PREFIX+'27')
 
     if calculate_data_density: 
         # normalize log density
@@ -511,7 +519,12 @@ def getFileFormat(raw_data : str) -> str:
         LOGGER.error(f'{raw_data} not found', error_type=ERROR_PREFIX+'20')
 
     file_format = None
-    if not (raw_data.endswith('.slow5') or raw_data.endswith('.blow5')):
+    if raw_data.endswith('.slow5') or raw_data.endswith('.blow5'):
+        file_format = '.slow5'
+    # TODO add pod5 in the future, if segmentation can work with pod5 format
+    # elif raw_data.endswith('.pod5'):
+    #     file_format = '.pod5'
+    else:
         files = [f for f in os.listdir(raw_data) if os.path.isfile(os.path.join(raw_data, f))]
         contains_fast5 = False
         for file in files:
@@ -520,11 +533,6 @@ def getFileFormat(raw_data : str) -> str:
                 file_format = '.fast5'
         if not contains_fast5:
             LOGGER.error(f'Unknown file format or no .fast5 files in {raw_data}', error_type=ERROR_PREFIX+'20')
-    else:
-        if raw_data.endswith('.slow5') or raw_data.endswith('.blow5'):
-            file_format = '.slow5'
-        elif raw_data.endswith('.pod5'):
-            file_format = '.pod5'
 
     LOGGER.writeLog(f'Found raw data in {file_format} format.')
     return file_format
@@ -583,8 +591,9 @@ def main() -> None:
     force_rebuild = args.force_rebuild
     basecalls = args.basecalls
     seq_sum = args.sequencing_summary
-    mx = args.minimap2x
-    mk = args.minimap2k
+    wx = args.winnowmapx
+    wk = args.winnowmapk
+    ww = args.winnowmapw
     max_lines = args.max_lines
     calc_data_density = args.calculate_data_density
     rna = args.rna
@@ -603,7 +612,7 @@ def main() -> None:
     file_format = getFileFormat(raw_data)
     basecalls, seq_sum, force_rebuild = getBasecalls(file_format, basecalls, guppy_bin, guppy_model, guppy_device, raw_data, working_dir, sample_label, force_rebuild, seq_sum)
     # new alignment/mapping for segmentation with the corrected reference
-    alignment_bam, force_rebuild = mapping(reference, basecalls, working_dir, sample_label, threads, force_rebuild, mx, mk)
+    alignment_bam, force_rebuild = mapping(reference, basecalls, working_dir, sample_label, threads, force_rebuild, wx, wk, ww)
     seg_summary_csv, seg_result_csv, force_rebuild = signalSegmentation(raw_data, file_format, basecalls, reference, alignment_bam, working_dir, sample_label, threads, force_rebuild, rna, r10, kmer_model)
     red_file = aggregate_events(seg_result_csv, seg_summary_csv, raw_data, file_format, reference, working_dir, sample_label, force_rebuild, seq_sum, calc_data_density, r10, max_lines)
     LOGGER.printLog(f'Aggregated reference event distributions for {sample_label} are stored in {red_file}')

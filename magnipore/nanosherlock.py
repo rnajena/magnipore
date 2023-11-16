@@ -91,7 +91,7 @@ def readSegSum(segSum : str):
                 print(f'Reading line {lidx + 1}', end='\r')
             r_index, r_ID = line.strip().split()[:2]
             read_index2ID[int(r_index)] = r_ID
-    LOGGER.printLog(f'Mapped {len(read_index2ID)} readids')
+    LOGGER.printLog(f'Segmented {len(read_index2ID)} readids')
     return read_index2ID
 
 def parse() -> Namespace:
@@ -225,7 +225,7 @@ def signalSegmentation(raw_data : str, file_format : str, basecalls : str, refer
             end = perf_counter_ns()
             LOGGER.printLog(f'{ANSI.YELLOW}TIMED: samtools indexing took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
     else:
-        LOGGER.printLog(f"Using existing {os.path.exists(alignment_bam + '.bai')}")
+        LOGGER.printLog(f"Alignment index already exists\n-\t{alignment_bam + '.bai'}")
 
     # segmentation indexing
     if not os.path.exists(basecalls + '.index') or force_rebuild:
@@ -240,7 +240,7 @@ def signalSegmentation(raw_data : str, file_format : str, basecalls : str, refer
             end = perf_counter_ns()
             LOGGER.printLog(f'{ANSI.YELLOW}TIMED: segmentation indexing took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
     else:
-        LOGGER.printLog(f"Using existing {os.path.exists(basecalls + '.index')}")
+        LOGGER.printLog(f"f5c idnex already exists\n-\t{basecalls + '.index'}")
 
     # segmentation
     log_file = os.path.join(segmentation_path, "log.txt")
@@ -321,7 +321,7 @@ def aggregate_events(seg_result : str, seg_sum: str, raw_data : str, file_format
         end = perf_counter_ns()
         LOGGER.printLog(f'{ANSI.YELLOW}TIMED: Building distribution models took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
 
-    LOGGER.printLog('Writing output files')
+    LOGGER.printLog(f'Writing .red file to {os.path.dirname(red_file)}')
     writeOutput(red_file, red_dict)
     return red_file
 

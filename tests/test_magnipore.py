@@ -37,8 +37,8 @@ bases_sample1 = 'CAGAT'
 bases_sample2 = 'CAGAT'
 # ===================================
 targets = [38, 366]
-target_mean = [-0.2045173406607994, 2.584417871497208]
-target_std = [0.6050989516056662, 0.42849883560181956]
+target_mean = [-0.24967733, 2.58441795]
+target_std = [0.55292743, 0.43130874]
 def test_ReadRedFile():
     for sequence in red1_dict:
         for i,pos in enumerate(red1_dict[sequence]):

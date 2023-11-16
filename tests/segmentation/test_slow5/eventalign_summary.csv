@@ -1,6 +1,4 @@
 read_index	read_name	fast5_path	model_name	strand	num_events	num_steps	num_skips	num_stays	total_duration	shift	scale	drift	var
 0	0008609d-0d3e-46e5-9b69-25f7ab4b194e	slow5	rna	template	2251	963	19	1268	14.30	-6.666	0.985	0.000	1.292
-2	00425ffc-17d7-4ba0-87ae-9c01215661ca	slow5	rna	template	2298	999	24	1274	14.45	-4.663	0.940	0.000	1.346
-3	00118376-02d0-40a7-88db-5b450adebe13	slow5	rna	template	789	263	5	520	4.78	-6.040	0.939	0.000	1.455
-5	003deea8-84e6-4161-9659-12a9fee2cfd4	slow5	rna	template	1277	642	15	619	8.27	8.978	0.908	0.000	1.398
-6	00161499-b98a-4753-891d-1559cf020851	slow5	rna	template	1837	601	25	1210	11.77	2.465	0.841	0.000	1.534
+1	00425ffc-17d7-4ba0-87ae-9c01215661ca	slow5	rna	template	2030	884	17	1128	12.74	-4.663	0.940	0.000	1.346
+3	003deea8-84e6-4161-9659-12a9fee2cfd4	slow5	rna	template	1277	642	15	619	8.27	8.978	0.908	0.000	1.398

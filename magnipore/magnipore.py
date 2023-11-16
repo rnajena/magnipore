@@ -397,8 +397,8 @@ def magnipore(mapping : dict, unaligned : dict, seq_dict : dict, aln_dict: dict,
     with no_data.get_lock(): no_data_val = no_data.value
     with low_cov_count.get_lock(): low_cov_count_val = low_cov_count.value
 
-    LOGGER.printLog('Writing indels file')
     indelFile = os.path.join(working_dir, f'{first_sample_label}_{sec_sample_label}.indels')
+    LOGGER.printLog(f'Writing indel file to {os.path.dirname(indelFile)}')
     with open(indelFile, 'w') as f:
         f.write('type\tstrand\tref\tpos\tbase\n')
         for seq in unaligned:

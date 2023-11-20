@@ -37,8 +37,8 @@ bases_sample1 = 'CAGAT'
 bases_sample2 = 'CAGAT'
 # ===================================
 targets = [38, 366]
-target_mean = [-0.2045173406607994, 2.584417871497208]
-target_std = [0.6050989516056662, 0.42849883560181956]
+target_mean = [-0.24967733, 2.58441795]
+target_std = [0.55292743, 0.43130874]
 def test_ReadRedFile():
     for sequence in red1_dict:
         for i,pos in enumerate(red1_dict[sequence]):
@@ -130,7 +130,7 @@ def test_event_aggregation_fast5():
     reference = os.path.join(this_file_dir, 'reference', 'test.fasta')
     segmentation = os.path.join(this_file_dir, 'segmentation', 'test', 'eventalign_result.csv')
     assert os.path.exists(basecalls)
-    nanosherlock.mapping(reference, basecalls, this_file_dir, 'test', 1, True, 'splice', 14)
+    nanosherlock.mapping(reference, basecalls, this_file_dir, 'test', 1, True, 'splice', 14, 50)
     assert os.path.exists(map_file)
     summary, segmentation, _ = nanosherlock.signalSegmentation(raw_data_path, '.fast5', basecalls, reference, map_file, this_file_dir, 'test_fast5', 1, True, True, False, None)
     assert os.path.exists(segmentation)
@@ -153,7 +153,7 @@ def test_event_aggregation_slow5():
     reference = os.path.join(this_file_dir, 'reference', 'test.fasta')
     segmentation = os.path.join(this_file_dir, 'segmentation', 'test', 'eventalign_result.csv')
     assert os.path.exists(basecalls)
-    nanosherlock.mapping(reference, basecalls, this_file_dir, 'test', 1, True, 'splice', 14)
+    nanosherlock.mapping(reference, basecalls, this_file_dir, 'test', 1, True, 'splice', 14, 50)
     assert os.path.exists(map_file)
     summary, segmentation, _ = nanosherlock.signalSegmentation(raw_data_path, '.slow5', basecalls, reference, map_file, this_file_dir, 'test_slow5', 1, True, True, False, None)
     assert os.path.exists(segmentation)
@@ -170,7 +170,7 @@ def test_event_aggregation_blow5():
     reference = os.path.join(this_file_dir, 'reference', 'test.fasta')
     segmentation = os.path.join(this_file_dir, 'segmentation', 'test', 'eventalign_result.csv')
     assert os.path.exists(basecalls)
-    nanosherlock.mapping(reference, basecalls, this_file_dir, 'test', 1, True, 'splice', 14)
+    nanosherlock.mapping(reference, basecalls, this_file_dir, 'test', 1, True, 'splice', 14, 50)
     assert os.path.exists(map_file)
     summary, segmentation, _ = nanosherlock.signalSegmentation(raw_data_path, '.slow5', basecalls, reference, map_file, this_file_dir, 'test_blow5', 1, True, True, False, None)
     assert os.path.exists(segmentation)

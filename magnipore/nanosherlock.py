@@ -240,7 +240,7 @@ def signalSegmentation(raw_data : str, file_format : str, basecalls : str, refer
             end = perf_counter_ns()
             LOGGER.printLog(f'{ANSI.YELLOW}TIMED: segmentation indexing took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
     else:
-        LOGGER.printLog(f"f5c idnex already exists\n-\t{basecalls + '.index'}")
+        LOGGER.printLog(f"f5c index already exists\n-\t{basecalls + '.index'}")
 
     # segmentation
     log_file = os.path.join(segmentation_path, "log.txt")

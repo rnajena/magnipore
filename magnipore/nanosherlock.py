@@ -57,14 +57,14 @@ def mapFast5Files(raw_data_path : str, seq_sum : str = None) -> dict:
             f5.close()
 
     else:
-        # TODO maybe change this, so sequencing summaries before basecalling could be used? - they have a different order of columns, maybe also to be future proof
-        with open(seq_sum, 'r') as seqsum:
-            seqsum.readline()
-            for ridx, line in enumerate(seqsum):
-                if (ridx + 1) % 10000 == 0:
-                    LOGGER.printLog(f'Indexing read {ridx + 1}\r', newline_after=False)
-                filename, read_id = line.strip().split('\t')[:2]
-                readid2file[read_id] = os.path.join(raw_data_path, filename)
+        try:
+            data = pd.read_csv(seq_sum, sep='\t', usecols=['filename_fast5', 'read_id'])
+            readid2file = data.set_index('read_id').to_dict()['filename_fast5']
+        except ValueError as e:
+            data = pd.read_csv(seq_sum, sep='\t', usecols=['filename', 'read_id'])
+            readid2file = data.set_index('read_id').to_dict()['filename']
+        for readid in readid2file:
+            readid2file[readid] = os.path.join(raw_data_path, readid2file[readid])
     
     LOGGER.printLog(f'Indexed {len(readid2file) + 1} reads')
     return readid2file
@@ -244,7 +244,7 @@ def signalSegmentation(raw_data : str, file_format : str, basecalls : str, refer
 
     # segmentation
     log_file = os.path.join(segmentation_path, "log.txt")
-    command = f'f5c eventalign -r {basecalls} -b {alignment_bam} -g {reference} --summary={summary_csv} --scale-events --signal-index --secondary=no{f" --slow5 {raw_data} " if file_format == ".slow5" else " "}{"--rna " if rna else ""}--collapse-events --iop {max(1, threads//2)} -t {threads} -o {result_csv}'
+    command = f'f5c eventalign -r {basecalls} -b {alignment_bam} -g {reference} --summary={summary_csv} --scale-events --signal-index --secondary=no{f" --slow5 {raw_data} " if file_format == ".slow5" else " "}{"--rna " if rna else ""}--collapse-events --iop {max(1, threads//2)} -t {threads} -o {result_csv} --min-mapq 0'
     if kmer_model is not None:
         command += f' --kmer-model {kmer_model}'
     command += ' --pore r10' if r10 else ' --pore r9'

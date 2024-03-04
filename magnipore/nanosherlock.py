@@ -225,7 +225,7 @@ def signalSegmentation(raw_data : str, file_format : str, basecalls : str, refer
             end = perf_counter_ns()
             LOGGER.printLog(f'{ANSI.YELLOW}TIMED: samtools indexing took {pd.to_timedelta(end-start)}, {end - start} nanoseconds{ANSI.END}')
     else:
-        LOGGER.printLog(f"Alignment index already exists\n-\t{alignment_bam + '.bai'}")
+        LOGGER.printLog(f"Mapping index already exists\n-\t{alignment_bam + '.bai'}")
 
     # segmentation indexing
     if not os.path.exists(basecalls + '.index') or force_rebuild:

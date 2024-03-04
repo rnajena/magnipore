@@ -61,7 +61,7 @@ def main() -> None:
     saf = readFile(args.saf, '\t')
     magnipore = readFile(args.magnipore, '\t')
     output = getGenes(saf, magnipore)
-    output.to_csv(args.outfile, sep='\t')
+    output.to_csv(args.outfile, sep='\t', ignore_index=True)
 
 if __name__ == '__main__':
     main()

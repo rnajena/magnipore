@@ -56,7 +56,7 @@ def loadPandas(magnipore_file : str, lines_in_file : int, coverage : int, seed :
         random.seed(seed)
         skipsize = (lines_in_file - 1) - plot_size # -1 because we keep the header line
         skip = sorted(random.sample(range(1, lines_in_file), skipsize))
-    print(f'Loading {plot_size} {"random " if lines_in_file > max_lines else ""}entries by skipping {len(skip)} from {magnipore_file}')
+    print(f'Loading {plot_size - 1} {"random " if lines_in_file > max_lines else ""}entries and skipped {len(skip)} from {magnipore_file}')
     columns = ['strand', 'td_score', 'kl_divergence', 'signal_type', 'signal_mean_1', 'signal_std_1', 'n_reads_1', 'signal_mean_2', 'signal_std_2', 'n_reads_2']
     data = pd.read_csv(magnipore_file, sep='\t', usecols=columns, header=0, skiprows=skip)
     # prepare columns for plots

@@ -114,7 +114,7 @@ def plotScores(data : pd.DataFrame, working_dir : str, label_first_sample : str,
     plt.figure(figsize = (12,8), dpi=300)
     plt.title(f'TD score for all positions\n{label_first_sample} vs. {label_sec_sample}')
     # otherwise logscale range is infinite with lower bound: -infinity
-    sns.histplot(data=data[data['TD Score']>0], x='TD Score', hue=data['Context, Significant'], log_scale=(True, True), multiple="stack", palette=colors)
+    sns.histplot(data=data[data['TD Score']>0], x='TD Score', hue=data['Context, Significant'], multiple="stack", palette=colors)
     plt.grid(True,  'both', 'both', alpha=0.6, linestyle='--')
     plt.tight_layout()
     plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_td_score{"_seed"+str(seed) if seed is not None else ""}.png'))
@@ -124,7 +124,7 @@ def plotScores(data : pd.DataFrame, working_dir : str, label_first_sample : str,
     plt.figure(figsize = (12,8), dpi=300)
     plt.title(f'Kullback-Leibler divergence for all positions\n{label_first_sample} vs. {label_sec_sample}')
     # otherwise logscale range is infinite with lower bound: -infinity
-    sns.histplot(data=data[data['KL Divergence']>0], x='KL Divergence', hue=data['Context, Significant'], log_scale=(True, True), multiple="stack", palette=colors)
+    sns.histplot(data=data[data['KL Divergence']>0], x='KL Divergence', hue=data['Context, Significant'], multiple="stack", palette=colors)
     plt.grid(True,  'both', 'both', alpha=0.6, linestyle='--')
     plt.tight_layout()
     plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_kl_div{"_seed"+str(seed) if seed is not None else ""}.png'))

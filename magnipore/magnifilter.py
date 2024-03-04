@@ -27,7 +27,7 @@ def filter_coverage(magnipore_file : str, cov_threshold : int) -> None:
     magnipore = pd.read_csv(magnipore_file, sep='\t')
     outfile = os.path.splitext(magnipore_file)[0] + '_c10.magnipore'
     filtered_magnipore = magnipore[(magnipore['n_reads_1'] >= cov_threshold) & (magnipore['n_reads_2'] >= cov_threshold)]
-    filtered_magnipore.to_csv(outfile, sep='\t', ignore_index=True)
+    filtered_magnipore.to_csv(outfile, sep='\t', index=False)
 
 def main() -> None:
     args = parse()

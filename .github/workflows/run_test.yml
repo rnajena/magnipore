@@ -2,13 +2,7 @@ name: Run Tests
 
 on:
   push:
-    branches:
-      - main
-      - dev
-      - magnipore_2
   pull_request:
-    branches:
-      - main
 
 jobs:
   test:
@@ -34,7 +28,7 @@ jobs:
       - name: Lint with Ruff
         run: |
           pip install ruff
-          ruff check -- --format=github --target-version=py${{ matrix.python-version }} .
+          ruff check
         continue-on-error: true  # Allow workflow to continue even if linting fails
 
       - name: Run Tests with pytest
@@ -47,9 +41,8 @@ jobs:
           coverage report -m
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}  # Ensure you set this in GitHub Secrets
           files: coverage.xml
-          fail_ci_if_error: false
           verbose: true

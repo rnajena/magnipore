@@ -145,7 +145,7 @@ def marker(mut_context):
     marker : str
         Marker type as a string
     """
-    return 'D' if mut_context == 'mut' else 'o'
+    return 'D' if mut_context.lower() == 'mut' else 'o'
 
 def color(mut_context):
     """
@@ -161,7 +161,7 @@ def color(mut_context):
     color : str
         Color as a string
     """
-    return 'blue' if mut_context == 'mut' else '#d95f02'
+    return 'blue' if mut_context.lower() == 'mut' else '#d95f02'
 
 def plotMeanDistAvgStd(data : pd.DataFrame, working_dir : str, label_first_sample : str, label_sec_sample : str, fontsize : int, seed : int, suffix : str = None) -> None:
 

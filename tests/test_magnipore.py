@@ -686,7 +686,7 @@ class TestLogger:
         mock_datetime = mocker.patch('datetime.datetime')
         mock_datetime.now.return_value.strftime.return_value = '2023-10-01_12-00-00'
         # Correct the mock path for memory usage
-        # mock_memory_info = mocker.patch('psutil.Process.memory_info', return_value=mocker.Mock(rss=100 * 1024 * 1024))
+        mocker.patch('psutil.Process.memory_info', return_value=mocker.Mock(rss=100 * 1024 * 1024))
 
         # Act
         logger.error("Test error message", error_type='1')

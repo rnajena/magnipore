@@ -5,6 +5,8 @@
 # website: https://jannessp.github.io
 
 import multiprocessing as mp
+from multiprocessing.sharedctypes import Synchronized
+from multiprocessing.synchronize import Lock
 from os import system
 from os.path import join, dirname, basename, exists
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
@@ -273,8 +275,19 @@ def updater_task(queue : mp.Queue, reds : list[list[Red]], num_updaters : int, r
     r5.close()
     return reds
 
-def progress_updater(progress, processed_counter, lock, total : int = None):
-    """Continuously update the progress bar based on processed lines."""
+def progress_updater(progress : tqdm, processed_counter : Synchronized, lock : Lock):
+    """
+    Continuously updates the progress bar based on the processed count.
+
+    Parameters
+    ----------
+    progress : tqdm
+        A tqdm progress bar instance to update.
+    processed_counter : Synchronized[int]
+        A synchronized integer representing the number of processed items.
+    lock : Lock
+        A lock to ensure thread-safe access to the processed counter.
+    """
     last_count = 0
     while True:
         with lock:
@@ -283,6 +296,26 @@ def progress_updater(progress, processed_counter, lock, total : int = None):
             break
         progress.update(new_count - last_count)
         last_count = new_count
+
+def reconstruct_reds(red_chunks : list[list[Red]], red_len : int, t : int) -> list[list[Red]]:
+    """
+    Reconstructs a list of Red objects from divided chunks.
+
+    Parameters
+    ----------
+    red_chunks : list[list[Red]]
+        A nested list where each sublist contains a portion of Red objects.
+    red_len : int
+        The total length of the reconstructed list.
+    t : int
+        The number of chunks or segments the list is divided into.
+
+    Returns
+    -------
+    list[list[Red]]
+        A reconstructed nested list of Red objects, reassembled from the chunks.
+    """
+    return [red_chunks[pos % t][pos // t] for pos in range(red_len)]
 
 def buildModels(reds : list[list[Red]], raw : str, read_id_map : dict, segmentation : str, calculate_data_density : bool, t : int, max_lines=None) -> list[list[Red]]:
     """
@@ -380,7 +413,7 @@ def buildModels(reds : list[list[Red]], raw : str, read_id_map : dict, segmentat
     # Collect updated `reds` from all updaters
     reds_chunks = [updater.get() for updater in worker]
     # Merge updated results
-    reds = [reds_chunks[pos % t][pos // t] for pos in range(len(reds))]
+    reds = reconstruct_reds(reds_chunks, len(reds), t)
     worker_pool.close()
     worker_pool.join()
 

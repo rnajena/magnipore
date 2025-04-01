@@ -117,7 +117,7 @@ Each row in the `.magnipore` file represents a single position where a compariso
 | **n_segments_1**            | Number of segments from Nanopolish eventalign used in the signal distribution. |
 | **contained_segments_1**    | Number of segments within 3 standard deviations of the mean. |
 | **n_reads_1**               | Number of reads (coverage) used to form the signal distribution. |
-| **ref_2, pos_2, base_2, motif_2, signal_mean_2, signal_std_2, n_datapoints_2, contained_datapoints_2, n_segments_2, contained_segments_2, n_reads_2** | The same fields as above, but for sample 2. |
+| **\*_2** | The same fields as above, but for sample 2. |
 
 ## Example Output
 ```

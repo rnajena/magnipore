@@ -13,15 +13,57 @@ class ANSI:
     CLEAR = '\033[K'
     
 def complement(seq):
+    """
+    Return the complement of a given DNA sequence.
+
+    Parameters
+    ----------
+    seq : str
+        DNA sequence to complement.
+
+    Returns
+    -------
+    str
+        Complement of the input DNA sequence.
+    """
+
     ret = ''
     for b in seq:
         ret += COMPLEMENT.get(b, 'N')
     return ret
 
 def rev_complement(seq):
+    """
+    Return the reverse complement of a given DNA sequence.
+
+    Parameters
+    ----------
+    seq : str
+        DNA sequence to reverse complement.
+
+    Returns
+    -------
+    str
+        Reverse complement of the input sequence.
+    """
     return complement(seq)[::-1]
 
 def sizeof_fmt(num : float, suffix : str = 'B') -> str:
+    """
+    Format a given number in bytes into a human readable string.
+
+    Parameters
+    ----------
+    num : float
+        Number of bytes to format.
+    suffix : str, optional
+        Suffix to append to the output string. Default is 'B'.
+
+    Returns
+    -------
+    str
+        Formatted string with the appropriate unit prefix, e.g. 'KiB', 'MiB', etc.
+    """
     for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
         if abs(num) < 1024.0:
             return f"{num:3.1f}{unit}{suffix}"
@@ -67,18 +109,6 @@ STRANDDECODER = {
 MUTDECODER = {
     True:'mut',
     False:'mod'
-}
-
-REDENCODER = {
-    'mean':0,
-    'std':1,
-    'data_density':2,
-    'n_datapoints':3,
-    'contained_datapoints':4,
-    'n_segments':5,
-    'contained_segments':6,
-    'n_reads':7,
-    'expected_model_density':8,
 }
 
 COMPLEMENT = {
@@ -136,3 +166,11 @@ MAGNIPORE_COLUMNS = [
     'contained_segments_2',     #26
     'n_reads_2',                #27
     ]
+
+PORE2K = {
+        'rna_r9': 5,
+        'dna_r9': 6,
+        'rna_rp4': 9,
+        'dna_r10_260bps': 9,
+        'dna_r10_400bps': 9,
+    }

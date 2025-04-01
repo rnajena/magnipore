@@ -8,7 +8,7 @@ from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 import pandas as pd
 import numpy as np
 
-from magnipore.__init__ import __version__
+from src.__init__ import __version__
 
 def parse() -> Namespace:
     parser = ArgumentParser(

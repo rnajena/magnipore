@@ -9,7 +9,7 @@ from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 
 import pandas as pd
 
-from magnipore.__init__ import __version__
+from src.__init__ import __version__
 
 
 def parse() -> Namespace:
@@ -23,10 +23,10 @@ def parse() -> Namespace:
     parser.add_argument('-v', '--version', action='version', version='%(prog)s' + f' {__version__}')
     return parser.parse_args()
 
-def filter_coverage(magnipore_file : str, cov_threshold : int) -> None:
+def filter_coverage(magnipore_file : str, threshold : int) -> None:
     magnipore = pd.read_csv(magnipore_file, sep='\t')
-    outfile = os.path.splitext(magnipore_file)[0] + '_c10.magnipore'
-    filtered_magnipore = magnipore[(magnipore['n_reads_1'] >= cov_threshold) & (magnipore['n_reads_2'] >= cov_threshold)]
+    outfile = os.path.splitext(magnipore_file)[0] + f'_c{threshold}.magnipore'
+    filtered_magnipore = magnipore[(magnipore['n_reads_1'] >= threshold) & (magnipore['n_reads_2'] >= threshold)]
     filtered_magnipore.to_csv(outfile, sep='\t', index=False)
 
 def main() -> None:

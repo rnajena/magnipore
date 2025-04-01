@@ -21,7 +21,7 @@ def parse() -> Namespace:
     parser.add_argument('--sample', default=1, type=int, choices=[1, 2], help='Which sample to compare in magnipore file.')
     return parser.parse_args()
 
-def readFile(file : str, sep : str) -> pd.DataFrame:
+def read_file(file : str, sep : str) -> pd.DataFrame:
     return pd.read_csv(file, sep=sep)
 
 def f_match(saf_row : pd.Series, magni_row : pd.Series) -> bool:
@@ -31,7 +31,7 @@ def f_match(saf_row : pd.Series, magni_row : pd.Series) -> bool:
         return False
     return True
 
-def getGenes(saf : pd.DataFrame, magnipore : pd.DataFrame) -> pd.DataFrame:
+def get_genes(saf : pd.DataFrame, magnipore : pd.DataFrame) -> pd.DataFrame:
     ret = pd.DataFrame(columns=['Chr', 'Strand', 'GeneID', 'Start', 'End', 'Magnipore'])
     ret = ret.astype({'Chr':str, 'Strand':str, 'GeneID':str, 'Start':int, 'End':int, 'Magnipore':int})
     print('Start comparing files')
@@ -58,9 +58,9 @@ def main() -> None:
     args = parse()
     global SAMPLE
     SAMPLE = args.sample
-    saf = readFile(args.saf, '\t')
-    magnipore = readFile(args.magnipore, '\t')
-    output = getGenes(saf, magnipore)
+    saf = read_file(args.saf, '\t')
+    magnipore = read_file(args.magnipore, '\t')
+    output = get_genes(saf, magnipore)
     output.to_csv(args.outfile, sep='\t', index=False)
 
 if __name__ == '__main__':

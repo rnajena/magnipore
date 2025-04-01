@@ -7,9 +7,13 @@
 import datetime
 import sys
 from io import TextIOWrapper
+from src.Helper import ANSI
+import psutil
 
-from magnipore.Helper import ANSI
-
+def get_memory_usage():
+    """Returns current memory usage in MB."""
+    process = psutil.Process()
+    return process.memory_info().rss / (1024 * 1024)  # Convert bytes to MB
 
 class Logger():
     '''
@@ -19,7 +23,7 @@ class Logger():
     def __init__(self, logfilepointer: TextIOWrapper = None):
         self.lp = logfilepointer
 
-    def writeLog(self, string):
+    def _writeLog(self, string):
         '''
         Write string to logfile if logfilepointer is set.
         
@@ -36,8 +40,8 @@ class Logger():
         @param string: String to write to stderr and logfile.
         @param error_type: used error_type, default 1.
         '''
-        sys.stderr.write(f'{ANSI.RED}ERROR: {string}\nMagnipore Error Code: {error_type}\n{ANSI.END}\n')
-        self.writeLog(f'ERROR: {string}\nMagnipore Error Code: {error_type}\n')
+        sys.stderr.write(f'{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}, MEM: {get_memory_usage():.2f} MB, {ANSI.RED}ERROR: {string}\nMagnipore Error Code: {error_type}\n{ANSI.END}\n')
+        self._writeLog(f'{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}, MEM: {get_memory_usage():.2f} MB, ERROR: {string}\nMagnipore Error Code: {error_type}\n')
         sys.exit(error_type)
 
     def warning(self, string):
@@ -46,8 +50,8 @@ class Logger():
         
         @param string: String to write to stderr and logfile.
         '''
-        sys.stderr.write(f'{ANSI.RED}WARNING: {string}{ANSI.END}\n')
-        self.writeLog(f'WARNING: {string}\n')
+        sys.stderr.write(f'{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}, MEM: {get_memory_usage():.2f} MB, {ANSI.RED}WARNING: {string}{ANSI.END}\n')
+        self._writeLog(f'{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}, MEM: {get_memory_usage():.2f} MB, WARNING: {string}\n')
 
     def printLog(self, string, newline_before=False, newline_after=True):
         '''
@@ -59,11 +63,11 @@ class Logger():
         '''
         if newline_before:
             sys.stdout.write('\n')
-            self.writeLog('\n')
+            self._writeLog('\n')
             
-        sys.stdout.write(f'{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")} LOG: {string}')
-        self.writeLog(f'{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")} LOG: {string}')
+        sys.stdout.write(f'{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}, MEM: {get_memory_usage():.2f} MB, LOG: {string}')
+        self._writeLog(f'{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}, MEM: {get_memory_usage():.2f} MB, LOG: {string}')
         
         if newline_after:
             sys.stdout.write('\n')
-            self.writeLog('\n')
+            self._writeLog('\n')

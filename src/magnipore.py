@@ -7,7 +7,6 @@
 import multiprocessing as mp
 from os import system
 from os.path import join, dirname, basename, exists
-from re import sub
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 from statistics import NormalDist
 import read5_ont.Pod5Reader
@@ -471,7 +470,7 @@ def nanosherlock(outdir : str, label : str, pod5 : str, bam : str, uncalled4 : s
         return read_red_file(red_file, seq)
     
     readidMap = getReadIdMap(bam)
-    LOGGER.printLog(f"Initiliazing RED models...")
+    LOGGER.printLog("Initiliazing RED models...")
     reds = [[Red(30) for _ in range(len(STRANDENCODER))] for _ in range(len(seq))]
     LOGGER.printLog(f"Updating RED models with {basename(uncalled4)}...")
     reds = buildModels(reds, pod5, readidMap, uncalled4, calculate_data_density, t, max_lines)
@@ -577,7 +576,7 @@ def async_stk_writer(stks : list, stk_queue : mp.Queue, alignment : dict, first_
         for stk in stks:
             stk[pos] = 'X'
     
-    LOGGER.printLog(f'Writing stockholm file containing magnipore results')
+    LOGGER.printLog('Writing stockholm file containing magnipore results')
     # loading alignment sequences
     records = [
         SeqIO.SeqRecord(
@@ -597,6 +596,23 @@ def async_stk_writer(stks : list, stk_queue : mp.Queue, alignment : dict, first_
         ) for label, seq in zip((first_sample_label, sec_sample_label), stks)
     ])
     SeqIO.write(records, join(outdir, first_sample_label + '_' + sec_sample_label + '_marked.stk'), 'stockholm')
+
+def reformat(seq):
+    """
+    Reformat a sequence to stockholm format by replacing all non-gap characters with dots.
+    
+    Parameters
+    ----------
+    seq : str
+        The sequence to reformat
+    
+    Returns
+    -------
+    list
+        A list of characters where all non-gaps are replaced with dots
+    """
+    from re import sub
+    return list(sub(r"[^-]", ".", seq))  # replaces all non-gaps with dots for stockhol format
 
 def magnipore(mapping : dict, unaligned : dict, seqs : dict[str : str], alignment : dict, red1 : list[list[Red]], red2 : list[list[Red]], l1 : str, l2 : str, outdir : str, pore_range : int, threads : int) -> tuple[str, int]:
     """
@@ -651,7 +667,6 @@ def magnipore(mapping : dict, unaligned : dict, seqs : dict[str : str], alignmen
 
     sign_writer = mp.Process(target=async_writer, args=(sign_file, sign_queue))
     all_writer = mp.Process(target=async_writer, args=(all_file, all_queue))
-    reformat = lambda seq : list(sub(r"[^-]", ".", seq)) # replaces all non-gaps with dots for stockhol format
     magnipore_strings = list(map(reformat, alignment.values()))
     stk_writer = mp.Process(target=async_stk_writer, args=(magnipore_strings, stk_queue, alignment, l1, l2, outdir))
     all_writer.start()

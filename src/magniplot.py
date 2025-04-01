@@ -87,7 +87,7 @@ def plotStatistics(data : pd.DataFrame, seed : int, outdir : str, label_first_sa
     # plotMeanDistAvgStd(data, outdir, label_first_sample, label_sec_sample, fontsize, seed)
 
     print(f'Plotting Mean vs Stdev of {len(data.index)} positions excluding low coverage positions')
-    pool.apply_async(plotMeanDistAvgStd, args=(data[data[f'Low Coverage (<{coverage})'] == False], outdir, label_first_sample, label_sec_sample, fontsize, seed, f'c{coverage}'), error_callback=callbackError)
+    pool.apply_async(plotMeanDistAvgStd, args=(data[not data[f'Low Coverage (<{coverage})']], outdir, label_first_sample, label_sec_sample, fontsize, seed, f'c{coverage}'), error_callback=callbackError)
     # plotMeanDistAvgStd(data[data[f'Low Coverage (<{coverage})'] == False], outdir, label_first_sample, label_sec_sample, fontsize, seed, f'c{coverage}')
 
     # plot MeanDistStdAvg with coverage
@@ -96,7 +96,7 @@ def plotStatistics(data : pd.DataFrame, seed : int, outdir : str, label_first_sa
     # plotMeanDistAvgStdCov(data, outdir, label_first_sample, label_sec_sample, fontsize, coverage, seed)
 
     # plot scores
-    print(f'Plotting TD score and KL divergence')
+    print('Plotting TD score and KL divergence')
     pool.apply_async(plotScores, args=(data, outdir, label_first_sample, label_sec_sample, seed), error_callback=callbackError)
     # plotScores(data, outdir, label_first_sample, label_sec_sample, seed)
 
@@ -131,10 +131,39 @@ def plotScores(data : pd.DataFrame, working_dir : str, label_first_sample : str,
     plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_kl_div{"_seed"+str(seed) if seed is not None else ""}.pdf'))
     plt.close()
     
-def plotMeanDistAvgStd(data : pd.DataFrame, working_dir : str, label_first_sample : str, label_sec_sample : str, fontsize : int, seed : int, suffix : str = None) -> None:
+def marker(mut_context):
+    """
+    Returns the marker type to use for plotting, depending on the mutation context
     
-    marker = lambda mut_context: 'D' if mut_context == 'mut' else 'o'
-    color = lambda mut_context: 'blue' if mut_context == 'mut' else '#d95f02' 
+    Parameter
+    ---------
+    mut_context : str
+        String indicating whether a mutation context is present or not
+    
+    Returns
+    -------
+    marker : str
+        Marker type as a string
+    """
+    return 'D' if mut_context == 'mut' else 'o'
+
+def color(mut_context):
+    """
+    Returns a color to use in plotting, depending on the mutation context
+    
+    Parameter
+    ---------
+    mut_context: str
+        indicating whether a mutation context is present or not
+    
+    Returns
+    -------
+    color : str
+        Color as a string
+    """
+    return 'blue' if mut_context == 'mut' else '#d95f02'
+
+def plotMeanDistAvgStd(data : pd.DataFrame, working_dir : str, label_first_sample : str, label_sec_sample : str, fontsize : int, seed : int, suffix : str = None) -> None:
 
     ### Mean Dist vs Std Avg plot
     plt.figure(figsize = (12,12), dpi=300)

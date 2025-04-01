@@ -79,7 +79,7 @@ class TestMagnipore:
         # Handles single sequence input by creating identity mapping
     def test_handles_single_sequence_with_identity_mapping(self, mocker):
         # Mock the Logger
-        mock_logger = mocker.patch('src.magnipore.LOGGER')
+        # mock_logger = mocker.patch('src.magnipore.LOGGER')
     
         # Create temporary alignment file
         import tempfile
@@ -120,7 +120,7 @@ class TestMagnipore:
     # Correctly maps positions between two aligned sequences, ensuring the mapping indices are within the correct range, and verifies unaligned positions.
     def test_maps_positions_between_aligned_sequences_corrected(self, mocker):
         # Mock the Logger
-        mock_logger = mocker.patch('src.magnipore.LOGGER')
+        # mock_logger = mocker.patch('src.magnipore.LOGGER')
 
         # Create temporary alignment file
         import tempfile
@@ -204,7 +204,7 @@ class TestMagnipore:
         from src.magnipore import init_Logger
 
         mock_logger = mocker.patch('src.magnipore.Logger')
-        mock_logger_instance = mock_logger.return_value
+        # mock_logger_instance = mock_logger.return_value
 
         test_file_path = "test_log.txt"
 
@@ -220,7 +220,7 @@ class TestMagnipore:
         from src.magnipore import init_Logger
 
         mock_logger = mocker.patch('src.magnipore.Logger')
-        mock_logger_instance = mock_logger.return_value
+        # mock_logger_instance = mock_logger.return_value
 
         # Act
         init_Logger(None)
@@ -231,7 +231,7 @@ class TestMagnipore:
     # Function correctly logs error message and exits with error code 3
     def test_logs_error_and_exits_with_code_3(self, mocker):
         # Arrange
-        from src.magnipore import callbackErrorRed, LOGGER
+        from src.magnipore import callbackErrorRed
         mock_logger = mocker.patch('src.magnipore.LOGGER')
         test_error = Exception("Test error message")
     
@@ -246,7 +246,7 @@ class TestMagnipore:
     # Correctly calls LOGGER.error with formatted error message
     def test_calls_logger_error_with_formatted_message(self, mocker):
         # Arrange
-        from src.magnipore import callbackErrorComparison, LOGGER
+        from src.magnipore import callbackErrorComparison
         mock_logger = mocker.Mock()
         mocker.patch('src.magnipore.LOGGER', mock_logger)
         test_error = ValueError("Test error message")
@@ -258,6 +258,19 @@ class TestMagnipore:
         mock_logger.error.assert_called_once_with(
             f'Error in multiprocessing magnipore signal comparison: {test_error}', 4
         )
+
+    # Replaces all non-gap characters with dots in a sequence
+    def test_replaces_non_gap_characters_with_dots(self):
+        # Arrange
+        from src.magnipore import reformat
+        sequence = "ACGT-ACGT-ACGT"
+        expected = [".", ".", ".", ".", "-", ".", ".", ".", ".", "-", ".", ".", ".", "."]
+    
+        # Act
+        result = reformat(sequence)
+    
+        # Assert
+        assert result == expected
 
 class TestHelper:
     # Format a small number of bytes (e.g., 100.0) with default suffix
@@ -435,7 +448,7 @@ class TestRed:
     # Setting and calculating data density values
     def test_set_and_add_data_density(self):
         from src.Red import Red
-        import numpy as np
+        
 
         # Initialize Red with default parameters
         red = Red()
@@ -673,7 +686,7 @@ class TestLogger:
         mock_datetime = mocker.patch('datetime.datetime')
         mock_datetime.now.return_value.strftime.return_value = '2023-10-01_12-00-00'
         # Correct the mock path for memory usage
-        mock_memory_info = mocker.patch('psutil.Process.memory_info', return_value=mocker.Mock(rss=100 * 1024 * 1024))
+        # mock_memory_info = mocker.patch('psutil.Process.memory_info', return_value=mocker.Mock(rss=100 * 1024 * 1024))
 
         # Act
         logger.error("Test error message", error_type='1')

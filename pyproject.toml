@@ -1,0 +1,110 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling", "hatch-vcs>=0.3", "setuptools-scm>=7.1"]
+
+[project]
+authors = [
+  {name = "Jannes Spangenberg", email = "jannes.spangenberg@uni-jena.de"}
+]
+classifiers = [
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+  "Intended Audience :: Science/Research"
+]
+dependencies = [
+    "h5py>=3.7",
+    "biopython>=1.80",
+    "matplotlib>=3.6",
+    "numpy>=1.21",
+    "scipy>=1.9",
+    "pandas>=1.5",
+    "seaborn>=0.12",
+    "psutil>=6.0",
+    "pytest>=7.1",
+    "read5_ont>=1.2.7",
+    "tqdm>=4.0",
+]
+description = "Compares two ONT sequences samples for differential signals cause by mutations and modifications."
+dynamic = ["version"]
+license = {text = "GNUv3"}
+name = "magnipore"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+test = [
+  "pytest",
+  "pytest-cov",
+  "pytest-mock",
+  "mypy"
+]
+
+[project.scripts]
+magnipore = "src.magnipore:main"
+magnifilter = "src.magnifilter:main"
+magniplot = "src.magniplot:main"
+magnicheck = "src.magnicheck:main"
+
+[project.urls]
+repository = "https://github.com/rnajena/magnipore"
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  # This covers both typing.TYPE_CHECKING and plain TYPE_CHECKING, with any amount of whitespace
+  "if\\s+(typing\\.)?TYPE_CHECKING:",
+  'if __name__ == "__main__":'
+]
+omit = [
+  "src/_version.py",
+  "tests/*"
+]
+
+[tool.distutils.bdist_wheel]
+universal = true
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src",
+  "pyproject.toml",
+  "README.rst",
+  "LICENSE"
+]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.mypy]
+disallow_untyped_defs = true
+files = ["src/**/*.py"]
+python_version = "3.10"
+warn_no_return = true
+
+[tool.pytest.ini_options]
+addopts = [
+  "-vv",
+  "--color=yes",
+  "--cov-append",
+  "--cov-branch",
+  "--cov-report=term-missing",
+  "--cov=src",
+  "--tb=native",
+  "--strict-markers",
+  "--durations=20"
+]
+markers = [
+  "serial: execute test serially (to avoid race conditions)",
+  "slow: tests can take a long time (deselect with '-m \"not slow\"')"
+]
+norecursedirs = [".*", "*.egg*", "build", "dist", "conda.recipe", "examples", "env", "envs", "scripts"]

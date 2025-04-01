@@ -138,3 +138,7 @@ test.txt
 magnipore/nanosherlock_mp.py
 magnipore/nanosherlock_old.py
 tests/segmentation/test_*/log.txt
+.qodo
+src/old/OnlineMeanVar.py
+src/old/Red_copy.py
+src/old/Red_old.py

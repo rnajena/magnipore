@@ -34,7 +34,7 @@ jobs:
       - name: Lint with Ruff
         run: |
           pip install ruff
-          ruff check --format=github --target-version=py${{ matrix.python-version }} .
+          ruff check -- --format=github --target-version=py${{ matrix.python-version }} .
         continue-on-error: true  # Allow workflow to continue even if linting fails
 
       - name: Run Tests with pytest

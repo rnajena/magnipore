@@ -1,0 +1,7 @@
+Total alignment positions: 34
+Indels: [93m6[0m
+Significant positions: [93m4[0m
+Classified as mutations: [93m1[0m
+Positions with no data [93m13[0m, at least one sample at aligned position has no data
+Positions with coverage < 10 in at least one sample: [93m0[0m - filtering recommended.
+Positions with no data or low coverage can be high if one strand has no aligned reads!

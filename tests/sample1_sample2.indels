@@ -1,0 +1,7 @@
+type	strand	ref	pos	base
+insert	+	sample1	5	T
+insert	+	sample1	6	T
+insert	+	sample1	7	T
+insert	+	sample1	8	T
+insert	+	sample1	9	T
+insert	+	sample1	22	T

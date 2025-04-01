@@ -1,4 +1,4 @@
-# ![](figures/magnipore_logo.png)
+![](figures/magnipore_logo.png)
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-teal.svg)](https://www.gnu.org/licenses/gpl-3.0)![conda](https://img.shields.io/badge/Uses-conda-green.svg)
 
@@ -11,23 +11,25 @@
 
 
 >If you find a bug, please add it to the issues on GitHub with a detailed description.
-___
-1.  [Installation via Conda](#installation-via-conda)
-2.  [Description](#description)
-3.  [Dependencies](#dependencies)
-4.  [Workflow](#workflow)
-5.  [Usage](#usage)
-6.  [Output File Description](#output-file-description)
-7.  [Error Codes Explanation](#error-codes-explanation)
-___
-## Installation via Conda
+---
+- [Installation via Conda](#installation-via-conda)
+- [Description](#description)
+- [Dependencies](#dependencies)
+- [Usage](#usage)
+  - [Using the same reference sequence](#using-the-same-reference-sequence)
+- [Output](#output)
+- [Output File Description](#output-file-description)
+  - [File Structure](#file-structure)
+  - [Example Output](#example-output)
+- [Error Codes Explanation](#error-codes-explanation)
+---
+# Installation via Conda
 
 To install Magnipore we recommend to use Conda:
 Magnipore is available for **linux-64 and osx-64**.
 
 ```bash
-conda install mamba
-mamba create -n magnipore -c jannessp magnipore
+conda create -n magnipore jannessp::magnipore
 conda activate magnipore
 ```
 
@@ -35,7 +37,7 @@ If you want to basecall your ONT data you also need a Guppy version from [Oxford
 
 ---
 
-## Description
+# Description
 
 Magnipore is a tool written in python3 to analyze and pair-wise compare sequencing samples from Oxford Nanopore Technologies (ONT) sequencing.
 
@@ -45,46 +47,38 @@ Magnipore classifies these differences and provides the user with a position-wis
 
 ---
 
-## Dependencies
+# Dependencies
 
 Magnipore depends on/requires other tools to preprocess and analyze the data.
 
-<details><summary>Click here to see dependencies</summary>
-
 Conda Dependencies
-- python (>=3.8,<3.11)
-- h5py>=3.7
-- biopython>=1.80
-- mafft>=7.508
-- matplotlib>=3.6.2
-- numpy>=1.23
-- scipy>=1.9
-- winnowmap>=2.0
-- pandas>=1.5
-- seaborn>=0.12
-- psutil>=5.9
-- hdf5plugin>=3.3.1
-- ont_vbz_hdf_plugin>=1.0.1
-- pytest>=7.1
-- gzip>=1.12
-- read5>=1.1.6
-- f5c>=1.2
-- read5>=1.2.0
-
-</details>
+- h5py >= 3.7
+- biopython >= 1.80
+- matplotlib >= 3.6
+- numpy >= 1.21
+- scipy >= 1.9
+- pandas >= 1.5
+- seaborn >= 0.12
+- psutil >= 6.0
+- pytest >= 7.1
+- read5_ont >= 1.2.7
+- tqdm >= 4.0
 
 ---
 
-## Workflow
+# Usage
 
-### Input
+If you are not using the conda package replace "magnipore" by "python3 magnipore.py".
 
-For each sample in the comparison, Magnipore takes:
-- (FASTA) exactly ONE reference sequence
-- (FAST5) the raw sequencing data from ONT
-- (optinal FASTQ) optionally basecalls, if you do not have the guppy binary or do not want to basecall the raw ONT data (again).
+```bash
+magnipore <raw_1> <raw_2> <basecalls_1> <basecalls_2> <uncalled4_1> <uncalled4_2> <alignment> <outdir>
+```
 
-### Output
+## Using the same reference sequence
+
+Using the same reference sequence for both samples results in no reported mutations. Magnipore will only report potential modifications in this case. If you assume there are mutations between the samples, try to provide different reference sequences containing these mutations.
+
+# Output
 
 - Magnipore file (TSV)
   - all compared positions
@@ -92,139 +86,51 @@ For each sample in the comparison, Magnipore takes:
   - with the TD score
   - with the Kullback-Leibler divergence
   - with a bayesian p-Value
-- reference sequence alignment file
 - stockholm file (significant positions are marked)
 - multiple plots about the data of the samples like
+  - MeDAS (mean deviation average standard deviation), shows the distribution of TD scores
+  - Kullback-Leibler divergence distibution
+  - TD score distribution
 
----
+# Output File Description
 
-## Usage
+The `.magnipore` file is a tab-separated values (TSV) file containing the results of signal comparisons between two DNA samples. It provides key statistics and classifications that help distinguish between modifications and mutations.
 
-If you are not using the conda package replace "magnipore" by "python3 magnipore.py".
+## File Structure
+Each row in the `.magnipore` file represents a single position where a comparison was made between the two samples. The table below describes the columns in the output file.
 
-### Without basecalling:
+| Column Name                 | Description |
+|-----------------------------|-------------|
+| **strand**                  | The DNA strand (`+` or `-`) on which the comparison took place. |
+| **td_score**                | Threshold distance score for the signal comparison. |
+| **kl_divergence**           | Kullback-Leibler divergence for the signal comparison. |
+| **bayesian_p**              | P-value from Bayesian analysis for the signal comparison. |
+| **signal_type**             | Classification of the signal: `mod` (modification) or `mut` (mutation). |
+| **ref_1**                   | Contig name of sample 1. |
+| **pos_1**                   | Position in the contig for sample 1 (0-based). |
+| **base_1**                  | Nucleotide base at the position in sample 1. |
+| **motif_1**                 | DNA motif surrounding the position in sample 1. |
+| **signal_mean_1**           | Mean of the signal distribution at this position in sample 1. |
+| **signal_std_1**            | Standard deviation of the signal distribution at this position in sample 1. |
+| **n_datapoints_1**          | Number of data points used to form the signal distribution. |
+| **contained_datapoints_1**  | Number of data points within 3 standard deviations of the mean. |
+| **n_segments_1**            | Number of segments from Nanopolish eventalign used in the signal distribution. |
+| **contained_segments_1**    | Number of segments within 3 standard deviations of the mean. |
+| **n_reads_1**               | Number of reads (coverage) used to form the signal distribution. |
+| **ref_2, pos_2, base_2, motif_2, signal_mean_2, signal_std_2, n_datapoints_2, contained_datapoints_2, n_segments_2, contained_segments_2, n_reads_2** | The same fields as above, but for sample 2. |
 
-<details><summary>Click here to see command:</summary>
-
-```bash
-magnipore raw_data_first_sample reference_first_sample label_first_sample raw_data_sec_sample reference_sec_sample label_sec_sample working_dir --basecalls_first_sample basecalls_first_sample --basecalls_sec_sample basecalls_sec_sample
+## Example Output
 ```
-</details>
-
-### With basecalling
-
-<details><summary>Click here to see command:</summary>
-
-```bash
-magnipore raw_data_first_sample reference_first_sample label_first_sample raw_data_sec_sample reference_sec_sample label_sec_sample working_dir --guppy_bin PATH --guppy_model PATH
+strand  td_score    kl_divergence  bayesian_p  signal_type  ref_1        pos_1  base_1  motif_1  signal_mean_1  signal_std_1  n_datapoints_1  contained_datapoints_1  n_segments_1  contained_segments_1  n_reads_1  ref_2        pos_2  base_2  motif_2  signal_mean_2  signal_std_2  n_datapoints_2  contained_datapoints_2  n_segments_2  contained_segments_2  n_reads_2
++       1.02158245  2.43555934     0.56475101  mod          NC_000913.3  8630   A       TCAAA    -0.51221108    0.47883821    2970            2970                    56            56                    56         NC_000913.3  8630   A       TCAAA    -0.12400217    0.28117663    1500            1489                    50            48                    50
++       1.2774802   3.29518479     0.48385991  mod          NC_000913.3  49969  A       CAATC    0.45179024     0.52977556    4822            4775                    49            46                    49         NC_000913.3  49969  A       CAATC    0.97852969     0.29487824    1869            1853                    47            42                    47
 ```
-</details>
+This structured format ensures clarity and makes it easier to interpret results at a glance.****
 
-### Using a single sequencing run with demultiplexed FASTQs
+# Error Codes Explanation
 
-<details><summary>Click here to see command:</summary>
-
-- basecalls_first_sample/basecalls_sec_sample containing the demultiplexed FASTQs
- - *label_first_sample.fastq* contains only those reads of the first condition
- - *label_sec_sample.fastq* contains only those reads of the second condition
-- be sure that the *sequencing_summary.txt* is next to your FASTQ files, otherwise provide them using
- - -s1, --sequencing_summary_first_sample
- - -s2, --sequencing_summary_sec_sample
-
-```bash
-magnipore --basecalls_first_sample basecalls_first_sample --basecalls_sec_sample basecalls_sec_sample raw_data_first_sample reference_first_sample label_first_sample raw_data_sec_sample reference_sec_sample label_sec_sample working_dir
-```
-</details>
-
-### Using the same reference sequence
-
-Using the same reference sequence for both samples results in no reported mutations. Magnipore will only report potential modifications in this case. If you assume there are mutations between the samples, try to provide different reference sequences containing these mutations.
-
-### Help Messages
-
-[Complete help messages can be found here!](help/help_messages.md)
-
-#### required arguments for magnipore:
-use either the basecalling arguments or provide basecalls
-- basecalling arguments:
-    - guppy_bin : Path to guppy binary
-    - guppy_model : Path to guppy model used for basecalling
-    - (optional) guppy_device : Device used for basecalling (cpu or gpu cuda:0)
-- provided basecalls (FASTQ)
-    - basecalls_first_sample : Path
-    - basecalls_sec_sample : Path
-
-## Output File Description
-
-<details><summary>Click here to see overview:</summary>
-The .magnipore file is a TSV containing the following columns.
-
-- strand : on which strand the comparison took place
-- td_score : threshold distance score for the signal comparison
-- kl_divergence : kullback leibler divergence for the signal comparison
-- bayesian_p : p-value for the signal comparison
-- signal_type : classification into "mod" for modification and "mut" for mutation
-- ref_1 : contig name of sample 1
-- pos_1 : position in contig of sample 1 (0-based)
-- base_1 : base at the position of sample 1
-- motif_1 : motif around the base at the position of sample 1
-- signal_mean_1 : mean of the signal distribution at the position of sample 1
-- signal_std_1 : standard deviation of the signal distribution at the position of sample 1
-- n_datapoints_1 : number of data points that formed the signal distribution
-- contained_datapoints_1 : number of data points withtin 3 standard deviations around the mean
-- n_segments_1 : number of segments from nanopolish eventalign that formed the signal distribution
-- contained_segments_1 : number of segments within 3 standard deviations around the mean
-- n_reads_1 : number of reads (coverage) that formed the signal distribution
-
-same for second sample:
-- ref_2, pos_2, base_2, motif_2, signal_mean_2, signal_std_2, n_datapoints_2, contained_datapoints_2, n_segments_2, contained_segments_2, n_reads_2
-</details>
-
-## Error Codes Explanation
-
-<details><summary>Click here to see error codes:</summary>
-
-- 11: Concatenating both reference files failed
-- 12: Building mafft alignment failed
-- 13: Running nanosherlock of the first sample failed
-- 14: Running nanosherlock of the second sample failed
-- 15: Number of provided reference sequences is not equal 1 or 2
-- 16: Unknown pore type
-- 17: Error in multiprocessing signal comparison
-- 18: Error in magniplot
----
-Errors of first sample:
-- 119: Cannot basecall .slow5/.blow5 with guppy
-- 120: Could not find raw data or unknown file format
-- 121: Guppy basecalling failed
-- 122: mapping failed
-- 123: Samtools indexing failed
-- 124: f5c index failed
-- 125: f5c eventalign failed
-- 126: Could not find provided fastq files
-- 127: f5c eventalign file is empty
----
-Errors of second sample
-- 219: Cannot basecall .slow5/.blow5 with guppy
-- 220: Could not find raw data or unknown file format
-- 221: Guppy basecalling failed
-- 222: mapping failed
-- 223: Samtools indexing failed
-- 224: f5c index failed
-- 225: f5c eventalign failed
-- 226: Could not find provided fastq files
-- 227: f5c eventalign file is empty
-
-### If Subscript Nanosherlock is Executed Separately
-
-The -e parameter of nanosherlock specifies the leading number of the error code. Default is 0.
-- 019: Cannot basecall .slow5/.blow5 with guppy
-- 020: Could not find raw data or unknown file format 
-- 021: Guppy basecalling failed
-- 022: mapping failed
-- 023: Samtools indexing failed
-- 024: f5c index failed
-- 025: f5c eventalign failed
-- 026: Could not find provided fastq files
-- 027: f5c eventalign file is empty
-  </details>
+- 1: Unknown Pore Type, check --help to see which pore types are supported
+- 2: Number of provided reference sequences is not equal 1 or 2
+- 3: Error in multiprocessing red building
+- 4: Error in multiprocessing magnipore signal comparison
+- 5: Error in magniplot

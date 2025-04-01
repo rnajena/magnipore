@@ -28,6 +28,7 @@ dependencies = [
     "pytest>=7.1",
     "read5_ont>=1.2.7",
     "tqdm>=4.0",
+    "pysam>=0.22",
 ]
 description = "Compares two ONT sequences samples for differential signals cause by mutations and modifications."
 dynamic = ["version"]

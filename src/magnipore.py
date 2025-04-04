@@ -19,7 +19,7 @@ from scipy.stats import ks_2samp, norm
 from pysam import AlignmentFile
 from tqdm import tqdm
 from src.Red import Red
-from src.__init__ import __version__, __version_str__
+from src.__init__ import __version_str__
 from src.Helper import (ANSI, IUPAC, MAGNIPORE_COLUMNS, MUTDECODER,
                               STRANDDECODER, STRANDENCODER, PORE2K,
                               complement, rev_complement)

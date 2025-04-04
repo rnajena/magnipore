@@ -407,7 +407,7 @@ class TestMagnipore:
         # Mock read5_ont
         mock_r5 = mocker.MagicMock()
         mock_r5.getZNormSignal.return_value = np.ones(200)  # Signal of all 1's
-        mock_r5_module = mocker.patch('read5_ont.read', return_value=mock_r5)
+        # mock_r5_module = mocker.patch('read5_ont.read', return_value=mock_r5)
 
         # Other parameters
         read_id_map = {"read1": "signal1"}

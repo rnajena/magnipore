@@ -2,7 +2,7 @@ import sys
 import subprocess
 from os.path import join, dirname, exists
 
-from src.__init__ import __version__, __version_str__
+from src.__init__ import __version_str__
 
 def print_help(exit : int = 0):
     """Display help message for the CLI."""
@@ -26,7 +26,7 @@ Options:
 
 def print_version():
     """Display version number."""
-    print(f"magnipore v{__version__}")
+    print(f"magnipore {__version_str__}")
     sys.exit(0)
 
 def main():

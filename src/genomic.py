@@ -22,8 +22,6 @@ def parse() -> Namespace:
     parser.add_argument('-v', '--version', action='version', version='%(prog)s' + f' {__version_str__}')
     return parser.parse_args()
 
-import pandas as pd
-
 def read_annot(file: str) -> pd.DataFrame:
     """
     Reads an annotation file (SAF, GTF, or GFF) and returns a pandas DataFrame.

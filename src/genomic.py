@@ -109,9 +109,9 @@ def f_match(genomic_row : pd.Series, magni_row : pd.Series, sample : str) -> boo
 def get_genes(annot: pd.DataFrame, magnipore: pd.DataFrame, sample: str) -> pd.DataFrame:
     """Find genes in the annotation that overlap with magnipore positions."""
     
-    if annot.empty() or magnipore.empty():
+    if annot.empty or magnipore.empty:
         return pd.DataFrame()
-    if sample not in [1, 2]:
+    if sample not in ["1", "2"]:
         raise ValueError("Sample must be either 1 or 2.")
     if not all(col in magnipore.columns for col in [f'pos_{sample}', f'base_{sample}', f'motif_{sample}']):
         raise ValueError(f"Magnipore file must contain columns: pos_{sample}, base_{sample}, motif_{sample}")

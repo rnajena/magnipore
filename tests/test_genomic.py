@@ -32,7 +32,6 @@ class TestGenomic:
 
     # Handles SAF file missing required columns
     def test_read_saf_missing_required_columns(self):
-        import pandas as pd
         import tempfile
         import os
         import pytest

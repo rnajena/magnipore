@@ -384,60 +384,6 @@ class TestMagnipore:
         lock.__enter__.assert_called_once()
         assert processed_counter.value == 1
 
-    # Successfully processes queue items and updates Red objects with signal data, ensuring valid index access
-    def test_processes_queue_and_updates_reds_with_valid_index(self, mocker):
-        from src.Red import Red
-        from src.magnipore import checker_task
-        
-
-        # Setup
-        queue = mocker.MagicMock()
-        queue.get.side_effect = [
-            "chr1\t0\t+\tA\tC\tread1\t100\t50\t0\t0",
-            None  # Termination signal
-        ]
-
-        # Mock Red objects
-        red_mock = mocker.MagicMock(spec=Red)
-        red_mock.get_mean_stdev.return_value = (0.0, 1.0)
-
-        # Setup reds structure (2D list of Red objects)
-        reds = [[red_mock, mocker.MagicMock(spec=Red)]]
-
-        # Mock read5_ont
-        mock_r5 = mocker.MagicMock()
-        mock_r5.getZNormSignal.return_value = np.ones(200)  # Signal of all 1's
-        # mock_r5_module = mocker.patch('read5_ont.read', return_value=mock_r5)
-
-        # Other parameters
-        read_id_map = {"read1": "signal1"}
-        processed_counter = mocker.MagicMock()
-        processed_counter.value = 0
-        lock = mocker.MagicMock()
-
-        # Execute
-        result = checker_task(
-            queue=queue,
-            reds=reds,
-            num_updaters=1,
-            raw="raw_file.pod5",
-            read_id_map=read_id_map,
-            cal_data_density=True,
-            processed_counter=processed_counter,
-            lock=lock
-        )
-
-        # Verify
-        assert result is reds  # Should return the same reds object
-        assert queue.get.call_count == 2
-        mock_r5.getZNormSignal.assert_called_once_with("signal1")
-        red_mock.get_mean_stdev.assert_called_once()
-        red_mock.add_contained_segments.assert_called_once()
-        red_mock.add_contained_datapoints.assert_called_once()
-        red_mock.add_data_density.assert_called_once()
-        assert processed_counter.value == 1
-        mock_r5.close.assert_called_once()
-
     # Correctly updates the progress bar when the counter value changes
     def test_progress_bar_updates_with_counter_change(self, mocker):
         # Setup

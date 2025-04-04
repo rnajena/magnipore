@@ -3,8 +3,8 @@ class TestCli:
     # Function prints the correct version string with the expected format
     def test_prints_correct_version_format(self, mocker, capsys):
         # Arrange
-        mock_version = "1.2.3"
-        mocker.patch("src.cli.__version__", mock_version)
+        mock_version = "v1.2.3"
+        mocker.patch("src.cli.__version_str__", mock_version)
         mock_exit = mocker.patch("sys.exit")
     
         # Act
@@ -13,7 +13,7 @@ class TestCli:
     
         # Assert
         captured = capsys.readouterr()
-        assert captured.out == f"magnipore v{mock_version}\n"
+        assert captured.out == f"magnipore {mock_version}\n"
         mock_exit.assert_called_once_with(0)
 
     # When subtool is not in script_mapping and not a help/version flag, error message is shown

@@ -46,10 +46,7 @@ test = [
 ]
 
 [project.scripts]
-magnipore = "src.magnipore:main"
-magnifilter = "src.magnifilter:main"
-magniplot = "src.magniplot:main"
-magnicheck = "src.magnicheck:main"
+magnipore = "src.cli:main"
 
 [project.urls]
 repository = "https://github.com/rnajena/magnipore"

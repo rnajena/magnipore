@@ -34,9 +34,11 @@ test:
     {% endfor %}
   commands:
     - magnipore --help
-    - magnifilter --help
-    - magniplot --help
-    - magnicheck --help
+    - magnipore run --help
+    - magnipore check --help
+    - magnipore filter --help
+    - magnipore plot --help
+    - magnipore genoic --help
     - pytest -vv
 
 about:

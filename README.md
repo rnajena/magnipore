@@ -71,7 +71,7 @@ Conda Dependencies
 If you are not using the conda package replace "magnipore" by "python3 magnipore.py".
 
 ```bash
-magnipore <raw_1> <raw_2> <basecalls_1> <basecalls_2> <uncalled4_1> <uncalled4_2> <alignment> <outdir>
+magnipore run <raw_1> <raw_2> <basecalls_1> <basecalls_2> <uncalled4_1> <uncalled4_2> <alignment> <outdir>
 ```
 
 ## Using the same reference sequence

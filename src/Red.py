@@ -27,6 +27,8 @@ class Red:
         self.std = None
         self.var = None
 
+        # TODO add another online updating for length distribution?
+
         # reservoir sampler
         self.reservoir = Reservoir(100)
 

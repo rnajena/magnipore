@@ -19,7 +19,7 @@ from scipy.stats import ks_2samp, norm
 from pysam import AlignmentFile
 from tqdm import tqdm
 from src.Red import Red
-from src.__init__ import __version__
+from src.__init__ import __version__, __version_str__
 from src.Helper import (ANSI, IUPAC, MAGNIPORE_COLUMNS, MUTDECODER,
                               STRANDDECODER, STRANDENCODER, PORE2K,
                               complement, rev_complement)
@@ -65,7 +65,7 @@ def parse() -> Namespace:
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsHelpFormatter,
         description='Required tools: see github https://github.com/JannesSP/magnipore',
-        prog='magnipore',
+        prog='magnipore run',
         )
     parser.add_argument('raw_data_first_sample', type = str, help='Path to POD5 file of first sample.')
     parser.add_argument('raw_data_sec_sample', type = str,  help='Path to POD5 file of second sample')
@@ -80,7 +80,7 @@ def parse() -> Namespace:
     parser.add_argument('-l2', '--label_sec_sample', type = str, default='sample_2', help='Name of the second sample')
     parser.add_argument('-t', '--threads', type=int, default=1, help='Number of threads to use')
     parser.add_argument('-d', '--calculate_data_density', action = 'store_true', default = False, help = 'Will calculate data density after building the models. Will increase runtime!')
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s' + f' {__version__}')
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s' + f' {__version_str__}')
     return parser.parse_args()
 
 def getMapping(alignment : str, out : str, l1 : str, l2 : str) -> tuple[dict[int : tuple[int, int]], dict[str : list[tuple[int, str]]], dict[str : str], dict[str : str]]:
@@ -803,7 +803,7 @@ def magnipore(mapping : dict, unaligned : dict, seqs : dict[str : str], alignmen
     with lock:
         return all_file, num_pos.value + 1
 
-def call_magniplot(magnipore_file : str, label_first_sample : str, label_sec_sample : str, threads : int, num_lines : int):
+def call_magnipore_plot(magnipore_file : str, label_first_sample : str, label_sec_sample : str, threads : int, num_lines : int):
     plot_dir = join(dirname(magnipore_file), 'plots')
     command = f'magniplot {magnipore_file} {plot_dir} {label_first_sample} {label_sec_sample} -t {threads} -nl {num_lines}'
     LOGGER.printLog(f'Creating plots from {magnipore_file}.')
@@ -843,7 +843,7 @@ def main():
     
     magnipore_all_file, num_lines = magnipore(mapping, unaligned, sequences, alignment, red1, red2, l1, l2, outdir, k, t)
 
-    call_magniplot(magnipore_all_file, l1, l2, t, num_lines)
+    call_magnipore_plot(magnipore_all_file, l1, l2, t, num_lines)
     LOGGER.printLog('Done')
 
 if __name__ == '__main__':

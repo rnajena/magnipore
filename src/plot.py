@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from src.__init__ import __version__
+from src.__init__ import __version_str__
 
 warnings.simplefilter('ignore', category=UserWarning)
 
@@ -25,7 +25,7 @@ def parse() -> Namespace:
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsHelpFormatter,
         description='Creating plots (MeDAS, etc) for a given .magnipore file.\nIf the number of entries in the .magnipore file exceeds `max_lines`, this script will randomly sample from the .magnipore file to create the plot.',
-        prog='magniplot',
+        prog='magnipore plot',
     )
     parser.add_argument('magnipore', type=str, help='Magnipore-style output')
     parser.add_argument('outdir', type=str, help='Path to write plots.')
@@ -37,7 +37,7 @@ def parse() -> Namespace:
     parser.add_argument('-ml', '--max_lines', type=int, default=1500000, help='Plot max this number of entries. Do not set this score too high, as it increases runtime and memory usage. If you have data with a low coverage, many entries/lines in the .magnipore file could be NANs. These are filtered out. Increase this number have more get more entries with data.')
     parser.add_argument('-c', '--coverage', type=int, default=10, help='Coverage cutoff threshold for the plots.')
     parser.add_argument('-s', '--seed', type=int, default=None, help='Set a random seed to reproduce the same image.')
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s' + f' {__version__}')
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s' + f' {__version_str__}')
     return parser.parse_args()
 
 def loadPandas(magnipore_file : str, lines_in_file : int, coverage : int, seed : int, max_lines : int) -> tuple:

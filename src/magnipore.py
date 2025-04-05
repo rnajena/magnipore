@@ -11,7 +11,6 @@ from os import system
 from os.path import join, dirname, basename, exists
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 from statistics import NormalDist
-import read5_ont.Pod5Reader
 import read5_ont
 import numpy as np
 from Bio import Seq, SeqIO

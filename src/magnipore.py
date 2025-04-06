@@ -214,7 +214,7 @@ def checker_task(queue : mp.Queue, reds : list[list[Red]], num_updaters : int, r
 
         red = reds[pos // num_updaters][strand]
 
-        mean, stdev = red.get_mean_stdev()
+        mean, stdev = red.get_signal_mean_stdev()
         r = 3 * stdev  # ~99% density of normal distribution
         lower_bound, upper_bound = mean - r, mean + r
 
@@ -439,7 +439,7 @@ def writeOutput(red_file : str, reds : list[list[Red]]):
     """
     total_entries = sum(len(row) for row in reds)  # Total elements for tqdm
     with open(red_file, 'w') as file:
-        file.write('strand\tposition\tsignal_mean\tsignal_std\tdata_density\texpected_model_density\tn_datapoints\tcontained_datapoints\tn_segments\tcontained_segments\tn_reads\n')
+        file.write('strand\tposition\tsignal_mean\tsignal_std\tdwell_time_mean\tdwell_time_std\tdata_density\texpected_model_density\tn_datapoints\tcontained_datapoints\tn_segments\tcontained_segments\tn_reads\n')
         
         with tqdm(total=total_entries, desc="Writing RED file", unit=" entries", initial=1, leave=False) as progress:
             for pos, row in enumerate(reds):
@@ -479,13 +479,14 @@ def read_red_file(red_file: str, seq: str) -> list[list[Red]]:
             strand_idx = STRANDENCODER[values[0]]
 
             # Extract feature values
-            mean, std, data_density, expected_model_density, n_datapoints, contained_datapoints, n_segments, contained_segments, n_reads = map(float, values[2:])
+            signal_mean, signal_std, dwell_time_mean, dwell_time_std, data_density, expected_model_density, n_datapoints, contained_datapoints, n_segments, contained_segments, n_reads = map(float, values[2:])
 
             # Populate the Red object
             red = reds[pos][strand_idx]
-            red.mean = mean
-            red.std = std
-            red.var = std ** 2
+            red.signal_stats.mean = signal_mean
+            red.signal_stats.std = signal_std
+            red.dwell_time_stats.mean = dwell_time_mean
+            red.dwell_time_stats.std = dwell_time_std
             red.n = int(n_datapoints)
             red.data_density = data_density
             red.n_datapoints = int(n_datapoints)
@@ -503,7 +504,7 @@ def nanosherlock(outdir : str, label : str, pod5 : str, bam : str, uncalled4 : s
     
     readidMap = getReadIdMap(bam)
     LOGGER.printLog("Initiliazing RED models...")
-    reds = [[Red(30) for _ in range(len(STRANDENCODER))] for _ in range(len(seq))]
+    reds = [[Red() for _ in range(len(STRANDENCODER))] for _ in range(len(seq))]
     LOGGER.printLog(f"Updating RED models with {basename(uncalled4)}...")
     reds = buildModels(reds, pod5, readidMap, uncalled4, calculate_data_density, t, max_lines)
     LOGGER.printLog(f"Writing RED models to {basename(red_file)}...")
@@ -553,8 +554,8 @@ def kullback_leibler_normal(m0 : float, s0 : float, m1 : float, s1 : float) -> f
 
 def compare_signals(args):
     strand, base1, base2, motif1, motif2, alip, data_pos1, data_pos2, seqs_ids, pos1, pos2, num_muts, sign_pos, no_data, low_cov_count, num_pos, lock, all_queue, sign_queue, stk_queue = args
-    m1, s1 = data_pos1.get_mean_stdev()
-    m2, s2 = data_pos2.get_mean_stdev()
+    m1, s1 = data_pos1.get_signal_mean_stdev()
+    m2, s2 = data_pos2.get_signal_mean_stdev()
     # check if positions have a distribution -> stdev for both are non-0
     hasData = s1 and s2
 

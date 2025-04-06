@@ -158,41 +158,6 @@ class TestReservoir:
         # This is a simple check to ensure randomness, not a statistical test
         assert not np.array_equal(samples, np.arange(k))
 
-    # Testing if the reservoir sampling is unbiased using a chi-square test
-    # def test_reservoir_sampling_unbiasedness_with_chi_square(self):
-    #     
-    #     from collections import Counter
-    #     from scipy.stats import chisquare
-    #     from src.Reservoir import Reservoir
-
-    #     # Initialize parameters
-    #     k = 10
-    #     n = 1000
-    #     trials = 10000
-
-    #     # Create a large stream of elements
-    #     stream = np.arange(n)
-
-    #     # Counter to track occurrences of each element in the reservoir
-    #     element_counts = Counter()
-
-    #     # Perform multiple trials to check unbiasedness
-    #     for _ in range(trials):
-    #         reservoir = Reservoir(k)
-    #         reservoir.add(stream)
-    #         samples = reservoir.samples()
-    #         element_counts.update(samples)
-
-    #     # Calculate expected count for each element
-    #     expected_count = [trials * k / n] * n
-
-    #     # Perform chi-square test
-    #     observed_counts = [element_counts[i] for i in range(n)]
-    #     chi2, p_value = chisquare(observed_counts, expected_count)
-
-    #     # Assert that the p-value is greater than 0.05 for unbiasedness
-    #     assert p_value > 0.05
-
     # Verifying the internal state counters (cnt, next) are correctly updated
     def test_internal_counters_update_correctly(self):
         

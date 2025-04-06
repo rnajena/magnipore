@@ -29,6 +29,7 @@ To install Magnipore we recommend to use Conda:
 Magnipore is available for **linux-64 and osx-64**.
 
 ```bash
+conda config --add channels jannessp # to install all dependencies from the correct channel
 conda create -n magnipore jannessp::magnipore
 conda activate magnipore
 ```

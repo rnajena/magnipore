@@ -52,8 +52,10 @@ class TestMagnipore:
 
         for i, pos in enumerate(red1_dict):
             for j, red in enumerate(pos):
-                assert np.isclose(red.mean, red1DF.loc[(2*i)+j, 'signal_mean']), "Mismatch in signal_mean"
-                assert np.isclose(red.std, red1DF.loc[(2*i)+j, 'signal_std']), "Mismatch in signal_std"
+                assert np.isclose(red.signal_stats.mean, red1DF.loc[(2*i)+j, 'signal_mean']), "Mismatch in signal_mean"
+                assert np.isclose(red.signal_stats.std, red1DF.loc[(2*i)+j, 'signal_std']), "Mismatch in signal_std"
+                assert np.isclose(red.dwell_time_stats.mean, red1DF.loc[(2*i)+j, 'dwell_time_mean']), "Mismatch in signal_mean"
+                assert np.isclose(red.dwell_time_stats.std, red1DF.loc[(2*i)+j, 'dwell_time_std']), "Mismatch in signal_std"
                 assert np.isclose(red.data_density, red1DF.loc[(2*i)+j, 'data_density']), "Mismatch in data_density"
                 assert np.isclose(red.n_datapoints, red1DF.loc[(2*i)+j, 'n_datapoints']), "Mismatch in n_datapoints"
                 assert np.isclose(red.contained_datapoints, red1DF.loc[(2*i)+j, 'contained_datapoints']), "Mismatch in contained_datapoints"
@@ -286,7 +288,7 @@ class TestMagnipore:
             red = Red()
             # Add different values to each Red
             red.append(np.array([i*10 + j for j in range(5)], dtype=np.float32))
-            red.get_mean_stdev()  # Calculate stats
+            red.get_signal_mean_stdev()  # Calculate stats
             original_reds.append(red)
 
         # Divide into chunks (t=4)
@@ -304,12 +306,12 @@ class TestMagnipore:
 
         # Verify statistics are preserved
         for i, red in enumerate(original_reds):
-            orig_mean, orig_std = red.get_mean_stdev()
-            recon_mean, recon_std = reconstructed[i].get_mean_stdev()
+            orig_mean, orig_std = red.get_signal_mean_stdev()
+            recon_mean, recon_std = reconstructed[i].get_signal_mean_stdev()
     
             assert np.isclose(orig_mean, recon_mean)
             assert np.isclose(orig_std, recon_std)
-            assert red.n == reconstructed[i].n, f"Sample count mismatch at index {i}"
+            assert red.signal_stats.n == reconstructed[i].signal_stats.n, f"Sample count mismatch at index {i}"
 
     # Function correctly maps read IDs from a BAM file
     def test_read_id_mapping_with_pi_tag(self, mocker):
@@ -424,10 +426,10 @@ class TestMagnipore:
 
         # Create test data using MagicMock with __str__ method
         red1 = mocker.MagicMock(spec=Red)
-        red1.__str__.return_value = "10.12345678\t2.12345678\t0.12345678\t0.23456789\t100\t80\t5\t4\t10"
+        red1.__str__.return_value = "10.12345678\t2.12345678\t10.12345678\t2.12345678\t0.12345678\t0.23456789\t100\t80\t5\t4\t10"
 
         red2 = mocker.MagicMock(spec=Red)
-        red2.__str__.return_value = "15.12345678\t3.12345678\t0.22345678\t0.33456789\t200\t150\t10\t8\t20"
+        red2.__str__.return_value = "15.12345678\t3.12345678\t15.12345678\t3.12345678\t0.22345678\t0.33456789\t200\t150\t10\t8\t20"
 
         # Create reds list structure (list of lists of Red objects)
         reds = [[red1], [red2]]
@@ -444,11 +446,11 @@ class TestMagnipore:
             content = f.readlines()
 
         # Check header
-        assert content[0] == 'strand\tposition\tsignal_mean\tsignal_std\tdata_density\texpected_model_density\tn_datapoints\tcontained_datapoints\tn_segments\tcontained_segments\tn_reads\n'
+        assert content[0] == 'strand\tposition\tsignal_mean\tsignal_std\tdwell_time_mean\tdwell_time_std\tdata_density\texpected_model_density\tn_datapoints\tcontained_datapoints\tn_segments\tcontained_segments\tn_reads\n'
 
         # Check data rows
-        assert content[1] == '+\t0\t10.12345678\t2.12345678\t0.12345678\t0.23456789\t100\t80\t5\t4\t10\n'
-        assert content[2] == '+\t1\t15.12345678\t3.12345678\t0.22345678\t0.33456789\t200\t150\t10\t8\t20\n'
+        assert content[1] == '+\t0\t10.12345678\t2.12345678\t10.12345678\t2.12345678\t0.12345678\t0.23456789\t100\t80\t5\t4\t10\n'
+        assert content[2] == '+\t1\t15.12345678\t3.12345678\t15.12345678\t3.12345678\t0.22345678\t0.33456789\t200\t150\t10\t8\t20\n'
 
     # Test with two distinct normal distributions returns expected D statistic and p-value
     def test_distinct_distributions_return_expected_statistics(self):
@@ -548,12 +550,12 @@ class TestMagnipore:
         from statistics import NormalDist
         # Mock data positions
         data_pos1 = mocker.Mock()
-        data_pos1.get_mean_stdev.return_value = (10.0, 2.0)
+        data_pos1.get_signal_mean_stdev.return_value = (10.0, 2.0)
         data_pos1.n_reads = 20
         data_pos1.magnipore_string.return_value = "pos1_magnipore_string"
 
         data_pos2 = mocker.Mock()
-        data_pos2.get_mean_stdev.return_value = (12.0, 3.0)
+        data_pos2.get_signal_mean_stdev.return_value = (12.0, 3.0)
         data_pos2.n_reads = 15
         data_pos2.magnipore_string.return_value = "pos2_magnipore_string"
 

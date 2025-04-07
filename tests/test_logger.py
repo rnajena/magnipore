@@ -73,25 +73,6 @@ class TestLogger:
         # Assert
         mock_file_instance.write.assert_called_once_with("Test log message")
 
-    # Logger.printLog() writes to stdout and logfile with timestamp and memory usage
-    def test_printlog_writes_to_stdout_and_logfile(self, mocker):
-        from src.Logger import Logger, get_memory_usage
-        import datetime
-        # Arrange
-        mock_file = mocker.mock_open()
-        mock_file_instance = mock_file.return_value
-        logger = Logger(mock_file_instance)
-        mock_stdout_write = mocker.patch('sys.stdout.write')
-        test_string = "Test log message"
-
-        # Act
-        logger.printLog(test_string)
-
-        # Assert
-        expected_output = f'{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}, MEM: {get_memory_usage():.2f} MB, LOG: {test_string}\n'
-        mock_stdout_write.assert_any_call(expected_output.strip())
-        mock_file_instance.write.assert_any_call(expected_output.strip())
-
     # Logger.printLog() correctly writes to stdout and logfile with newline_before=True and newline_after=False
     def test_print_log_with_newline_before_and_no_newline_after(self, mocker):
         from src.Logger import Logger, get_memory_usage

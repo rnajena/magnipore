@@ -379,7 +379,7 @@ def buildModels(reds : list[list[Red]], raw : str, read_id_map : dict, segmentat
         processed_counter.value = 0
     # Start a background process to update the progress bar
     progress = tqdm(total=total, desc="Calculate Statistics", unit=" lines", initial=0, leave=False)
-    progress_process = mp.Process(target=progress_updater, args=(progress, processed_counter, lock, total))
+    progress_process = mp.Process(target=progress_updater, args=(progress, processed_counter, lock))
     progress_process.start()
 
     # Split `reds` evenly across updaters

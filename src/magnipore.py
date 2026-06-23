@@ -76,7 +76,7 @@ def parse() -> Namespace:
     parser.add_argument('alignment', type = str, help='Path to reference alignment file')
     parser.add_argument('outdir', type = str, help='Path to write all output files')
     parser.add_argument('pore',  type=str, choices=["rna_r9", "dna_r9", "rna_rp4", "dna_r10_260bps", "dna_r10_400bps"], help='Pore generation used to sequence the data')
-    parser.add_argument('-l1', '--label_first_sample', type = str, default = 'sample_1', help='Name of the first sample')
+    parser.add_argument('-l1', '--label_first_sample', type = str, default='sample_1', help='Name of the first sample')
     parser.add_argument('-l2', '--label_sec_sample', type = str, default='sample_2', help='Name of the second sample')
     parser.add_argument('-t', '--threads', type=int, default=1, help='Number of threads to use')
     parser.add_argument('-d', '--calculate_data_density', action = 'store_true', default = False, help = 'Will calculate data density after building the models. Will increase runtime!')
@@ -961,7 +961,7 @@ def main():
     red2 = nanosherlock(outdir, l2, r2, b2, u2, d, list(sequences.values())[-1], t)
     
     # TODO remove later, just for testing reservoir right now
-    exit(1000)
+    # exit(1000)
     magnipore_all_file, num_lines = magnipore(mapping, unaligned, sequences, alignment, red1, red2, l1, l2, outdir, k, t)
 
     call_magnipore_plot(magnipore_all_file, l1, l2, t, num_lines)

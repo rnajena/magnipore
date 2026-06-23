@@ -13,6 +13,7 @@ from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 from statistics import NormalDist
 import read5_ont
 import numpy as np
+from scipy.stats import median_abs_deviation as mad
 from Bio import Seq, SeqIO
 from scipy.stats import ks_2samp, norm
 from pysam import AlignmentFile
@@ -168,7 +169,7 @@ def getMapping(alignment : str, out : str, l1 : str, l2 : str) -> tuple[dict[int
 
     return mapping, unaligned, alignment, sequences
 
-def getReadIdMap(basecalls : str) -> dict:
+def get_readid_map(basecalls : str) -> dict:
     """
     Creates a mapping of read IDs to their processed identifiers from a basecalled BAM or SAM file.
 
@@ -192,11 +193,14 @@ def checker_task(queue : mp.Queue, reds : list[list[Red]], num_updaters : int, r
     r5 = read5_ont.read(raw)
     oldid = None
     signal = None
+    local_counter = 0  # Local counter to batch updates
 
     while 1:
         line = queue.get()
         if line is None:
             r5.close()
+            with lock:
+                processed_counter.value += local_counter
             return reds
 
         try:
@@ -226,9 +230,14 @@ def checker_task(queue : mp.Queue, reds : list[list[Red]], num_updaters : int, r
         if cal_data_density:
             red.add_data_density(np.mean(norm.pdf(segment, loc = mean, scale = stdev)))
 
-        # Safely increment the processed counter
-        with lock:
-            processed_counter.value += 1
+        # Increment the local counter
+        local_counter += 1
+
+        # Batch update the processed counter
+        if local_counter >= 1024:  # Adjust batch size as needed
+            with lock:
+                processed_counter.value += local_counter
+            local_counter = 0
 
     r5.close()
     return reds
@@ -240,17 +249,28 @@ def updater_task(queue : mp.Queue, reds : list[list[Red]], num_updaters : int, r
     r5 = read5_ont.read(raw)
     oldid = None
     signal = None
+    local_counter = 0  # Local counter to batch updates
 
     while 1:
         line = queue.get()
         if line is None:
             r5.close()
+            with lock:
+                processed_counter.value += local_counter
             return reds
 
         try:
+            #! uncalled4
             _, pos, strand, _, _, readid, start, length, _, _ = line.split('\t')
-            pos, strand = int(pos), STRANDENCODER[strand]
+            pos = int(pos)
+            strand = STRANDENCODER[strand]
             start, length = int(start), int(length)
+
+            #! dynamont
+            # readid, signalid, start, end, basepos, base, motif, state, posterior_probability, polish = line.split(',')
+            # pos = int(basepos)
+            # strand = STRANDENCODER[strand]
+            # start, length = int(start), int(end) - int(start)
         except ValueError: # Handle unaligned kmers
             continue
 
@@ -258,18 +278,28 @@ def updater_task(queue : mp.Queue, reds : list[list[Red]], num_updaters : int, r
         if oldid != signalid:
             signal = r5.getZNormSignal(signalid)
             oldid = signalid
+        #? extract summary statistics instead of raw signal? mean or median, var or mad, for each segment
         segment = signal[start : start + length]
+        entry = [[np.mean(segment), np.std(segment), np.median(segment), mad(segment)]]  # Calculate mean and std of the segment
+
+        #! extract segment from signal
+        # segment = signal[start : start + length]
         
         # update RED object
         red = reds[pos // num_updaters][strand]
         red.add_reads(1)
-        red.append(segment)
+        red.append(entry)
         red.add_datapoints(len(segment))
         red.add_segments(1)
 
-        # Safely increment the processed counter
-        with lock:
-            processed_counter.value += 1
+        # Increment the local counter
+        local_counter += 1
+
+        # Batch update the processed counter
+        if local_counter >= 1024:  # Adjust batch size as needed
+            with lock:
+                processed_counter.value += local_counter
+            local_counter = 0
 
     r5.close()
     return reds
@@ -316,7 +346,7 @@ def reconstruct_reds(red_chunks : list[list[Red]], red_len : int, t : int) -> li
     """
     return [red_chunks[pos % t][pos // t] for pos in range(red_len)]
 
-def buildModels(reds : list[list[Red]], raw : str, read_id_map : dict, segmentation : str, calculate_data_density : bool, t : int, max_lines=None) -> list[list[Red]]:
+def build_red_objects(reds : list[list[Red]], raw : str, read_id_map : dict, segmentation : str, calculate_data_density : bool, t : int, max_lines=None) -> list[list[Red]]:
     """
     Spawns worker processes for data extraction and a single updater process for `reds` updates.
     """
@@ -339,12 +369,18 @@ def buildModels(reds : list[list[Red]], raw : str, read_id_map : dict, segmentat
         for i in range(t)
     ]
 
+    # LOGGER.printLog(f"Start reading {segmentation}")
     with open(segmentation, 'r') as file:
         next(file)  # Skip header
 
         # Read file line-by-line without loading everything in memory
         for line_count, line in enumerate(file, 1):
-            pos = int(line.split("\t")[1])  # Extract position from line
+
+            #! uncalled4
+            pos = int(line.split('\t')[1])  # Extract position from line
+            #! dynamont
+            # pos = int(line.split(',')[4])  # Extract position from line
+
             queues[pos % t].put(line)
             
             if max_lines and line_count >= max_lines:
@@ -381,10 +417,6 @@ def buildModels(reds : list[list[Red]], raw : str, read_id_map : dict, segmentat
     progress = tqdm(total=total, desc="Calculate Statistics", unit=" lines", initial=0, leave=False)
     progress_process = mp.Process(target=progress_updater, args=(progress, processed_counter, lock))
     progress_process.start()
-
-    # Split `reds` evenly across updaters
-    queues = [manager.Queue() for _ in range(t)]  # Reset Queue
-    # reds_chunks = np.array_split(reds, t)
 
     # Start updater processes, each handling a subset of `reds`
     worker_pool = mp.Pool(t)
@@ -426,7 +458,7 @@ def buildModels(reds : list[list[Red]], raw : str, read_id_map : dict, segmentat
 
     return reds
 
-def writeOutput(red_file : str, reds : list[list[Red]]):
+def write_red_file(red_file : str, reds : list[list[Red]]):
     """
     Writes RED data to a file.
 
@@ -439,7 +471,8 @@ def writeOutput(red_file : str, reds : list[list[Red]]):
     """
     total_entries = sum(len(row) for row in reds)  # Total elements for tqdm
     with open(red_file, 'w') as file:
-        file.write('strand\tposition\tsignal_mean\tsignal_std\tdwell_time_mean\tdwell_time_std\tdata_density\texpected_model_density\tn_datapoints\tcontained_datapoints\tn_segments\tcontained_segments\tn_reads\n')
+        # dwell_time_mean\tdwell_time_std\t
+        file.write('strand\tposition\tsignal_mean\tsignal_std\tdata_density\texpected_model_density\tn_datapoints\tcontained_datapoints\tn_segments\tcontained_segments\tn_reads\n')
         
         with tqdm(total=total_entries, desc="Writing RED file", unit=" entries", initial=1, leave=False) as progress:
             for pos, row in enumerate(reds):
@@ -447,6 +480,21 @@ def writeOutput(red_file : str, reds : list[list[Red]]):
                     file.write(f'{STRANDDECODER[strand]}\t{pos}\t{red}\n')
                     progress.update(1)  # Update progress
             progress.close()
+
+def pickle_reds(red_file: str, reds: list[list[Red]]):
+    """
+    Serializes and writes RED data to a binary file.
+
+    Parameters
+    ----------
+    red_file : str
+        Path to the output RED file.
+    reds : list[list[Red]]
+        Nested list of Red objects to be serialized and stored.
+    """
+    import pickle
+    with open(red_file, 'wb') as file:
+        pickle.dump(reds, file)
 
 def read_red_file(red_file: str, seq: str) -> list[list[Red]]:
     """
@@ -467,7 +515,7 @@ def read_red_file(red_file: str, seq: str) -> list[list[Red]]:
     LOGGER.printLog(f"Reading RED file {red_file}")
 
     # Initialize the list of lists with empty Red objects
-    reds = [[Red(skip_calc=True) for _ in range(len(STRANDENCODER))] for _ in range(len(seq))]
+    reds = [[Red() for _ in range(len(STRANDENCODER))] for _ in range(len(seq))]
 
     with open(red_file, "r") as file:
         next(file)  # Skip header
@@ -479,14 +527,15 @@ def read_red_file(red_file: str, seq: str) -> list[list[Red]]:
             strand_idx = STRANDENCODER[values[0]]
 
             # Extract feature values
-            signal_mean, signal_std, dwell_time_mean, dwell_time_std, data_density, expected_model_density, n_datapoints, contained_datapoints, n_segments, contained_segments, n_reads = map(float, values[2:])
+            #  dwell_time_mean, dwell_time_std
+            signal_mean, signal_std, data_density, expected_model_density, n_datapoints, contained_datapoints, n_segments, contained_segments, n_reads = map(float, values[2:])
 
             # Populate the Red object
             red = reds[pos][strand_idx]
             red.signal_stats.mean = signal_mean
             red.signal_stats.std = signal_std
-            red.dwell_time_stats.mean = dwell_time_mean
-            red.dwell_time_stats.std = dwell_time_std
+            # red.dwell_time_stats.mean = dwell_time_mean
+            # red.dwell_time_stats.std = dwell_time_std
             red.n = int(n_datapoints)
             red.data_density = data_density
             red.n_datapoints = int(n_datapoints)
@@ -502,13 +551,16 @@ def nanosherlock(outdir : str, label : str, pod5 : str, bam : str, uncalled4 : s
     if exists(red_file):
         return read_red_file(red_file, seq)
     
-    readidMap = getReadIdMap(bam)
+    readidMap = get_readid_map(bam)
     LOGGER.printLog("Initiliazing RED models...")
-    reds = [[Red() for _ in range(len(STRANDENCODER))] for _ in range(len(seq))]
+    reds = [[Red(initlen=(1000, 4)) for _ in range(len(STRANDENCODER))] for _ in range(len(seq))]
     LOGGER.printLog(f"Updating RED models with {basename(uncalled4)}...")
-    reds = buildModels(reds, pod5, readidMap, uncalled4, calculate_data_density, t, max_lines)
+    reds = build_red_objects(reds, pod5, readidMap, uncalled4, calculate_data_density, t, max_lines)
     LOGGER.printLog(f"Writing RED models to {basename(red_file)}...")
-    writeOutput(red_file, reds)
+    # write_red_file(red_file, reds)
+
+    red_file = join(outdir, f'{label}.pickle')
+    pickle_reds(red_file, reds)
 
     return reds
 
@@ -535,16 +587,82 @@ def ks_test(dist1 : tuple, dist2 : tuple) -> tuple:
         np.random.normal(*dist2, 100)
     )
 
-def td_score(mDiff, sAvg) -> tuple:
-    '''
-    Calculates the td-score mDiff/sAvg
+# def cohens_d(mu1 : float, mu2 : float, s1 : float, s2 : float) -> float:
+#     """
+#     Calculate Cohen's d effect size.
+
+#     Parameters
+#     ----------
+#     mu1 : float
+#         Mean of the first group
+#     mu2 : float
+#         Mean of the second group
+#     s1 : float
+#         Standard deviation of the first group
+#     s2 : float
+#         Standard deviation of the second group
+
+#     Returns
+#     -------
+#     d : float
+#         Cohen's d effect size
+#     """
+#     return (mu1 - mu2) / np.sqrt((s1 ** 2 + s2 ** 2) / 2)
+
+def cohens_d(mu1 : float, mu2 : float, s1 : float, s2 : float, n1 : int, n2 : int):
+    """
+    Calculate Cohen's d effect size.
+
+    Parameters
+    ----------
+    mu1 : float
+        Mean of the first group
+    mu2 : float
+        Mean of the second group
+    s1 : float
+        Standard deviation of the first group
+    s2 : float
+        Standard deviation of the second group
 
     Returns
     -------
-    tdscore : float
-    '''
-    return mDiff/sAvg
-    # return np.abs(mDiff - sAvg) / np.sqrt(2)
+    d : float
+        Cohen's d effect size
+    """
+    # https://novustat.com/statistik-blog/cohens-d-effektstaerke-berechnen.html
+    if (n1 + n2 <= 2) or (n1 <= 1) or (n2 <= 1) or (s1 == 0 and s2 == 0):
+        return 0
+    denominator = np.sqrt(((n1 - 1) * s1 ** 2 + (n2 - 1) * s2 ** 2) / (n1 + n2 - 2))
+    if denominator == 0:
+        return 0
+    return (mu1 - mu2) / denominator
+
+def is_significant(cd : float) -> bool:
+    """
+    Check if Cohen's d is significant.
+
+    Parameters
+    ----------
+    cd : float
+        Cohen's d effect size
+
+    Returns
+    -------
+    bool
+        True if significant, False otherwise
+    """
+    return abs(cd) >= 0.8  # Common threshold for large effect size
+
+# def td_score(mDiff, sAvg) -> tuple:
+#     '''
+#     Calculates the td-score mDiff/sAvg
+
+#     Returns
+#     -------
+#     tdscore : float
+#     '''
+#     return mDiff/sAvg
+#     # return np.abs(mDiff - sAvg) / np.sqrt(2)
 
 def kullback_leibler_normal(m0 : float, s0 : float, m1 : float, s1 : float) -> float:
     if not s1 or not s0: # if s0 or s1 are 0 cannot calculate kl divergence
@@ -572,14 +690,15 @@ def compare_signals(args):
 
     bayesian_p = NormalDist(m1, s1).overlap(NormalDist(m2, s2))
     kl_divergence = kullback_leibler_normal(m1, s1, m2, s2)
-    td = td_score(abs(m1 - m2), (s1 + s2) / 2)
-    significant = td>=1
+    # score = td_score(abs(m1 - m2), (s1 + s2) / 2)
+    score = cohens_d(m1, m2, s1, s2, data_pos1.n_reads, data_pos2.n_reads)
+    significant = is_significant(score)
 
     outline = (
-        f"{STRANDDECODER[strand]}\t{td:.8f}\t{kl_divergence:.8f}\t{bayesian_p:.8f}\t{MUTDECODER[mut_context]}\t"
+        f"{STRANDDECODER[strand]}\t{score:.4f}\t{kl_divergence:.4f}\t{bayesian_p:.4f}\t{MUTDECODER[mut_context]}\t"
         f"{seqs_ids[0]}\t{pos1}\t{base1}\t{motif1}\t" # data_pos1
-        f"{m1:.8f}\t{s1:.8f}\t{data_pos1.magnipore_string()}\t"
-        f"{seqs_ids[-1]}\t{pos2}\t{base2}\t{motif2}\t{m2:.8f}\t{s2:.8f}\t" # data_pos2
+        f"{m1:.7f}\t{s1:.7f}\t{data_pos1.magnipore_string()}\t"
+        f"{seqs_ids[-1]}\t{pos2}\t{base2}\t{motif2}\t{m2:.7f}\t{s2:.7f}\t" # data_pos2
         f"{data_pos2.magnipore_string()}\n"
     )
 
@@ -841,6 +960,8 @@ def main():
     red1 = nanosherlock(outdir, l1, r1, b1, u1, d, list(sequences.values())[0], t)
     red2 = nanosherlock(outdir, l2, r2, b2, u2, d, list(sequences.values())[-1], t)
     
+    # TODO remove later, just for testing reservoir right now
+    exit(1000)
     magnipore_all_file, num_lines = magnipore(mapping, unaligned, sequences, alignment, red1, red2, l1, l2, outdir, k, t)
 
     call_magnipore_plot(magnipore_all_file, l1, l2, t, num_lines)

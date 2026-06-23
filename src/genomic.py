@@ -104,13 +104,13 @@ def f_match(genomic_row : pd.Series, magni_row : pd.Series, sample : str) -> boo
         return False
     return True
 
-def get_genes(annot: pd.DataFrame, magnipore: pd.DataFrame, sample: str) -> pd.DataFrame:
+def get_genes(annot: pd.DataFrame, magnipore: pd.DataFrame, sample: int) -> pd.DataFrame:
     """Find genes in the annotation that overlap with magnipore positions."""
     
     if annot.empty or magnipore.empty:
         return pd.DataFrame()
-    if sample not in ["1", "2"]:
-        raise ValueError("Sample must be either 1 or 2.")
+    if sample not in [1, 2]:
+        raise ValueError(f"Sample must be either 1 or 2. but is {sample}")
     if not all(col in magnipore.columns for col in [f'pos_{sample}', f'base_{sample}', f'motif_{sample}']):
         raise ValueError(f"Magnipore file must contain columns: pos_{sample}, base_{sample}, motif_{sample}")
     
@@ -141,12 +141,19 @@ def get_genes(annot: pd.DataFrame, magnipore: pd.DataFrame, sample: str) -> pd.D
                     "Geneposition": pos - genomic_entry["Start"],
                     "Base" : magni_entry[f'base_{sample}'],
                     "Motif" : magni_entry[f'motif_{sample}'],
+                    "Cohens_d" : magni_entry['cohens_d'],
+                    "Cov_1" : magni_entry['n_reads_1'],
+                    "Cov_2" : magni_entry['n_reads_2'],
+                    "Mean_1" : magni_entry['signal_mean_1'],
+                    "Mean_2" : magni_entry['signal_mean_2'],
+                    "Std_1" : magni_entry['signal_std_1'],
+                    "Std_2" : magni_entry['signal_std_2']
                 })
     
     print(f"Processed all {len(magnipore)} lines.     ")
 
     # Convert list to DataFrame in one step
-    return pd.DataFrame(results, columns=["Chr", "Strand", "GeneID", "Start", "End", "Magnipore", "Geneposition", "Base", "Motif"])
+    return pd.DataFrame(results, columns=["Chr", "Strand", "GeneID", "Start", "End", "Magnipore", "Geneposition", "Base", "Motif", "Cohens_d", "Cov_1", "Cov_2", "Mean_1", "Mean_2", "Std_1", "Std_2"])
 
 def main() -> None:
     args = parse()

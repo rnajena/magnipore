@@ -10,13 +10,26 @@ class Reservoir:
   Parameters:
   k (int): Number of samples to hold.
   """
-  def __init__(self, k : int = 100):
-    assert(k>0)
-    self.rs = np.zeros(k)
+  __slots__ = ['rs', 'k', 'd', 'W', 'cnt', 'next', 'dtype']
+
+  def __init__(self, k : int | tuple, dtype : str = "float32"):
+    self.rs = None  # Delay initialization of the reservoir array
+    self.k : int | tuple = k
+    self.d = k[0] if type(self.k) is tuple else k
+    self.W : float = self._genW()
+    self.cnt : int = 0
+    self.next : int = 0
+    self.dtype : str = dtype  # Store dtype for later initialization
+
+  def setK(self, k : int | tuple):
+    """
+    Sets the size of the reservoir to k. If the reservoir is already full,
+    it will not change the size but will reset the internal state.
+    
+    Parameters:
+    k (int | tuple): New size of the reservoir.
+    """
     self.k = k
-    self.W = self._genW()
-    self.cnt = 0
-    self.next = 0
 
   def add(self, xs : np.ndarray):
     """
@@ -28,19 +41,23 @@ class Reservoir:
     Parameters:
     xs (iterable): An iterable of elements to be added to the reservoir.
     """
+    if self.rs is None:
+      # Initialize the reservoir array when data is first added to reduce memory usage
+      self.rs = np.zeros(self.k, self.dtype)
+      
     for x in xs:
       self.cnt += 1
       # always add elements if array not filled yet
-      if (self.cnt < self.k):
+      if (self.cnt < self.d):
         self.rs[self.cnt-1] = x
       # always add, but prepare the next jump target
-      elif (self.cnt == self.k):
+      elif (self.cnt == self.d):
         self.rs[self.cnt-1] = x
         self.next = self.cnt + self._nextjump()
       # reached a jump target
       # PERF It would be possible to implement this even more efficient, by not looping over x in xs.
       elif (self.cnt >= self.next):
-        self.rs[int(np.random.random()*self.k)] = x
+        self.rs[int(np.random.random()*self.d)] = x
         self.W *= self._genW()
         self.next = self.cnt + self._nextjump()
 
@@ -52,10 +69,11 @@ class Reservoir:
     the number of samples that have been added so far.
 
     Returns:
-        np.ndarray: An array containing the current samples in the reservoir.
+      np.ndarray: An array containing the current samples in the reservoir.
     """
-    r = min(self.k, self.cnt)
-    return self.rs[:r]
+    if self.rs is None:
+      return np.array([], dtype=self.dtype)  # Return an empty array if no data has been added
+    return self.rs[:min(self.d, self.cnt)]
     
   def _nextjump(self) -> int:
     """
@@ -77,6 +95,50 @@ class Reservoir:
     exp(log(random())/k).
 
     Returns:
-        float: A random value for W.
+      float: A random value for W.
     """
-    return np.exp(np.log(np.random.random()) / self.k)
+    return np.exp(np.log(np.random.random()) / self.d)
+  
+  def __getstate__(self):
+    """
+    Custom method for pickling the Reservoir object.
+    Returns a dictionary of the object's state.
+    """
+    state = {slot: getattr(self, slot) for slot in self.__slots__}
+    # Serialize the NumPy array as bytes if it exists
+    if self.rs is not None:
+      state['rs'] = self.rs.tobytes()
+      state['rs_dtype'] = self.dtype    # Store dtype for reconstruction
+      state['rs_shape'] = self.rs.shape # Store shape for reconstruction
+    else:
+      state['rs'] = None
+    return state
+
+  def __setstate__(self, state):
+    """
+    Custom method for unpickling the Reservoir object.
+    Restores the object's state from the dictionary.
+    """
+    # Restore all attributes in __slots__, setting defaults if missing
+    for slot in self.__slots__:
+      setattr(self, slot, state.get(slot, None))
+
+    # Handle the 'rs' attribute specifically
+    if state.get('rs') is not None:
+      try:
+        # Attempt to reconstruct 'rs' using the expected keys
+        self.rs = np.frombuffer(
+          state['rs'], 
+          dtype=np.dtype(state.get('rs_dtype', 'float32'))
+        ).reshape(state['rs_shape'])
+      except KeyError:
+        # Fallback for older versions or missing keys
+        self.rs = None
+      except TypeError:
+        # Handle cases where 'rs' is not bytes-like
+        if isinstance(state['rs'], list):
+          self.rs = np.array(state['rs'], dtype="float32").reshape((self.d,))
+        else:
+          raise
+    else:
+      self.rs = None

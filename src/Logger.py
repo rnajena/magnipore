@@ -9,11 +9,18 @@ import sys
 from io import TextIOWrapper
 from src.Helper import ANSI
 import psutil
+from os import getpid
 
 def get_memory_usage():
     """Returns current memory usage in MB."""
-    process = psutil.Process()
-    return process.memory_info().rss / (1024 * 1024)  # Convert bytes to MB
+    process = psutil.Process(getpid())
+    mem = process.memory_info().rss  # Resident Set Size in bytes
+    # for child in process.children(recursive=True):
+    #     try:
+    #         mem += child.memory_info().rss
+    #     except psutil.NoSuchProcess:
+    #         pass  # Process might have terminated
+    return mem / (1024 * 1024) # Convert bytes to MB
 
 class Logger():
     '''

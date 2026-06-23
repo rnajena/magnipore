@@ -142,3 +142,4 @@ tests/segmentation/test_*/log.txt
 src/old/OnlineMeanVar.py
 src/old/Red_copy.py
 src/old/Red_old.py
+untracked/

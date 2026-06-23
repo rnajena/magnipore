@@ -139,7 +139,7 @@ IUPAC = {
 
 MAGNIPORE_COLUMNS = [
     'strand',                   #1
-    'td_score',                 #2
+    'cohens_d',                 #2 #! was td score before
     'kl_divergence',            #3
     'bayesian_p',               #4
     'signal_type',              #5

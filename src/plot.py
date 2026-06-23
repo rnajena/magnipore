@@ -46,7 +46,7 @@ def loadPandas(magnipore_file : str, lines_in_file : int, coverage : int, seed :
     if lines_in_file is None:
         with open(magnipore_file, "rb") as f:
             lines_in_file = sum(1 for _ in f)
-    print(f'Found {lines_in_file} lines in {magnipore_file}')
+    print(f'Found {lines_in_file - 1} positions in {magnipore_file}')
     skip = []
     plot_size = lines_in_file
     if lines_in_file > max_lines: # >= because of file header
@@ -56,22 +56,22 @@ def loadPandas(magnipore_file : str, lines_in_file : int, coverage : int, seed :
         random.seed(seed)
         skipsize = (lines_in_file - 1) - plot_size # -1 because we keep the header line
         skip = sorted(random.sample(range(1, lines_in_file), skipsize))
-    print(f'Loading {plot_size - 1} {"random " if lines_in_file > max_lines else ""}entries and skipped {len(skip)} from {magnipore_file}')
-    columns = ['strand', 'td_score', 'kl_divergence', 'signal_type', 'signal_mean_1', 'signal_std_1', 'n_reads_1', 'signal_mean_2', 'signal_std_2', 'n_reads_2']
+    # print(f'Loading {plot_size - 1} {"random " if lines_in_file > max_lines else ""}entries and skipped {len(skip)} from {magnipore_file}')
+    columns = ['strand', 'cohens_d', 'kl_divergence', 'signal_type', 'signal_mean_1', 'signal_std_1', 'n_reads_1', 'signal_mean_2', 'signal_std_2', 'n_reads_2']
     data = pd.read_csv(magnipore_file, sep='\t', usecols=columns, header=0, skiprows=skip)
     # prepare columns for plots
     data['Mean Distance'] = abs(data['signal_mean_1'] - data['signal_mean_2'])
     data['Avg Stdev'] = (data['signal_std_1'] + data['signal_std_2'])/2
-    data['Significant'] = np.where(data['td_score'] >= 1.0, True, False)
+    data['Significant'] = np.where(data['cohens_d'] >= 1.0, True, False)
     data[f'Low Coverage (<{coverage})'] = np.where((data['n_reads_1'] < coverage) | (data['n_reads_2'] < coverage), True, False)
-    data = data.rename(columns={'strand' : 'Strand', 'signal_type' : 'Sequence Context', 'td_score' : 'TD Score', 'kl_divergence' : 'KL Divergence'})
+    data = data.rename(columns={'strand' : 'Strand', 'signal_type' : 'Sequence Context', 'cohens_d' : 'Cohen\'s d', 'kl_divergence' : 'KL Divergence'})
     data['Context, Significant'] = pd.Series(data.reindex(['Sequence Context', 'Significant'], axis='columns').astype('str').values.tolist()).str.join(', ')
     # remove unused columns
-    print(f'{len(data.index)} entries loaded')
+    # print(f'{len(data.index)} entries loaded')
     data.drop(columns=['signal_mean_1', 'signal_std_1', 'n_reads_1', 'signal_mean_2', 'signal_std_2', 'n_reads_2'], inplace=True)
     # drop NANs
     data.dropna(how='any', inplace=True, ignore_index = True) # ignore_index essential for plots in method `plotScores`
-    print(f'{len(data.index)} entries left after removing NANs')
+    print(f'\t{len(data.index)} positions loaded')
     return data, seed
 
 def callbackError(error):
@@ -87,7 +87,7 @@ def plotStatistics(data : pd.DataFrame, seed : int, outdir : str, label_first_sa
     # plotMeanDistAvgStd(data, outdir, label_first_sample, label_sec_sample, fontsize, seed)
 
     print(f'Plotting Mean vs Stdev of {len(data.index)} positions excluding low coverage positions')
-    pool.apply_async(plotMeanDistAvgStd, args=(data[not data[f'Low Coverage (<{coverage})']], outdir, label_first_sample, label_sec_sample, fontsize, seed, f'c{coverage}'), error_callback=callbackError)
+    pool.apply_async(plotMeanDistAvgStd, args=(data[~data[f'Low Coverage (<{coverage})']], outdir, label_first_sample, label_sec_sample, fontsize, seed, f'c{coverage}'), error_callback=callbackError)
     # plotMeanDistAvgStd(data[data[f'Low Coverage (<{coverage})'] == False], outdir, label_first_sample, label_sec_sample, fontsize, seed, f'c{coverage}')
 
     # plot MeanDistStdAvg with coverage
@@ -96,7 +96,7 @@ def plotStatistics(data : pd.DataFrame, seed : int, outdir : str, label_first_sa
     # plotMeanDistAvgStdCov(data, outdir, label_first_sample, label_sec_sample, fontsize, coverage, seed)
 
     # plot scores
-    print('Plotting TD score and KL divergence')
+    print('Plotting Scores')
     pool.apply_async(plotScores, args=(data, outdir, label_first_sample, label_sec_sample, seed), error_callback=callbackError)
     # plotScores(data, outdir, label_first_sample, label_sec_sample, seed)
 
@@ -112,13 +112,13 @@ def plotScores(data : pd.DataFrame, working_dir : str, label_first_sample : str,
         'mut, True':'darkblue'}
 
     plt.figure(figsize = (12,8), dpi=300)
-    plt.title(f'TD score for all positions\n{label_first_sample} vs. {label_sec_sample}')
+    plt.title(f'Cohen\'s d for all positions\n{label_first_sample} vs. {label_sec_sample}')
     # otherwise logscale range is infinite with lower bound: -infinity
-    sns.histplot(data=data[data['TD Score']>0], x='TD Score', hue=data['Context, Significant'], multiple="stack", palette=colors)
+    sns.histplot(data=data[data['Cohen\'s d']>=0.8], x='Cohen\'s d', hue=data['Context, Significant'], multiple="stack", palette=colors)
     plt.grid(True,  'both', 'both', alpha=0.6, linestyle='--')
     plt.tight_layout()
-    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_td_score{"_seed"+str(seed) if seed is not None else ""}.png'))
-    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_td_score{"_seed"+str(seed) if seed is not None else ""}.pdf'))
+    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_cohens_d{"_seed"+str(seed) if seed is not None else ""}.png'))
+    plt.savefig(os.path.join(working_dir, f'{label_first_sample}_{label_sec_sample}_cohens_d{"_seed"+str(seed) if seed is not None else ""}.pdf'))
     plt.close()
 
     plt.figure(figsize = (12,8), dpi=300)

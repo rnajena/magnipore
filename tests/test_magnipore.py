@@ -184,7 +184,7 @@ class TestMagnipore:
         magn = read_csv(magn_file, sep='\t')
 
         assert not magn.empty, "Magnipore output file is empty"
-        assert "td_score" in magn.columns, "Missing td_score column in magnipore output"
+        assert "cohens_d" in magn.columns, "Missing cohens_d column in magnipore output"
         assert "bayesian_p" in magn.columns, "Missing bayesian_p column in magnipore output"
 
     def test_stockholm(self, test_data):
@@ -333,8 +333,8 @@ class TestMagnipore:
         mock_samfile.fetch.return_value = [mock_read1, mock_read2]
     
         # Call the function
-        from src.magnipore import getReadIdMap
-        result = getReadIdMap("test.bam")
+        from src.magnipore import get_readid_map
+        result = get_readid_map("test.bam")
     
         # Verify the results
         assert result == {"read1": "processed_id1", "read2": "read2"}
@@ -438,8 +438,8 @@ class TestMagnipore:
         red_file = tmp_path / "test_red.txt"
 
         # Call the function
-        from src.magnipore import writeOutput
-        writeOutput(str(red_file), reds)
+        from src.magnipore import write_red_file
+        write_red_file(str(red_file), reds)
 
         # Verify file content
         with open(red_file, 'r') as f:
@@ -499,18 +499,18 @@ class TestMagnipore:
         assert isinstance(p, float)
 
     # Calculate td-score for positive mDiff and positive sAvg
-    def test_positive_mdiff_and_savg(self):
-        from src.magnipore import td_score
-        # Arrange
-        mdiff = 10.0
-        savg = 5.0
-        expected_score = 2.0
+    # def test_positive_mdiff_and_savg(self):
+    #     from src.magnipore import td_score
+    #     # Arrange
+    #     mdiff = 10.0
+    #     savg = 5.0
+    #     expected_score = 2.0
     
-        # Act
-        result = td_score(mdiff, savg)
+    #     # Act
+    #     result = td_score(mdiff, savg)
     
-        # Assert
-        assert result == expected_score
+    #     # Assert
+    #     assert result == expected_score
 
     # Returns correct KL divergence when both standard deviations are positive
     def test_correct_kl_divergence_with_positive_std_devs(self):

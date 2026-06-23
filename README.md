@@ -103,7 +103,7 @@ Each row in the `.magnipore` file represents a single position where a compariso
 | Column Name                 | Description |
 |-----------------------------|-------------|
 | **strand**                  | The DNA strand (`+` or `-`) on which the comparison took place. |
-| **td_score**                | Threshold distance score for the signal comparison. |
+| **cohens_d**                | Threshold distance score for the signal comparison. |
 | **kl_divergence**           | Kullback-Leibler divergence for the signal comparison. |
 | **bayesian_p**              | P-value from Bayesian analysis for the signal comparison. |
 | **signal_type**             | Classification of the signal: `mod` (modification) or `mut` (mutation). |
@@ -122,7 +122,7 @@ Each row in the `.magnipore` file represents a single position where a compariso
 
 ## Example Output
 ```
-strand  td_score    kl_divergence  bayesian_p  signal_type  ref_1        pos_1  base_1  motif_1  signal_mean_1  signal_std_1  n_datapoints_1  contained_datapoints_1  n_segments_1  contained_segments_1  n_reads_1  ref_2        pos_2  base_2  motif_2  signal_mean_2  signal_std_2  n_datapoints_2  contained_datapoints_2  n_segments_2  contained_segments_2  n_reads_2
+strand  cohens_d    kl_divergence  bayesian_p  signal_type  ref_1        pos_1  base_1  motif_1  signal_mean_1  signal_std_1  n_datapoints_1  contained_datapoints_1  n_segments_1  contained_segments_1  n_reads_1  ref_2        pos_2  base_2  motif_2  signal_mean_2  signal_std_2  n_datapoints_2  contained_datapoints_2  n_segments_2  contained_segments_2  n_reads_2
 +       1.02158245  2.43555934     0.56475101  mod          NC_000913.3  8630   A       TCAAA    -0.51221108    0.47883821    2970            2970                    56            56                    56         NC_000913.3  8630   A       TCAAA    -0.12400217    0.28117663    1500            1489                    50            48                    50
 +       1.2774802   3.29518479     0.48385991  mod          NC_000913.3  49969  A       CAATC    0.45179024     0.52977556    4822            4775                    49            46                    49         NC_000913.3  49969  A       CAATC    0.97852969     0.29487824    1869            1853                    47            42                    47
 ```
